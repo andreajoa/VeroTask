@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "./index";
+import { getDb } from "./index";
 import { businessCategories, businesses, categories } from "./schema";
 
 const categorySeed = [
@@ -146,6 +146,8 @@ const businessSeed = [
 ] as const;
 
 async function seed() {
+  const db = getDb();
+
   for (const [slug, nameEn, namePtBr, nameEs, before, after] of categorySeed) {
     await db.insert(categories).values({
       slug,
