@@ -1,0 +1,26 @@
+import { NextRequest, NextResponse } from "next/server";
+import { autoSettleExpiredBookings } from "@/lib/booking-workflow";
+import { retryEligibleProviderTransfers } from "@/lib/payout-retry";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return NextResponse.json({ error: "cron_not_configured" }, { status: 503 });
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  const [settlements, payoutRetries] = await Promise.all([
+    autoSettleExpiredBookings(75),
+    retryEligibleProviderTransfers(75)
+  ]);
+
+  return NextResponse.json({
+    ok: true,
+    ranAt: new Date().toISOString(),
+    settlements,
+    payoutRetries
+  });
+}
