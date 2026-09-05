@@ -8,6 +8,44 @@ import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 
+async function upsertProviderSubscription(subscription: Stripe.Subscription) {
+  const businessId = subscription.metadata?.verotask_business_id;
+  const plan = subscription.metadata?.verotask_plan as PlanKey | undefined;
+  if (!businessId || !plan || !PROVIDER_PLANS[plan]) return;
+
+  const db = getDb();
+  const active = subscription.status === "active" || subscription.status === "trialing";
+  const priceId = subscription.items.data[0]?.price?.id;
+  const [existing] = await db.select().from(providerSubscriptions)
+    .where(eq(providerSubscriptions.stripeSubscriptionId, subscription.id))
+    .limit(1);
+
+  if (existing) {
+    await db.update(providerSubscriptions).set({
+      plan,
+      stripePriceId: priceId,
+      commissionBps: PROVIDER_PLANS[plan].commissionBps,
+      active,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      updatedAt: new Date()
+    }).where(eq(providerSubscriptions.id, existing.id));
+  } else {
+    await db.insert(providerSubscriptions).values({
+      businessId,
+      plan,
+      stripeSubscriptionId: subscription.id,
+      stripePriceId: priceId,
+      commissionBps: PROVIDER_PLANS[plan].commissionBps,
+      active,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end
+    });
+  }
+
+  if (active) {
+    await db.update(businesses).set({ plan, updatedAt: new Date() }).where(eq(businesses.id, businessId));
+  }
+}
+
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("stripe-signature");
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -23,49 +61,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   }
 
-  const db = getDb();
-
   switch (event.type) {
-    case "account.updated": {
-      const account = event.data.object;
-      const businessId = account.metadata?.verotask_business_id;
-      if (!businessId) break;
-      const ready = Boolean(account.details_submitted && account.payouts_enabled);
-      await db.update(businesses).set({
-        stripeConnectAccountId: account.id,
-        stripeChargesEnabled: account.charges_enabled,
-        stripePayoutsEnabled: account.payouts_enabled,
-        status: ready ? "active" : "pending",
-        updatedAt: new Date()
-      }).where(eq(businesses.id, businessId));
-      break;
-    }
-
     case "customer.subscription.created":
-    case "customer.subscription.updated": {
-      const subscription = event.data.object;
-      const businessId = subscription.metadata?.verotask_business_id;
-      const plan = subscription.metadata?.verotask_plan as PlanKey | undefined;
-      if (!businessId || !plan || !PROVIDER_PLANS[plan]) break;
-      const active = subscription.status === "active" || subscription.status === "trialing";
-      if (!active) break;
-
-      await db.update(businesses).set({ plan, updatedAt: new Date() }).where(eq(businesses.id, businessId));
-      await db.insert(providerSubscriptions).values({
-        businessId,
-        plan,
-        stripeSubscriptionId: subscription.id,
-        stripePriceId: subscription.items.data[0]?.price?.id,
-        commissionBps: PROVIDER_PLANS[plan].commissionBps,
-        active: true
-      }).onConflictDoNothing();
+    case "customer.subscription.updated":
+      await upsertProviderSubscription(event.data.object);
       break;
-    }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object;
       const businessId = subscription.metadata?.verotask_business_id;
       if (!businessId) break;
+      const db = getDb();
       await db.update(businesses).set({ plan: "free", updatedAt: new Date() }).where(eq(businesses.id, businessId));
       await db.update(providerSubscriptions).set({ active: false, updatedAt: new Date() }).where(eq(providerSubscriptions.stripeSubscriptionId, subscription.id));
       break;
