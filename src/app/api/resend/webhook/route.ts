@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       payload,
       headers: { id, timestamp, signature },
       webhookSecret
-    })) as ResendEvent;
+    })) as unknown as ResendEvent;
   } catch {
     return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   }
