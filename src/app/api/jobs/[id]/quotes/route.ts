@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { jobConversations, jobMatches, jobRequests, quoteOffers, quotes } from "@/db/marketplace-schema";
-import { businesses, users } from "@/db/schema";
+import { users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { sendTransactionalEmail } from "@/lib/email";
 import { requireProviderJob } from "@/lib/job-access";
