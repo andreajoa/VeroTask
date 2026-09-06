@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { parseServiceLocalDateTime } from "@/lib/booking";
 import { sendTransactionalEmail } from "@/lib/email";
 import { geocodeUsAddress } from "@/lib/geocoding";
+import { quoteWindowEndFor, MIN_JOB_LEAD_MS } from "@/lib/job-request-policy";
 import { matchProvidersForJob } from "@/lib/job-matching";
 
 const createSchema = z.object({
@@ -55,7 +56,8 @@ export async function POST(request: NextRequest) {
   let scheduledStart: Date;
   try { scheduledStart = parseServiceLocalDateTime(parsed.data.scheduledLocal); }
   catch { return NextResponse.json({ error: "invalid_schedule" }, { status: 400 }); }
-  if (scheduledStart.getTime() < Date.now() + 60 * 60 * 1000) {
+  const now = new Date();
+  if (scheduledStart.getTime() < now.getTime() + MIN_JOB_LEAD_MS) {
     return NextResponse.json({ error: "schedule_too_soon" }, { status: 409 });
   }
 
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
 
   const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
   const scheduledEnd = new Date(scheduledStart.getTime() + parsed.data.estimatedDurationMinutes * 60_000);
-  const quoteWindowEnd = new Date(Math.min(scheduledStart.getTime() - 2 * 60 * 60 * 1000, Date.now() + 48 * 60 * 60 * 1000));
+  const quoteWindowEnd = quoteWindowEndFor(scheduledStart, now);
 
   const [job] = await db.insert(jobRequests).values({
     customerId: user.id,
