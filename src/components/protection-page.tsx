@@ -1,6 +1,7 @@
-import Link from "next/link";
-import { ArrowLeft, BadgeCheck, ShieldCheck } from "lucide-react";
-import { localePath, type PublicLocale } from "@/lib/site-copy";
+import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
+import { type PublicLocale } from "@/lib/site-copy";
 import { protectionPolicy } from "@/lib/protection-policy";
 
 export function ProtectionPage({ locale }: { locale: PublicLocale }) {
@@ -8,12 +9,7 @@ export function ProtectionPage({ locale }: { locale: PublicLocale }) {
 
   return (
     <main className="min-h-screen">
-      <header className="border-b border-[var(--line)] bg-white">
-        <div className="container-shell flex min-h-16 items-center justify-between">
-          <Link href={localePath(locale, "/")} className="flex items-center gap-2 text-xl font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand)] text-white"><BadgeCheck size={20} /></span>VeroTask</Link>
-          <Link href={localePath(locale, "/")} className="inline-flex items-center gap-2 text-sm font-bold text-[var(--muted)]"><ArrowLeft size={16} /> Back</Link>
-        </div>
-      </header>
+      <SiteHeader locale={locale} currentPath="/protection" />
       <section className="border-b border-[var(--line)] bg-white py-14">
         <div className="container-shell max-w-4xl">
           <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><ShieldCheck size={15} /> VeroTask Protection</div>
@@ -40,6 +36,7 @@ export function ProtectionPage({ locale }: { locale: PublicLocale }) {
           These marketplace rules are product policy. Before public launch, final Terms of Service, Privacy Policy and any state-specific legal requirements should be reviewed for the operating entity and exact Stripe Connect configuration.
         </div>
       </section>
+      <SiteFooter locale={locale} />
     </main>
   );
 }
