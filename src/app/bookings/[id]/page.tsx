@@ -3,12 +3,15 @@ import { eq, isNull, and } from "drizzle-orm";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { BookingWorkflowPanel } from "@/components/booking-workflow-panel";
+import { MutualReputationPanel } from "@/components/mutual-reputation-panel";
 import { getDb } from "@/db";
+import { bilateralRatings } from "@/db/reputation-schema";
 import { bookingEvidence, disputes, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { servicePinForBooking } from "@/lib/booking";
 import { bookingEvidenceSummary } from "@/lib/booking-workflow";
+import { getCustomerReputationSummary, getProviderReputationSummary } from "@/lib/reputation";
 
 export const dynamic = "force-dynamic";
 
@@ -33,20 +36,30 @@ export default async function BookingPage({
   if (!access?.allowed) notFound();
 
   const db = getDb();
-  const [service, evidence, openDispute, evidenceSummary] = await Promise.all([
+  const [service, evidence, openDispute, evidenceSummary, counterpartReputation, providerCustomerRating] = await Promise.all([
     access.booking.serviceId
       ? db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1).then((rows) => rows[0] ?? null)
       : Promise.resolve(null),
     db.select().from(bookingEvidence).where(eq(bookingEvidence.bookingId, id)),
     db.select({ id: disputes.id, reason: disputes.reason, status: disputes.status }).from(disputes)
       .where(and(eq(disputes.bookingId, id), isNull(disputes.resolvedAt))).limit(1).then((rows) => rows[0] ?? null),
-    bookingEvidenceSummary(id)
+    bookingEvidenceSummary(id),
+    access.isProvider
+      ? getCustomerReputationSummary(access.booking.customerId)
+      : getProviderReputationSummary(access.business.id),
+    access.isProvider
+      ? db.select({ id: bilateralRatings.id }).from(bilateralRatings).where(and(
+          eq(bilateralRatings.bookingId, id),
+          eq(bilateralRatings.direction, "provider_to_customer")
+        )).limit(1).then((rows) => rows[0] ?? null)
+      : Promise.resolve(null)
   ]);
 
   const role = access.isProvider ? "provider" as const : "customer" as const;
   const pin = access.isCustomer && ["scheduled", "in_progress"].includes(access.booking.status)
     ? servicePinForBooking(id)
     : null;
+  const canRateCustomer = access.isProvider && ["customer_confirmed", "auto_completed", "paid_out"].includes(access.booking.status);
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -62,7 +75,18 @@ export default async function BookingPage({
           </div>
         </div>
       </header>
-      <section className="container-shell py-8 sm:py-10">
+      <section className="container-shell space-y-6 py-8 sm:py-10">
+        <MutualReputationPanel
+          bookingId={id}
+          role={role}
+          counterpartRating={counterpartReputation.rating}
+          counterpartRatingCount={counterpartReputation.ratingCount}
+          counterpartCompletedJobs={counterpartReputation.completedJobs}
+          counterpartLabel={counterpartReputation.label}
+          canRateCustomer={canRateCustomer}
+          customerAlreadyRated={Boolean(providerCustomerRating)}
+          locale={locale}
+        />
         <BookingWorkflowPanel
           bookingId={id}
           role={role}
