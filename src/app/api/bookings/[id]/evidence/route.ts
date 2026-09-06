@@ -4,10 +4,11 @@ import { getDb } from "@/db";
 import { bookingEvidence, bookingEvents } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
+import { isEvidenceObjectRef } from "@/lib/storage";
 
 const schema = z.object({
   type: z.enum(["before_photo", "after_photo", "checklist", "message", "provider_note", "customer_note"]),
-  objectUrl: z.string().url().max(2000).optional(),
+  objectRef: z.string().max(2000).optional(),
   note: z.string().trim().max(4000).optional(),
   metadata: z.record(z.string(), z.unknown()).optional()
 });
@@ -29,13 +30,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (parsed.data.type === "customer_note" && !access.isCustomer) {
     return NextResponse.json({ error: "customer_evidence_only" }, { status: 403 });
   }
-  if ((parsed.data.type === "before_photo" || parsed.data.type === "after_photo") && !parsed.data.objectUrl) {
-    return NextResponse.json({ error: "photo_url_required" }, { status: 400 });
+  const isPhoto = parsed.data.type === "before_photo" || parsed.data.type === "after_photo";
+  if (isPhoto && (!parsed.data.objectRef || !isEvidenceObjectRef(parsed.data.objectRef))) {
+    return NextResponse.json({ error: "valid_private_photo_reference_required" }, { status: 400 });
   }
-
-  const publicBase = process.env.STORAGE_PUBLIC_URL?.replace(/\/$/, "");
-  if (parsed.data.objectUrl && publicBase && !parsed.data.objectUrl.startsWith(`${publicBase}/`)) {
-    return NextResponse.json({ error: "untrusted_evidence_url" }, { status: 400 });
+  if (!isPhoto && parsed.data.objectRef) {
+    return NextResponse.json({ error: "object_reference_not_allowed_for_this_evidence_type" }, { status: 400 });
+  }
+  if (parsed.data.objectRef && !parsed.data.objectRef.includes(`/booking-evidence/${id}/`)) {
+    return NextResponse.json({ error: "evidence_reference_booking_mismatch" }, { status: 400 });
   }
 
   const db = getDb();
@@ -43,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     bookingId: id,
     submittedByUserId: user.id,
     type: parsed.data.type,
-    objectUrl: parsed.data.objectUrl,
+    objectUrl: parsed.data.objectRef,
     note: parsed.data.note,
     metadata: parsed.data.metadata ?? {}
   }).returning();
