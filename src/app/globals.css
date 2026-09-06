@@ -28,7 +28,10 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-a { color: inherit; text-decoration: none; }
+/* Do not force anchor color here. An unlayered global color rule overrides
+   Tailwind text utilities and can make light CTA labels disappear on light
+   button surfaces. Tailwind Preflight already provides sensible inheritance. */
+a { text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .58; }
