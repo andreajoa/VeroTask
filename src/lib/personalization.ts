@@ -108,11 +108,16 @@ export async function recordProviderInteraction(input: {
 export async function getReturningContext(userId?: string | null): Promise<ReturningContext> {
   const db = getDb();
   const anonymousId = await getAnonymousPersonalizationId();
-  const searchIdentity = userId
-    ? or(eq(marketplaceSearches.userId, userId), anonymousId ? eq(marketplaceSearches.anonymousId, anonymousId) : undefined!)
-    : anonymousId ? eq(marketplaceSearches.anonymousId, anonymousId) : undefined;
 
   let recentSearch: ReturningContext["recentSearch"] | undefined;
+  const searchIdentity = userId && anonymousId
+    ? or(eq(marketplaceSearches.userId, userId), eq(marketplaceSearches.anonymousId, anonymousId))
+    : userId
+      ? eq(marketplaceSearches.userId, userId)
+      : anonymousId
+        ? eq(marketplaceSearches.anonymousId, anonymousId)
+        : null;
+
   if (searchIdentity) {
     const [search] = await db.select({
       query: marketplaceSearches.query,
@@ -140,10 +145,7 @@ export async function getReturningContext(userId?: string | null): Promise<Retur
     })
       .from(customerProviderRelationships)
       .innerJoin(businesses, eq(businesses.id, customerProviderRelationships.businessId))
-      .where(and(
-        eq(customerProviderRelationships.customerId, userId),
-        eq(businesses.active, true)
-      ))
+      .where(and(eq(customerProviderRelationships.customerId, userId), eq(businesses.active, true)))
       .orderBy(desc(customerProviderRelationships.affinityScore), desc(customerProviderRelationships.lastCompletedAt))
       .limit(1);
 
@@ -175,14 +177,13 @@ export async function syncCustomerProviderRelationship(bookingId: string) {
   if (!row) return;
   const now = new Date();
   const [existing] = await db.select().from(customerProviderRelationships)
-    .where(and(
-      eq(customerProviderRelationships.customerId, row.booking.customerId),
-      eq(customerProviderRelationships.businessId, row.booking.businessId)
-    ))
+    .where(and(eq(customerProviderRelationships.customerId, row.booking.customerId), eq(customerProviderRelationships.businessId, row.booking.businessId)))
     .limit(1);
 
+  if (existing?.lastBookingId === row.booking.id) return existing;
+
   const completedCount = (existing?.completedCount ?? 0) + 1;
-  const bookingCount = Math.max(existing?.bookingCount ?? 0, completedCount);
+  const bookingCount = (existing?.bookingCount ?? 0) + 1;
   const rebookCount = Math.max(0, completedCount - 1);
   const totalSpendCents = (existing?.totalSpendCents ?? 0) + row.booking.subtotalCents;
   const recencyBoost = 20;
@@ -192,7 +193,7 @@ export async function syncCustomerProviderRelationship(bookingId: string) {
   const affinityScore = Math.min(100, recencyBoost + repeatBoost + completionBoost + ratingBoost);
 
   if (existing) {
-    await db.update(customerProviderRelationships).set({
+    const [updated] = await db.update(customerProviderRelationships).set({
       lastBookingAt: row.booking.createdAt,
       lastCompletedAt: now,
       bookingCount,
@@ -205,31 +206,49 @@ export async function syncCustomerProviderRelationship(bookingId: string) {
       lastLocation: row.booking.serviceAddress,
       affinityScore: String(affinityScore),
       updatedAt: now
-    }).where(eq(customerProviderRelationships.id, existing.id));
-  } else {
-    await db.insert(customerProviderRelationships).values({
-      customerId: row.booking.customerId,
+    }).where(eq(customerProviderRelationships.id, existing.id)).returning();
+
+    await recordProviderInteraction({
+      userId: row.booking.customerId,
       businessId: row.booking.businessId,
-      firstBookingAt: row.booking.createdAt,
-      lastBookingAt: row.booking.createdAt,
-      lastCompletedAt: now,
-      bookingCount: 1,
-      completedCount: 1,
-      rebookCount: 0,
-      totalSpendCents: row.booking.subtotalCents,
-      lastBookingId: row.booking.id,
-      lastServiceName: row.serviceName,
-      lastServiceQuery: row.serviceName,
-      lastLocation: row.booking.serviceAddress,
-      affinityScore: String(Math.min(100, recencyBoost + completionBoost))
+      bookingId: row.booking.id,
+      eventType: "repeat_job_completed",
+      metadata: { completedCount, totalSpendCents, affinityScore }
     });
+    return updated;
   }
+
+  const [created] = await db.insert(customerProviderRelationships).values({
+    customerId: row.booking.customerId,
+    businessId: row.booking.businessId,
+    firstBookingAt: row.booking.createdAt,
+    lastBookingAt: row.booking.createdAt,
+    lastCompletedAt: now,
+    bookingCount: 1,
+    completedCount: 1,
+    rebookCount: 0,
+    totalSpendCents: row.booking.subtotalCents,
+    lastBookingId: row.booking.id,
+    lastServiceName: row.serviceName,
+    lastServiceQuery: row.serviceName,
+    lastLocation: row.booking.serviceAddress,
+    affinityScore: String(Math.min(100, recencyBoost + completionBoost))
+  }).returning();
 
   await recordProviderInteraction({
     userId: row.booking.customerId,
     businessId: row.booking.businessId,
     bookingId: row.booking.id,
-    eventType: completedCount > 1 ? "repeat_job_completed" : "job_completed",
-    metadata: { completedCount, totalSpendCents, affinityScore }
+    eventType: "job_completed",
+    metadata: { completedCount: 1, totalSpendCents: row.booking.subtotalCents, affinityScore: recencyBoost + completionBoost }
   });
+  return created;
+}
+
+export async function getProviderRepeatCustomers(businessId: string, limit = 50) {
+  const db = getDb();
+  return db.select().from(customerProviderRelationships)
+    .where(eq(customerProviderRelationships.businessId, businessId))
+    .orderBy(desc(customerProviderRelationships.lastCompletedAt))
+    .limit(Math.max(1, Math.min(limit, 100)));
 }
