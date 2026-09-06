@@ -59,7 +59,7 @@ export async function createAdminSession() {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    path: "/admin",
+    path: "/",
     expires: new Date(expiresAt)
   });
 }
