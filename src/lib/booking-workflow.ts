@@ -94,6 +94,9 @@ async function ensureProviderTransfer(bookingId: string, amountCents?: number) {
 
 async function awardRewardsAfterCompletedService(bookingId: string, previousStatus: string) {
   if (!["customer_confirmed", "auto_completed"].includes(previousStatus)) return;
+  const db = getDb();
+  const [dispute] = await db.select({ id: disputes.id }).from(disputes).where(eq(disputes.bookingId, bookingId)).limit(1);
+  if (dispute) return;
   try { await awardCompletionReward(bookingId); }
   catch (error) { console.error("[VeroTask rewards award]", error); }
 }
