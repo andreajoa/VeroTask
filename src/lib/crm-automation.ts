@@ -36,7 +36,7 @@ export async function ensureCrmContactForUser(userId: string, desired?: typeof c
       email: user.email.toLowerCase(),
       name: user.name,
       phone: user.phone,
-      locale,
+      locale: user.locale,
       lifecycle
     }).returning();
   }
