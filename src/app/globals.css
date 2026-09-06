@@ -9,7 +9,7 @@
   --brand: #123b56;
   --brand-strong: #0a2a3d;
   --brand-soft: #eaf4f8;
-  --accent: #3aa5d5;
+  --accent: #17789f;
   --accent-soft: #e8f6fc;
   --warning: #fff7df;
   --warning-text: #6f5516;
@@ -31,10 +31,16 @@ body {
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .58; }
 
 ::selection {
   background: #cdebf7;
   color: #0a2a3d;
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #69b9dc;
+  outline-offset: 3px;
 }
 
 .container-shell {
@@ -64,14 +70,16 @@ button { cursor: pointer; }
   align-items: center;
   justify-content: center;
   min-height: 46px;
+  border: 1px solid var(--brand);
   border-radius: 12px;
   padding: 0 18px;
   background: var(--brand);
-  color: white;
+  color: #ffffff;
   font-weight: 800;
+  box-shadow: 0 6px 18px rgba(18, 59, 86, .13);
   transition: 160ms ease;
 }
-.btn-primary:hover { background: var(--brand-strong); transform: translateY(-1px); }
+.btn-primary:hover { background: var(--brand-strong); border-color: var(--brand-strong); transform: translateY(-1px); }
 
 .btn-secondary {
   display: inline-flex;
@@ -80,13 +88,24 @@ button { cursor: pointer; }
   min-height: 46px;
   border-radius: 12px;
   padding: 0 18px;
-  background: white;
-  border: 1px solid var(--line);
-  color: var(--foreground);
+  background: #ffffff;
+  border: 1px solid #aebbc6;
+  color: #17212b;
   font-weight: 800;
   transition: 160ms ease;
 }
-.btn-secondary:hover { border-color: #aebbc6; background: #fbfcfd; }
+.btn-secondary:hover { border-color: #738391; background: #f7f9fb; color: #0a2a3d; }
+
+.marketplace-hero > .absolute.inset-0 > .absolute.inset-0.bg-cover.bg-center {
+  filter: saturate(1.09) contrast(1.035);
+  animation: verotaskHeroDrift 13s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+@keyframes verotaskHeroDrift {
+  0% { transform: scale(1.015) translate3d(0, 0, 0); }
+  100% { transform: scale(1.075) translate3d(-0.7%, -0.35%, 0); }
+}
 
 .sr-only {
   position: absolute;
