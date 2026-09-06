@@ -2,6 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { BadgeCheck, ExternalLink, MapPin, Phone, ShieldAlert, ShieldCheck, Star } from "lucide-react";
 import { notFound } from "next/navigation";
+import { FavoriteProviderButton } from "@/components/favorite-provider-button";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
@@ -48,8 +49,9 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
               {!bookable && business.publicPhone && <a href={`tel:${business.publicPhone}`} className="inline-flex items-center gap-2 font-black text-[var(--brand)] underline-offset-4 hover:underline"><Phone size={16} /> {business.publicPhone}</a>}
             </div>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)]">{business.description ?? "Local service provider serving Central Florida."}</p>
-            <div className="mt-6 flex flex-wrap gap-2">
+            <div className="mt-6 flex flex-wrap items-center gap-2">
               {categoryRows.map((category) => <Link key={category.slug} href={`${localePath(locale, "/services")}?q=${encodeURIComponent(category.name)}`} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 transition hover:border-slate-500 hover:bg-slate-50">{category.name}</Link>)}
+              {verified && <FavoriteProviderButton businessId={business.id} />}
             </div>
             {!bookable && business.websiteUrl && <a href={business.websiteUrl} rel="nofollow noopener noreferrer" target="_blank" className="mt-7 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)] underline-offset-4 hover:underline">Visit public website <ExternalLink size={15} /></a>}
           </div>
