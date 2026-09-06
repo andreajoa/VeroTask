@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, CheckCircle2, ShieldCheck } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
 import { categories } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
@@ -19,15 +21,10 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="container-shell flex min-h-[70px] items-center justify-between gap-4">
-          <Link href={localePath(locale, "/")} className="flex items-center gap-2.5 text-xl font-black tracking-[-0.035em] text-[var(--brand-strong)]"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand-strong)] text-sky-200"><BadgeCheck size={20} /></span>VeroTask</Link>
-          <Link href={localePath(locale, "/services")} className="text-sm font-black text-slate-600 hover:text-slate-950">Find help</Link>
-        </div>
-      </header>
+      <SiteHeader locale={locale} currentPath="/providers/join" />
 
       <section className="container-shell grid gap-10 py-10 lg:grid-cols-[.9fr_1.1fr] lg:items-start lg:py-16">
-        <div className="lg:sticky lg:top-8">
+        <div className="lg:sticky lg:top-24">
           <div className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand)]"><BriefcaseBusiness size={15} /> Work on your terms</div>
           <h1 className="mt-5 max-w-xl text-4xl font-black tracking-[-0.05em] text-slate-950 sm:text-5xl">Turn your skills into local jobs.</h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">Create a provider profile, choose the work you want, set your availability and get paid online through Stripe Connect.</p>
@@ -60,28 +57,28 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
                 <p className="mt-2 text-sm leading-6 text-slate-600">Signed in as <strong>{user.email}</strong>. Your profile starts in pending status while required verification is completed.</p>
               </div>
 
-              {error && <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">Please review the information and try again.</div>}
+              {error && <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-800">Please review the information and try again.</div>}
 
               <form action={createProviderProfile} className="space-y-5">
                 <input type="hidden" name="plan" value={selectedPlan} />
                 <div>
                   <label className="text-sm font-black text-slate-800" htmlFor="name">Business or professional name</label>
-                  <input id="name" name="name" required minLength={2} maxLength={220} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Example: Maria’s Home Services" />
+                  <input id="name" name="name" required minLength={2} maxLength={220} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Example: Maria’s Home Services" />
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="phone">Phone</label><input id="phone" name="phone" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="(407) 555-0123" /></div>
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="postalCode">ZIP code</label><input id="postalCode" name="postalCode" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="32801" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="phone">Phone</label><input id="phone" name="phone" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="(407) 555-0123" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="postalCode">ZIP code</label><input id="postalCode" name="postalCode" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="32801" /></div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="city">Primary city</label><input id="city" name="city" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Orlando" /></div>
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="categorySlug">Primary service</label><select id="categorySlug" name="categorySlug" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" defaultValue=""><option value="" disabled>Select a service</option>{categoryRows.map((category) => <option value={category.slug} key={category.slug}>{category.name}</option>)}</select></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="city">Primary city</label><input id="city" name="city" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Orlando" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="categorySlug">Primary service</label><select id="categorySlug" name="categorySlug" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" defaultValue=""><option value="" disabled>Select a service</option>{categoryRows.map((category) => <option value={category.slug} key={category.slug}>{category.name}</option>)}</select></div>
                 </div>
 
-                <div><label className="text-sm font-black text-slate-800" htmlFor="description">What kind of work do you do?</label><textarea id="description" name="description" required minLength={20} maxLength={1200} rows={5} className="mt-2 w-full resize-none rounded-xl border border-slate-300 p-4 leading-6 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Describe your experience, the tasks you accept, areas you serve and anything customers should know." /></div>
+                <div><label className="text-sm font-black text-slate-800" htmlFor="description">What kind of work do you do?</label><textarea id="description" name="description" required minLength={20} maxLength={1200} rows={5} className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 leading-6 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Describe your experience, the tasks you accept, areas you serve and anything customers should know." /></div>
 
-                <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">Selected plan: <strong className="capitalize text-slate-950">{selectedPlan}</strong>. Paid plans are activated only after successful Stripe subscription checkout.</div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">Selected plan: <strong className="capitalize text-slate-950">{selectedPlan}</strong>. Paid plans are optional and activate only after successful Stripe subscription checkout.</div>
 
                 <button className="btn-primary w-full" type="submit">Create provider profile <ArrowRight size={18} className="ml-2" /></button>
               </form>
@@ -89,6 +86,7 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
           )}
         </div>
       </section>
+      <SiteFooter locale={locale} />
     </main>
   );
 }
