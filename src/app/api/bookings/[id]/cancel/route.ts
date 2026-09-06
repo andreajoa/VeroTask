@@ -2,10 +2,12 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
+import { bookingPricingDetails } from "@/db/marketplace-schema";
 import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { POLICY_VERSION, refundBookingPayment, releaseProviderTransfer } from "@/lib/booking-workflow";
+import { restoreBookingRewardCredit } from "@/lib/rewards";
 
 const schema = z.object({ reason: z.string().trim().min(3).max(1000) });
 
@@ -23,35 +25,59 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const db = getDb();
+  const [pricing] = await db.select().from(bookingPricingDetails).where(eq(bookingPricingDetails.bookingId, id)).limit(1);
   const paymentCaptured = Boolean(access.booking.stripePaymentIntentId);
+  const servicePriceCents = pricing?.serviceSubtotalCents ?? access.booking.subtotalCents;
+  const paidProtectionFeeCents = pricing
+    ? Math.max(0, pricing.customerProtectionFeeCents - pricing.rewardsCreditCents)
+    : 0;
   let refundCents = 0;
   let providerCompensationCents = 0;
+  let restoreRewards = !paymentCaptured;
   let rule = "unpaid_cancellation";
 
   if (access.isProvider) {
     refundCents = paymentCaptured ? access.booking.subtotalCents : 0;
+    restoreRewards = true;
     rule = paymentCaptured ? "provider_cancelled_full_refund" : "provider_cancelled_before_payment";
   } else if (paymentCaptured) {
     const hoursUntilStart = (access.booking.scheduledStart.getTime() - Date.now()) / 3_600_000;
     if (hoursUntilStart > 24) {
       refundCents = access.booking.subtotalCents;
+      restoreRewards = true;
       rule = "customer_cancelled_over_24h_full_refund";
     } else if (hoursUntilStart >= 6) {
-      refundCents = Math.round(access.booking.subtotalCents * 0.5);
-      const retainedGross = access.booking.subtotalCents - refundCents;
-      providerCompensationCents = Math.round(retainedGross * (10_000 - access.booking.commissionBpsSnapshot) / 10_000);
-      rule = "customer_cancelled_6_to_24h_half_charge";
+      if (pricing) {
+        const refundableServiceCents = Math.round(servicePriceCents * 0.5);
+        refundCents = Math.min(access.booking.subtotalCents, refundableServiceCents + paidProtectionFeeCents);
+        const retainedServiceCents = servicePriceCents - refundableServiceCents;
+        providerCompensationCents = Math.round(retainedServiceCents * (10_000 - access.booking.commissionBpsSnapshot) / 10_000);
+        restoreRewards = true;
+      } else {
+        refundCents = Math.round(access.booking.subtotalCents * 0.5);
+        const retainedGross = access.booking.subtotalCents - refundCents;
+        providerCompensationCents = Math.round(retainedGross * (10_000 - access.booking.commissionBpsSnapshot) / 10_000);
+      }
+      rule = "customer_cancelled_6_to_24h_half_service_charge";
     } else {
-      providerCompensationCents = access.booking.providerAmountCents;
-      rule = "customer_cancelled_under_6h_nonrefundable";
+      if (pricing) {
+        refundCents = Math.min(access.booking.subtotalCents, paidProtectionFeeCents);
+        providerCompensationCents = pricing.providerPayoutCents;
+        restoreRewards = true;
+      } else {
+        providerCompensationCents = access.booking.providerAmountCents;
+      }
+      rule = "customer_cancelled_under_6h_service_nonrefundable";
     }
   } else if (access.booking.status === "accepted" || access.booking.status === "payment_authorized") {
+    restoreRewards = true;
     rule = "customer_cancelled_before_payment";
   }
 
   if (refundCents > 0) {
     await refundBookingPayment({ bookingId: id, amountCents: refundCents, reason: rule });
   }
+  const rewardsRestoredCents = restoreRewards ? await restoreBookingRewardCredit(id) : 0;
 
   const nextStatus = refundCents === access.booking.subtotalCents ? "refunded" : "cancelled";
   await db.update(bookings).set({ status: nextStatus, updatedAt: new Date() }).where(eq(bookings.id, id));
@@ -66,7 +92,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       reason: parsed.data.reason,
       policyRule: rule,
       policyVersion: POLICY_VERSION,
+      servicePriceCents,
+      paidProtectionFeeCents,
       refundCents,
+      rewardsRestoredCents,
       providerCompensationCents
     }
   });
@@ -76,5 +105,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     catch { /* payout retry is handled by scheduled settlement */ }
   }
 
-  return NextResponse.json({ ok: true, status: nextStatus, refundCents, providerCompensationCents, policyRule: rule });
+  return NextResponse.json({
+    ok: true,
+    status: nextStatus,
+    refundCents,
+    rewardsRestoredCents,
+    providerCompensationCents,
+    policyRule: rule
+  });
 }

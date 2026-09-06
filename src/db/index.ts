@@ -6,6 +6,7 @@ import * as operationsSchema from "./operations-schema";
 import * as analyticsSchema from "./analytics-schema";
 import * as personalizationSchema from "./personalization-schema";
 import * as reputationSchema from "./reputation-schema";
+import * as marketplaceSchema from "./marketplace-schema";
 
 const schema = {
   ...coreSchema,
@@ -13,7 +14,8 @@ const schema = {
   ...operationsSchema,
   ...analyticsSchema,
   ...personalizationSchema,
-  ...reputationSchema
+  ...reputationSchema,
+  ...marketplaceSchema
 };
 
 let cached: ReturnType<typeof drizzle<typeof schema>> | null = null;

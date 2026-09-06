@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Banknote, CalendarDays, CheckCircle2, ShieldCheck, Star, UserRoundCheck, WalletCards } from "lucide-react";
+import { ArrowRight, BadgeCheck, Banknote, CalendarDays, CheckCircle2, Star, UserRoundCheck, WalletCards } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { PROVIDER_PLANS } from "@/lib/plans";

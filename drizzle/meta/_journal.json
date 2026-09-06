@@ -8,6 +8,13 @@
       "when": 1788666519836,
       "tag": "0000_initial_production",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788705600000,
+      "tag": "0001_marketplace_quotes_rewards",
+      "breakpoints": true
     }
   ]
 }
