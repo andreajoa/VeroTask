@@ -46,4 +46,6 @@ jobs:
             exit 0
           fi
           git commit -m "build: add deterministic lockfile and database migrations"
+          git fetch origin chatgpt/premium-marketplace-redesign
+          git rebase origin/chatgpt/premium-marketplace-redesign
           git push origin HEAD:chatgpt/premium-marketplace-redesign
