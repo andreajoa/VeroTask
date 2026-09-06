@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { BadgeCheck, Building2, CreditCard, LogOut, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Building2, CreditCard, LogOut, ShieldCheck, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { businessClaims, businesses } from "@/db/schema";
@@ -64,6 +64,11 @@ export default async function Page() {
                     <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                       <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Stripe charges:</span> {business.stripeChargesEnabled ? "Enabled" : "Pending"}</div>
                       <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Payouts:</span> {business.stripePayoutsEnabled ? "Enabled" : "Pending"}</div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/customers`}><UsersRound size={16} /> Customer memory</Link>
+                      <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/services`}>Services</Link>
+                      <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/billing`}>Plans & billing</Link>
                     </div>
                   </div>
                 ))}
