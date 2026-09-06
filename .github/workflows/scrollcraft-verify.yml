@@ -1,0 +1,70 @@
+name: Scroll Craft Verify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+group: null
+
+jobs:
+  visual-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Production build
+        run: npm run build
+
+      - name: Setup Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Install browser harness dependency
+        run: npm install --no-save --package-lock=false playwright-core@1.55.0
+
+      - name: Start production server
+        run: |
+          nohup npm start -- -p 3000 > /tmp/verotask-next.log 2>&1 &
+          echo $! > /tmp/verotask-next.pid
+          for i in {1..40}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/verotask-next.log
+          exit 1
+
+      - name: Scroll Craft browser verification
+        env:
+          VERIFY_BASE_URL: http://127.0.0.1:3000
+          SCROLLCRAFT_CHROME: ${{ steps.chrome.outputs.chrome-path }}
+        run: node scripts/scrollcraft-verify.mjs
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrollcraft-verotask-${{ github.sha }}
+          path: scrollcraft/builds/verotask-marketplace/verification
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Print server log on failure
+        if: failure()
+        run: cat /tmp/verotask-next.log || true
