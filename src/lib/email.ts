@@ -1,5 +1,25 @@
 import { Resend } from "resend";
 
+function client() {
+  const key = process.env.RESEND_API_KEY;
+  return key ? new Resend(key) : null;
+}
+
+function fromAddress() {
+  return process.env.EMAIL_FROM ?? "VeroTask <notifications@verotask.com>";
+}
+
+export async function sendTransactionalEmail(input: { to: string; subject: string; html: string }) {
+  const resend = client();
+  if (!resend) {
+    if (process.env.NODE_ENV !== "production") console.log(`[VeroTask email] ${input.to} · ${input.subject}`);
+    return false;
+  }
+  const { error } = await resend.emails.send({ from: fromAddress(), to: input.to, subject: input.subject, html: input.html });
+  if (error) throw new Error(error.message);
+  return true;
+}
+
 export async function sendMagicLinkEmail(email: string, magicLink: string) {
   const key = process.env.RESEND_API_KEY;
 
@@ -12,10 +32,8 @@ export async function sendMagicLinkEmail(email: string, magicLink: string) {
   }
 
   const resend = new Resend(key);
-  const from = process.env.EMAIL_FROM ?? "VeroTask <notifications@verotask.com>";
-
   const { error } = await resend.emails.send({
-    from,
+    from: fromAddress(),
     to: email,
     subject: "Your secure VeroTask sign-in link",
     html: `
