@@ -1,5 +1,5 @@
 import { addDays, addHours, addMinutes } from "date-fns";
-import { and, desc, eq, isNotNull, lt, lte, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, visitorSessions } from "@/db/analytics-schema";
 import { bookings, businesses, users } from "@/db/schema";
@@ -44,7 +44,7 @@ export async function ensureCrmContactForUser(userId: string, desired?: typeof c
 
 export async function syncCustomerStats(userId: string) {
   const db = getDb();
-  const contact = await ensureCrmContactForUser(userId, "customer");
+  let contact = await ensureCrmContactForUser(userId, "customer");
   if (!contact) return null;
   const [stats] = await db.select({
     totalBookings: sql<number>`count(*)::int`,
