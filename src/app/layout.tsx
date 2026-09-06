@@ -6,8 +6,23 @@ const verificationOther: Record<string, string> = {};
 if (process.env.BING_SITE_VERIFICATION) verificationOther["msvalidate.01"] = process.env.BING_SITE_VERIFICATION;
 if (process.env.AHREFS_SITE_VERIFICATION) verificationOther["ahrefs-site-verification"] = process.env.AHREFS_SITE_VERIFICATION;
 
+function resolveMetadataBase() {
+  const fallback = new URL("https://verotask.com");
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!configured) return fallback;
+
+  try {
+    const candidate = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
+    const url = new URL(candidate);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return fallback;
+    return url;
+  } catch {
+    return fallback;
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://verotask.com"),
+  metadataBase: resolveMetadataBase(),
   title: {
     default: "VeroTask | Trusted Local Services",
     template: "%s | VeroTask"
