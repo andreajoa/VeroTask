@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { BadgeCheck, ExternalLink, MapPin, Phone, ShieldAlert, ShieldCheck } from "lucide-react";
+import { BadgeCheck, ExternalLink, MapPin, Phone, ShieldAlert, ShieldCheck, Star } from "lucide-react";
 import { notFound } from "next/navigation";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories, services } from "@/db/schema";
@@ -22,6 +22,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
   const verified = business.status === "active" && Boolean(business.ownerUserId);
   const bookable = verified && business.stripePayoutsEnabled && Boolean(business.stripeConnectAccountId);
   const activeServices = serviceRows.filter((service) => service.active && service.pricingType === "fixed" && (service.basePriceCents ?? 0) > 0);
+  const displayRating = business.reviewCount === 0 ? 5 : Number(business.averageRating);
 
   return (
     <main className="min-h-screen">
@@ -40,7 +41,8 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
               {business.plan !== "free" && verified && <span className="badge bg-amber-50 text-amber-800">{business.plan.toUpperCase()}</span>}
             </div>
             <h1 className="mt-5 text-4xl font-black tracking-tight sm:text-5xl">{business.name}</h1>
-            <div className="mt-4 flex flex-wrap gap-4 text-sm text-[var(--muted)]">
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-[var(--muted)]">
+              <span className="inline-flex items-center gap-1.5 font-black text-slate-900"><Star size={17} className="text-amber-500" fill="currentColor" /> {displayRating.toFixed(2)} <span className="font-medium text-[var(--muted)]">· {business.reviewCount === 0 ? "New" : `${business.reviewCount} verified ratings`}</span></span>
               <span className="inline-flex items-center gap-2"><MapPin size={16} /> {business.city}, {business.state} {business.postalCode ?? ""}</span>
               {business.publicPhone && <a href={`tel:${business.publicPhone}`} className="inline-flex items-center gap-2 font-bold text-[var(--brand)]"><Phone size={16} /> {business.publicPhone}</a>}
             </div>
