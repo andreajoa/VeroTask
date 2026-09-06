@@ -6,7 +6,10 @@ import { getDb } from "@/db";
 import { bookingSecrets } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, services, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
+import { POLICY_VERSION } from "@/lib/booking-workflow";
+import { geocodeUsAddress } from "@/lib/geocoding";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
 
@@ -53,7 +56,13 @@ export async function POST(request: NextRequest) {
   }
 
   const scheduledEnd = addMinutes(scheduledStart, service.durationMinutes ?? 60);
+  const availability = await checkProviderAvailability(business.id, scheduledStart, scheduledEnd);
+  if (!availability.available) {
+    return NextResponse.json({ error: availability.reason }, { status: 409 });
+  }
+
   const amounts = calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey);
+  const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
 
   const [booking] = await db.insert(bookings).values({
     customerId: user.id,
@@ -63,6 +72,8 @@ export async function POST(request: NextRequest) {
     scheduledStart,
     scheduledEnd,
     serviceAddress: parsed.data.serviceAddress,
+    serviceLatitude: geocoded?.latitude,
+    serviceLongitude: geocoded?.longitude,
     customerNotes: parsed.data.customerNotes,
     subtotalCents: amounts.totalCents,
     marketplaceFeeCents: amounts.marketplaceFeeCents,
@@ -78,7 +89,15 @@ export async function POST(request: NextRequest) {
     actorUserId: user.id,
     eventType: "booking_created",
     nextStatus: "requested",
-    metadata: { serviceName: service.name, policyAccepted: true }
+    metadata: {
+      serviceName: service.name,
+      policyAccepted: true,
+      policyVersion: POLICY_VERSION,
+      customerProtectionHours: 24,
+      serviceGeocoded: Boolean(geocoded),
+      geocodingSource: geocoded?.source ?? null,
+      matchedAddress: geocoded?.matchedAddress ?? null
+    }
   });
 
   const stripe = getStripe();
@@ -109,13 +128,15 @@ export async function POST(request: NextRequest) {
       transfer_group: `verotask_booking_${booking.id}`,
       metadata: {
         verotask_booking_id: booking.id,
-        verotask_business_id: business.id
+        verotask_business_id: business.id,
+        verotask_policy_version: POLICY_VERSION
       }
     },
     metadata: {
       verotask_booking_id: booking.id,
       verotask_business_id: business.id,
-      verotask_service_id: service.id
+      verotask_service_id: service.id,
+      verotask_policy_version: POLICY_VERSION
     },
     return_url: `${baseUrl}/bookings/${booking.id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
   });

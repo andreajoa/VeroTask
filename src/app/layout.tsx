@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
+import { PrivacyAnalytics } from "@/components/privacy-analytics";
 import "./globals.css";
+
+const verificationOther: Record<string, string> = {};
+if (process.env.BING_SITE_VERIFICATION) verificationOther["msvalidate.01"] = process.env.BING_SITE_VERIFICATION;
+if (process.env.AHREFS_SITE_VERIFICATION) verificationOther["ahrefs-site-verification"] = process.env.AHREFS_SITE_VERIFICATION;
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://verotask.com"),
@@ -9,6 +14,10 @@ export const metadata: Metadata = {
   },
   description: "Find trusted local professionals in Orlando and Central Florida with protected payments, verified service evidence, transparent disputes and customer reviews.",
   applicationName: "VeroTask",
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    other: Object.keys(verificationOther).length ? verificationOther : undefined
+  },
   alternates: {
     canonical: "/",
     languages: {
@@ -34,7 +43,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <PrivacyAnalytics />
+      </body>
     </html>
   );
 }

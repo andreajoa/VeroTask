@@ -2,7 +2,7 @@ import { createHash, createHmac } from "node:crypto";
 import { addHours } from "date-fns";
 import { fromZonedTime } from "date-fns-tz";
 import { bookingEvidence } from "@/db/schema";
-import { proofOfServiceScore, type EvidenceSignal } from "@/lib/trust";
+import { DEFAULT_GEOFENCE_METERS, proofOfServiceScore, type EvidenceSignal } from "@/lib/trust";
 
 export const SERVICE_TIMEZONE = "America/New_York";
 
@@ -43,15 +43,23 @@ export function haversineDistanceMeters(aLat: number, aLng: number, bLat: number
   return Math.round(2 * earthRadius * Math.asin(Math.sqrt(h)));
 }
 
+function isVerifiedGeo(row: typeof bookingEvidence.$inferSelect) {
+  if (row.type !== "geo_check_in" && row.type !== "geo_check_out") return false;
+  const configuredRadius = typeof row.metadata?.geofenceMeters === "number"
+    ? row.metadata.geofenceMeters
+    : DEFAULT_GEOFENCE_METERS;
+  return row.distanceFromServiceMeters !== null && row.distanceFromServiceMeters <= configuredRadius;
+}
+
 export function evidenceSignals(rows: Array<typeof bookingEvidence.$inferSelect>): EvidenceSignal {
   const has = (type: typeof bookingEvidence.$inferSelect.type) => rows.some((row) => row.type === type);
   return {
-    geoCheckIn: has("geo_check_in"),
-    geoCheckOut: has("geo_check_out"),
+    geoCheckIn: rows.some((row) => row.type === "geo_check_in" && isVerifiedGeo(row)),
+    geoCheckOut: rows.some((row) => row.type === "geo_check_out" && isVerifiedGeo(row)),
     customerPin: has("customer_pin"),
-    beforePhotos: rows.filter((row) => row.type === "before_photo").length,
-    afterPhotos: rows.filter((row) => row.type === "after_photo").length,
-    checklistCompleted: has("checklist"),
+    beforePhotos: rows.filter((row) => row.type === "before_photo" && Boolean(row.objectUrl)).length,
+    afterPhotos: rows.filter((row) => row.type === "after_photo" && Boolean(row.objectUrl)).length,
+    checklistCompleted: rows.some((row) => row.type === "checklist" && row.metadata?.completed === true),
     providerCompletionTimestamp: true
   };
 }
