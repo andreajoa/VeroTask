@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, lt, or, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -33,41 +33,75 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const db = getDb();
   const [existing] = await db.select().from(quotes).where(and(eq(quotes.jobRequestId, job.id), eq(quotes.businessId, business.id))).limit(1);
-  if (!existing && job.quoteCount >= job.maxQuotes) return NextResponse.json({ error: "quote_limit_reached" }, { status: 409 });
-
   const pricing = calculateQuoteFromProviderDesiredPayout(parsed.data.providerDesiredPayoutCents, business.plan);
   const validUntil = job.expiresAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const quoteValues = {
+    status: "submitted" as const,
+    serviceSubtotalCents: pricing.serviceSubtotalCents,
+    providerPayoutCents: pricing.providerPayoutCents,
+    providerCommissionCents: pricing.providerCommissionCents,
+    customerProtectionFeeCents: pricing.customerProtectionFeeCents,
+    customerTotalCents: pricing.customerTotalCents,
+    message: parsed.data.message,
+    estimatedDurationMinutes: parsed.data.estimatedDurationMinutes,
+    validUntil,
+    updatedAt: new Date()
+  };
 
-  let quote;
+  let quote: typeof quotes.$inferSelect;
   if (existing) {
-    [quote] = await db.update(quotes).set({
-      status: "submitted",
-      serviceSubtotalCents: pricing.serviceSubtotalCents,
-      providerPayoutCents: pricing.providerPayoutCents,
-      providerCommissionCents: pricing.providerCommissionCents,
-      customerProtectionFeeCents: pricing.customerProtectionFeeCents,
-      customerTotalCents: pricing.customerTotalCents,
-      message: parsed.data.message,
-      estimatedDurationMinutes: parsed.data.estimatedDurationMinutes,
-      validUntil,
-      updatedAt: new Date()
-    }).where(eq(quotes.id, existing.id)).returning();
+    const [updated] = await db.update(quotes).set(quoteValues).where(and(
+      eq(quotes.id, existing.id),
+      or(eq(quotes.status, "submitted"), eq(quotes.status, "countered"))
+    )).returning();
+    if (!updated) return NextResponse.json({ error: "quote_no_longer_editable" }, { status: 409 });
+    quote = updated;
     await db.update(quoteOffers).set({ status: "superseded" }).where(and(eq(quoteOffers.quoteId, quote.id), eq(quoteOffers.status, "pending")));
   } else {
-    [quote] = await db.insert(quotes).values({
-      jobRequestId: job.id,
-      businessId: business.id,
-      status: "submitted",
-      serviceSubtotalCents: pricing.serviceSubtotalCents,
-      providerPayoutCents: pricing.providerPayoutCents,
-      providerCommissionCents: pricing.providerCommissionCents,
-      customerProtectionFeeCents: pricing.customerProtectionFeeCents,
-      customerTotalCents: pricing.customerTotalCents,
-      message: parsed.data.message,
-      estimatedDurationMinutes: parsed.data.estimatedDurationMinutes,
-      validUntil
-    }).returning();
-    await db.update(jobRequests).set({ quoteCount: sql`${jobRequests.quoteCount} + 1`, status: "quoting", updatedAt: new Date() }).where(eq(jobRequests.id, job.id));
+    const [reserved] = await db.update(jobRequests).set({
+      quoteCount: sql`${jobRequests.quoteCount} + 1`,
+      status: "quoting",
+      updatedAt: new Date()
+    }).where(and(
+      eq(jobRequests.id, job.id),
+      lt(jobRequests.quoteCount, jobRequests.maxQuotes),
+      or(eq(jobRequests.status, "open"), eq(jobRequests.status, "quoting"))
+    )).returning({ id: jobRequests.id });
+    if (!reserved) return NextResponse.json({ error: "quote_limit_reached" }, { status: 409 });
+
+    const releaseReservedSlot = async () => {
+      await db.update(jobRequests).set({
+        quoteCount: sql`greatest(${jobRequests.quoteCount} - 1, 0)`,
+        updatedAt: new Date()
+      }).where(eq(jobRequests.id, job.id));
+    };
+
+    try {
+      const [inserted] = await db.insert(quotes).values({
+        jobRequestId: job.id,
+        businessId: business.id,
+        ...quoteValues
+      }).onConflictDoNothing({ target: [quotes.jobRequestId, quotes.businessId] }).returning();
+
+      if (inserted) {
+        quote = inserted;
+      } else {
+        await releaseReservedSlot();
+        const [racedExisting] = await db.select().from(quotes).where(and(eq(quotes.jobRequestId, job.id), eq(quotes.businessId, business.id))).limit(1);
+        if (!racedExisting) return NextResponse.json({ error: "quote_save_failed" }, { status: 500 });
+        const [updated] = await db.update(quotes).set(quoteValues).where(and(
+          eq(quotes.id, racedExisting.id),
+          or(eq(quotes.status, "submitted"), eq(quotes.status, "countered"))
+        )).returning();
+        if (!updated) return NextResponse.json({ error: "quote_no_longer_editable" }, { status: 409 });
+        quote = updated;
+        await db.update(quoteOffers).set({ status: "superseded" }).where(and(eq(quoteOffers.quoteId, quote.id), eq(quoteOffers.status, "pending")));
+      }
+    } catch (error) {
+      await releaseReservedSlot().catch(() => undefined);
+      console.error("[VeroTask quote save]", error);
+      return NextResponse.json({ error: "quote_save_failed" }, { status: 500 });
+    }
   }
 
   await db.insert(quoteOffers).values({
