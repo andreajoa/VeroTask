@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { bookingSecrets } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, services, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
 import { geocodeUsAddress } from "@/lib/geocoding";
@@ -55,6 +56,11 @@ export async function POST(request: NextRequest) {
   }
 
   const scheduledEnd = addMinutes(scheduledStart, service.durationMinutes ?? 60);
+  const availability = await checkProviderAvailability(business.id, scheduledStart, scheduledEnd);
+  if (!availability.available) {
+    return NextResponse.json({ error: availability.reason }, { status: 409 });
+  }
+
   const amounts = calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey);
   const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
 
