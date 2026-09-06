@@ -4,14 +4,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { bookingSecrets } from "@/db/operations-schema";
-import { bookingEvents, bookings, businesses, services, users } from "@/db/schema";
+import { bookingEvents, bookings, businesses, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
+import { sendProviderNewRequestNotification } from "@/lib/booking-notifications";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
-import { getStripe } from "@/lib/stripe";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
   await db.insert(bookingEvents).values({
     bookingId: booking.id,
     actorUserId: user.id,
-    eventType: "booking_created",
+    eventType: "booking_requested",
     nextStatus: "requested",
     metadata: {
       serviceName: service.name,
@@ -96,51 +96,13 @@ export async function POST(request: NextRequest) {
       customerProtectionHours: 24,
       serviceGeocoded: Boolean(geocoded),
       geocodingSource: geocoded?.source ?? null,
-      matchedAddress: geocoded?.matchedAddress ?? null
+      matchedAddress: geocoded?.matchedAddress ?? null,
+      providerDecisionRequiredBeforePayment: true
     }
   });
 
-  const stripe = getStripe();
-  let customerId = user.stripeCustomerId;
-  if (!customerId) {
-    const customer = await stripe.customers.create({ email: user.email, name: user.name ?? undefined, metadata: { verotask_user_id: user.id } });
-    customerId = customer.id;
-    await db.update(users).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(users.id, user.id));
-  }
+  try { await sendProviderNewRequestNotification(booking.id); }
+  catch (error) { console.error("[VeroTask booking request notification]", error); }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
-  const session = await stripe.checkout.sessions.create({
-    ui_mode: "embedded",
-    mode: "payment",
-    customer: customerId,
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency: "usd",
-        unit_amount: booking.subtotalCents,
-        product_data: {
-          name: service.name,
-          description: `${business.name} · ${business.city}, ${business.state}`
-        }
-      }
-    }],
-    payment_intent_data: {
-      transfer_group: `verotask_booking_${booking.id}`,
-      metadata: {
-        verotask_booking_id: booking.id,
-        verotask_business_id: business.id,
-        verotask_policy_version: POLICY_VERSION
-      }
-    },
-    metadata: {
-      verotask_booking_id: booking.id,
-      verotask_business_id: business.id,
-      verotask_service_id: service.id,
-      verotask_policy_version: POLICY_VERSION
-    },
-    return_url: `${baseUrl}/bookings/${booking.id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
-  });
-
-  if (!session.client_secret) return NextResponse.json({ error: "checkout_unavailable" }, { status: 500 });
-  return NextResponse.json({ bookingId: booking.id, clientSecret: session.client_secret });
+  return NextResponse.json({ bookingId: booking.id, status: booking.status });
 }

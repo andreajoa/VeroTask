@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
+import { useRouter } from "next/navigation";
 import { CalendarClock, MapPin, ShieldCheck } from "lucide-react";
 
 export function BookingCheckout({
@@ -12,8 +11,7 @@ export function BookingCheckout({
   serviceId,
   serviceName,
   servicePriceCents,
-  durationMinutes,
-  publishableKey
+  durationMinutes
 }: {
   businessId: string;
   businessName: string;
@@ -21,13 +19,10 @@ export function BookingCheckout({
   serviceName: string;
   servicePriceCents: number;
   durationMinutes: number;
-  publishableKey: string;
 }) {
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [bookingId, setBookingId] = useState<string | null>(null);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   const handleSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -48,36 +43,21 @@ export function BookingCheckout({
       })
     });
 
-    const data = await response.json() as { clientSecret?: string; bookingId?: string; error?: string };
-    if (!response.ok || !data.clientSecret || !data.bookingId) {
-      setError(data.error ?? "Unable to create booking");
+    const data = await response.json() as { bookingId?: string; error?: string };
+    if (!response.ok || !data.bookingId) {
+      setError(data.error ?? "Unable to create booking request");
       setSubmitting(false);
       return;
     }
 
-    setBookingId(data.bookingId);
-    setClientSecret(data.clientSecret);
-    setSubmitting(false);
-  }, [businessId, serviceId]);
-
-  if (clientSecret) {
-    return (
-      <div>
-        <div className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--background)] p-4 text-sm leading-6 text-[var(--muted)]">
-          Booking reference created{bookingId ? `: ${bookingId.slice(0, 8).toUpperCase()}` : ""}. Payment is completed securely below without leaving VeroTask.
-        </div>
-        <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
-          <EmbeddedCheckout />
-        </EmbeddedCheckoutProvider>
-      </div>
-    );
-  }
+    router.push(`/bookings/${data.bookingId}?requested=1`);
+  }, [businessId, router, serviceId]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       <form onSubmit={handleSubmit} className="card p-6 sm:p-8">
         <h2 className="text-xl font-black">Schedule and service address</h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Service times are shown in Orlando / Eastern Time.</p>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">Service times are shown in Orlando / Eastern Time. Your card is not charged when you send this request.</p>
 
         <div className="mt-6 space-y-5">
           <label className="block">
@@ -92,23 +72,23 @@ export function BookingCheckout({
 
           <label className="flex items-start gap-3 rounded-2xl border border-[var(--line)] bg-[var(--background)] p-4 text-sm leading-6">
             <input name="acceptsPolicy" type="checkbox" required className="mt-1" />
-            <span>I understand the <Link href="/protection" target="_blank" className="font-black text-[var(--brand)]">VeroTask Payment Protection and Cancellation Rules</Link>, including the 24-hour protection window after the provider marks the service complete.</span>
+            <span>I understand the <Link href="/protection" target="_blank" className="font-black text-[var(--brand)]">VeroTask Payment Protection and Cancellation Rules</Link>. The provider reviews the request first; secure payment is requested only after acceptance.</span>
           </label>
 
-          {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">We could not start checkout: {error.replaceAll("_", " ")}.</div>}
-          <button disabled={submitting} className="btn-primary w-full disabled:opacity-60" type="submit">{submitting ? "Preparing secure checkout…" : "Continue to secure payment"}</button>
+          {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">We could not send the request: {error.replaceAll("_", " ")}.</div>}
+          <button disabled={submitting} className="btn-primary w-full disabled:opacity-60" type="submit">{submitting ? "Sending request…" : "Send booking request"}</button>
         </div>
       </form>
 
       <aside className="card h-fit p-6">
-        <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><ShieldCheck size={15} /> Protected booking</div>
+        <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><ShieldCheck size={15} /> Protected booking flow</div>
         <h2 className="mt-5 text-xl font-black">{serviceName}</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">{businessName}</p>
         <div className="my-5 border-t border-[var(--line)]" />
         <div className="flex items-center justify-between"><span className="text-sm text-[var(--muted)]">Service price</span><span className="text-xl font-black">${(servicePriceCents / 100).toFixed(2)}</span></div>
         <div className="mt-2 flex items-center justify-between text-sm"><span className="text-[var(--muted)]">Marketplace fee to customer</span><span className="font-bold">$0.00</span></div>
         <div className="mt-2 flex items-center justify-between text-sm"><span className="text-[var(--muted)]">Estimated duration</span><span className="font-bold">{durationMinutes} min</span></div>
-        <p className="mt-5 text-xs leading-5 text-[var(--muted)]">VeroTask records the payment and does not transfer the provider amount merely because the provider clicks “completed.” Proof of service and the customer protection workflow apply.</p>
+        <div className="mt-5 rounded-xl bg-[var(--background)] p-4 text-xs leading-5 text-[var(--muted)]"><strong className="text-[var(--foreground)]">How it works:</strong> send the request → provider reviews your reputation and schedule → provider accepts → you complete secure payment → the service is confirmed.</div>
       </aside>
     </div>
   );

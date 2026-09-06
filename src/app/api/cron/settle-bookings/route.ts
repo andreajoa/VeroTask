@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runCrmAutomations } from "@/lib/crm-automation";
 import { retryEligibleProviderTransfers } from "@/lib/payout-retry";
+import { refreshMarketplaceRelationships } from "@/lib/personalization-jobs";
 import { sendProtectionReminders } from "@/lib/protection-reminders";
 import { autoSettleExpiredBookings } from "@/lib/settlement";
 
@@ -20,6 +21,7 @@ export async function GET(request: NextRequest) {
     sendProtectionReminders(75),
     runCrmAutomations(100)
   ]);
+  const personalization = await refreshMarketplaceRelationships(150);
 
   return NextResponse.json({
     ok: true,
@@ -27,6 +29,7 @@ export async function GET(request: NextRequest) {
     settlements,
     payoutRetries,
     reminders,
-    crm
+    crm,
+    personalization
   });
 }

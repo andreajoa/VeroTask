@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
+import { bilateralRatings } from "@/db/reputation-schema";
 import { bookingEvents, businesses, reviews } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { requireCustomerBooking } from "@/lib/booking-access";
@@ -34,6 +35,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     comment: parsed.data.comment,
     published: true
   });
+
+  const [mutualExisting] = await db.select({ id: bilateralRatings.id }).from(bilateralRatings).where(and(
+    eq(bilateralRatings.bookingId, id),
+    eq(bilateralRatings.direction, "customer_to_provider")
+  )).limit(1);
+  if (!mutualExisting) {
+    await db.insert(bilateralRatings).values({
+      bookingId: id,
+      direction: "customer_to_provider",
+      raterUserId: user.id,
+      customerId: user.id,
+      businessId: access.business.id,
+      rating: parsed.data.rating
+    });
+  }
 
   const all = await db.select({ rating: reviews.rating }).from(reviews).where(eq(reviews.businessId, access.business.id));
   const average = all.length ? all.reduce((sum, row) => sum + row.rating, 0) / all.length : 0;

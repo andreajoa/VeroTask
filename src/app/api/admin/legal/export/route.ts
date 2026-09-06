@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, desc, eq, inArray, or } from "drizzle-orm";
+import { desc, eq, inArray, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { adminAuditEvents, analyticsEvents, auditExports, crmAbandonments, crmContacts, crmEmailEvents, crmEmailSends, legalCases, legalHolds, visitorSessions } from "@/db/analytics-schema";

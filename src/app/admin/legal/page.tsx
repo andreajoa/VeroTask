@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { FileDown, Fingerprint, LockKeyhole, Scale, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
@@ -13,12 +13,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
   if (!(await isAdminSession())) redirect("/admin/signin");
   const query = await searchParams;
   const db = getDb();
-  const [cases, holds, exports, audit, [stats]] = await Promise.all([
+  const [cases, holds, exports, audit] = await Promise.all([
     db.select().from(legalCases).orderBy(desc(legalCases.openedAt)).limit(100),
     db.select().from(legalHolds).where(eq(legalHolds.active, true)).orderBy(desc(legalHolds.createdAt)).limit(200),
     db.select().from(auditExports).orderBy(desc(auditExports.generatedAt)).limit(100),
-    db.select().from(adminAuditEvents).orderBy(desc(adminAuditEvents.occurredAt)).limit(100),
-    db.select({ cases: sql<number>`count(*)::int`, activeHolds: sql<number>`count(*) filter (where ${legalHolds.active} = true)::int` }).from(legalHolds)
+    db.select().from(adminAuditEvents).orderBy(desc(adminAuditEvents.occurredAt)).limit(100)
   ]);
 
   return (

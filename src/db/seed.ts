@@ -4,10 +4,27 @@ import { businessCategories, businesses, categories } from "./schema";
 
 const categorySeed = [
   ["vacation-rental-cleaning", "Vacation Rental Cleaning", "Limpeza de aluguel por temporada", "Limpieza de alquiler vacacional", true, true],
+  ["house-cleaning", "House Cleaning", "Limpeza residencial", "Limpieza del hogar", true, true],
+  ["deep-cleaning", "Deep Cleaning", "Limpeza pesada", "Limpieza profunda", true, true],
   ["pool-service", "Pool Service", "Serviço de piscina", "Servicio de piscina", true, true],
   ["hvac", "HVAC", "Ar-condicionado e climatização", "Climatización HVAC", false, true],
   ["plumbing", "Plumbing", "Encanamento", "Plomería", false, true],
   ["handyman", "Handyman", "Manutenção e reparos", "Mantenimiento y reparaciones", true, true],
+  ["furniture-assembly", "Furniture Assembly", "Montagem de móveis", "Montaje de muebles", false, true],
+  ["mounting", "Mounting", "Instalações em parede", "Montaje en pared", false, true],
+  ["tv-mounting", "TV Mounting", "Instalação de TV", "Montaje de TV", false, true],
+  ["moving-help", "Moving Help", "Ajuda com mudança", "Ayuda con mudanza", false, true],
+  ["packing", "Packing & Unpacking", "Empacotar e desempacotar", "Empacar y desempacar", false, true],
+  ["furniture-removal", "Furniture Removal", "Remoção de móveis", "Retiro de muebles", true, true],
+  ["delivery-errands", "Delivery & Errands", "Entregas e recados", "Entregas y recados", false, false],
+  ["shopping", "Shopping Help", "Ajuda com compras", "Ayuda con compras", false, false],
+  ["personal-assistant", "Personal Assistant", "Assistente pessoal", "Asistente personal", false, false],
+  ["home-organization", "Home Organization", "Organização residencial", "Organización del hogar", true, true],
+  ["waiting-in-line", "Waiting in Line", "Aguardar em fila", "Esperar en fila", false, false],
+  ["laundry-ironing", "Laundry & Ironing", "Lavanderia e passar roupas", "Lavandería y planchado", false, true],
+  ["painting", "Painting", "Pintura", "Pintura", true, true],
+  ["window-cleaning", "Window Cleaning", "Limpeza de janelas", "Limpieza de ventanas", true, true],
+  ["smart-home-installation", "Smart Home Installation", "Instalação de casa inteligente", "Instalación de hogar inteligente", false, true],
   ["pest-control", "Pest Control", "Controle de pragas", "Control de plagas", false, true],
   ["lawn-care", "Lawn Care", "Jardinagem e gramado", "Cuidado del césped", true, true],
   ["appliance-repair", "Appliance Repair", "Reparo de eletrodomésticos", "Reparación de electrodomésticos", false, true],
@@ -188,7 +205,7 @@ async function seed() {
     }
   }
 
-  console.log(`VeroTask seed complete: ${businessSeed.length} unclaimed public business profiles.`);
+  console.log(`VeroTask seed complete: ${categorySeed.length} categories and ${businessSeed.length} unclaimed public business profiles.`);
 }
 
 seed().catch((error) => {

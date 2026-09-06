@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getDb } from "@/db";
+import { bookingCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, disputes, providerSubscriptions, refunds } from "@/db/schema";
 import { sendBookingThankYou, sendProviderPlanThankYou } from "@/lib/crm-automation";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
@@ -61,13 +62,15 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return;
 
-  const shouldSchedule = booking.status === "requested" || booking.status === "payment_authorized";
+  const shouldSchedule = ["accepted", "payment_authorized", "requested"].includes(booking.status);
   await db.update(bookings).set({
     status: shouldSchedule ? "scheduled" : booking.status,
     stripePaymentIntentId: paymentIntent.id,
     stripeChargeId: chargeId ?? booking.stripeChargeId,
     updatedAt: new Date()
   }).where(eq(bookings.id, bookingId));
+  await db.update(bookingCheckoutSessions).set({ status: "complete", updatedAt: new Date() })
+    .where(eq(bookingCheckoutSessions.bookingId, bookingId));
 
   if (shouldSchedule) {
     await db.insert(bookingEvents).values({
@@ -85,10 +88,35 @@ async function markCheckoutExpired(session: Stripe.Checkout.Session) {
   const bookingId = session.metadata?.verotask_booking_id;
   if (!bookingId) return;
   const db = getDb();
+  await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() })
+    .where(eq(bookingCheckoutSessions.stripeSessionId, session.id));
+
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
-  if (!booking || booking.status !== "requested") return;
-  await db.update(bookings).set({ status: "cancelled", updatedAt: new Date() }).where(eq(bookings.id, bookingId));
-  await db.insert(bookingEvents).values({ bookingId, eventType: "checkout_expired", previousStatus: "requested", nextStatus: "cancelled" });
+  if (!booking) return;
+
+  if (booking.status === "payment_authorized") {
+    await db.update(bookings).set({ status: "accepted", updatedAt: new Date() }).where(eq(bookings.id, bookingId));
+    await db.insert(bookingEvents).values({
+      bookingId,
+      eventType: "checkout_expired",
+      previousStatus: "payment_authorized",
+      nextStatus: "accepted",
+      metadata: { stripeCheckoutSessionId: session.id }
+    });
+    return;
+  }
+
+  // Compatibility for requests created by the older immediate-checkout flow.
+  if (booking.status === "requested") {
+    await db.update(bookings).set({ status: "cancelled", updatedAt: new Date() }).where(eq(bookings.id, bookingId));
+    await db.insert(bookingEvents).values({
+      bookingId,
+      eventType: "legacy_checkout_expired",
+      previousStatus: "requested",
+      nextStatus: "cancelled",
+      metadata: { stripeCheckoutSessionId: session.id }
+    });
+  }
 }
 
 async function recordCardDispute(chargeDispute: Stripe.Dispute) {

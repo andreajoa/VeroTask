@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { BadgeCheck, Building2, CreditCard, LogOut, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Building2, CalendarClock, CreditCard, LogOut, ShieldCheck, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { businessClaims, businesses } from "@/db/schema";
@@ -41,7 +41,7 @@ export default async function Page() {
             <h1 className="mt-1 text-3xl font-black tracking-tight">Welcome{user.name ? `, ${user.name}` : ""}</h1>
             <p className="mt-2 text-sm text-[var(--muted)]">{user.email}</p>
           </div>
-          <Link href="/services" className="btn-secondary">Find services</Link>
+          <div className="flex flex-wrap gap-3"><Link href="/dashboard/bookings" className="btn-secondary">Bookings & jobs</Link><Link href="/services" className="btn-secondary">Find services</Link></div>
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-3">
@@ -64,6 +64,12 @@ export default async function Page() {
                     <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                       <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Stripe charges:</span> {business.stripeChargesEnabled ? "Enabled" : "Pending"}</div>
                       <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Payouts:</span> {business.stripePayoutsEnabled ? "Enabled" : "Pending"}</div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/customers`}><UsersRound size={16} /> Customer memory</Link>
+                      <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/availability`}><CalendarClock size={16} /> Availability</Link>
+                      <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/services`}>Services</Link>
+                      <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/billing`}>Plans & billing</Link>
                     </div>
                   </div>
                 ))}
@@ -93,8 +99,8 @@ export default async function Page() {
         )}
 
         <section className="mt-5 grid gap-5 md:grid-cols-2">
-          <div className="card p-6"><CreditCard size={20} className="text-[var(--brand)]" /><h2 className="mt-3 font-black">Payments</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Marketplace payments, refunds and provider transfers will appear here when you have transaction activity.</p></div>
-          <div className="card p-6"><BadgeCheck size={20} className="text-[var(--brand)]" /><h2 className="mt-3 font-black">Bookings</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Customer bookings and provider jobs share one auditable timeline with evidence and dispute status.</p></div>
+          <div className="card p-6"><CreditCard size={20} className="text-[var(--brand)]" /><h2 className="mt-3 font-black">Payments</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Marketplace payments, refunds and provider transfers are linked to the same auditable booking timeline.</p></div>
+          <Link href="/dashboard/bookings" className="card block p-6 transition hover:-translate-y-0.5"><BadgeCheck size={20} className="text-[var(--brand)]" /><h2 className="mt-3 font-black">Bookings</h2><p className="mt-2 text-sm leading-6 text-[var(--muted)]">Open customer bookings and provider jobs, including reputation, messages, evidence and dispute status.</p></Link>
         </section>
       </section>
     </main>

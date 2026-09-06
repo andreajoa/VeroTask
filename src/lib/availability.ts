@@ -5,7 +5,8 @@ import { providerAvailability } from "@/db/operations-schema";
 import { bookings } from "@/db/schema";
 import { SERVICE_TIMEZONE } from "@/lib/booking";
 
-const BLOCKING_STATUSES = [
+export const BLOCKING_BOOKING_STATUSES = [
+  "accepted",
   "payment_authorized",
   "scheduled",
   "in_progress",
@@ -40,7 +41,7 @@ export async function checkProviderAvailability(businessId: string, start: Date,
 
   const [conflict] = await db.select({ id: bookings.id }).from(bookings).where(and(
     eq(bookings.businessId, businessId),
-    inArray(bookings.status, [...BLOCKING_STATUSES]),
+    inArray(bookings.status, [...BLOCKING_BOOKING_STATUSES]),
     lt(bookings.scheduledStart, end),
     gt(bookings.scheduledEnd, start)
   )).limit(1);

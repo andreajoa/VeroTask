@@ -2,6 +2,7 @@ import { addDays, addHours, addMinutes } from "date-fns";
 import { and, desc, eq, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, visitorSessions } from "@/db/analytics-schema";
+import { bookingCheckoutSessions } from "@/db/operations-schema";
 import { bookings, businesses, users } from "@/db/schema";
 import { sendCrmEmail } from "@/lib/crm-email";
 
@@ -48,7 +49,7 @@ export async function syncCustomerStats(userId: string) {
   if (!contact) return null;
   const [stats] = await db.select({
     totalBookings: sql<number>`count(*)::int`,
-    totalSpendCents: sql<number>`coalesce(sum(case when ${bookings.status} not in ('requested','cancelled') then ${bookings.subtotalCents} else 0 end), 0)::int`,
+    totalSpendCents: sql<number>`coalesce(sum(case when ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded' then ${bookings.subtotalCents} else 0 end), 0)::int`,
     lastBookingAt: sql<Date | null>`max(${bookings.createdAt})`
   }).from(bookings).where(eq(bookings.customerId, userId));
   [contact] = await db.update(crmContacts).set({
@@ -100,12 +101,18 @@ export async function sendProviderPlanThankYou(businessId: string, subscriptionI
 async function discoverAbandonedCheckouts(limit: number) {
   const db = getDb();
   const threshold = addMinutes(new Date(), -30);
-  const candidates = await db.select().from(bookings)
-    .where(and(eq(bookings.status, "requested"), lt(bookings.createdAt, threshold)))
-    .orderBy(desc(bookings.createdAt)).limit(limit);
+  const candidates = await db.select({ booking: bookings, checkout: bookingCheckoutSessions })
+    .from(bookingCheckoutSessions)
+    .innerJoin(bookings, eq(bookings.id, bookingCheckoutSessions.bookingId))
+    .where(and(
+      eq(bookings.status, "payment_authorized"),
+      eq(bookingCheckoutSessions.status, "open"),
+      lt(bookingCheckoutSessions.createdAt, threshold)
+    ))
+    .orderBy(desc(bookingCheckoutSessions.createdAt)).limit(limit);
   let created = 0;
 
-  for (const booking of candidates) {
+  for (const { booking, checkout } of candidates) {
     const [existing] = await db.select().from(crmAbandonments).where(and(eq(crmAbandonments.bookingId, booking.id), eq(crmAbandonments.kind, "checkout"))).limit(1);
     if (existing) continue;
     const contact = await ensureCrmContactForUser(booking.customerId, "abandoned_checkout");
@@ -115,9 +122,14 @@ async function discoverAbandonedCheckouts(limit: number) {
       status: "active",
       contactId: contact.id,
       bookingId: booking.id,
-      context: { businessId: booking.businessId, serviceId: booking.serviceId, subtotalCents: booking.subtotalCents },
+      context: {
+        businessId: booking.businessId,
+        serviceId: booking.serviceId,
+        subtotalCents: booking.subtotalCents,
+        stripeCheckoutSessionId: checkout.stripeSessionId
+      },
       nextRunAt: new Date(),
-      expiresAt: addDays(booking.createdAt, 8)
+      expiresAt: addDays(checkout.createdAt, 8)
     });
     created += 1;
   }
@@ -171,11 +183,16 @@ async function recoverConvertedAbandonments(limit: number) {
   const active = await db.select().from(crmAbandonments).where(eq(crmAbandonments.status, "active")).limit(limit);
   let recovered = 0;
   for (const item of active) {
-    if (item.bookingId) {
-      const [booking] = await db.select({ status: bookings.status }).from(bookings).where(eq(bookings.id, item.bookingId)).limit(1);
-      if (booking && booking.status !== "requested") {
+    if (item.bookingId && item.kind === "checkout") {
+      const [booking] = await db.select({ status: bookings.status, paymentIntentId: bookings.stripePaymentIntentId })
+        .from(bookings).where(eq(bookings.id, item.bookingId)).limit(1);
+      if (booking?.paymentIntentId) {
         await db.update(crmAbandonments).set({ status: "recovered", recoveredAt: new Date(), nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
         recovered += 1;
+        continue;
+      }
+      if (booking && ["cancelled", "refunded"].includes(booking.status)) {
+        await db.update(crmAbandonments).set({ status: "cancelled", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
         continue;
       }
     }

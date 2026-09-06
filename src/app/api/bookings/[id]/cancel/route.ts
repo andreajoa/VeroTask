@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const access = await bookingAccess(id, user.id);
   if (!access?.allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  if (!["requested", "payment_authorized", "scheduled"].includes(access.booking.status)) {
+  if (!["requested", "accepted", "payment_authorized", "scheduled"].includes(access.booking.status)) {
     return NextResponse.json({ error: "booking_cannot_be_cancelled" }, { status: 409 });
   }
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   if (access.isProvider) {
     refundCents = paymentCaptured ? access.booking.subtotalCents : 0;
-    rule = "provider_cancelled_full_refund";
+    rule = paymentCaptured ? "provider_cancelled_full_refund" : "provider_cancelled_before_payment";
   } else if (paymentCaptured) {
     const hoursUntilStart = (access.booking.scheduledStart.getTime() - Date.now()) / 3_600_000;
     if (hoursUntilStart > 24) {
@@ -45,6 +45,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       providerCompensationCents = access.booking.providerAmountCents;
       rule = "customer_cancelled_under_6h_nonrefundable";
     }
+  } else if (access.booking.status === "accepted" || access.booking.status === "payment_authorized") {
+    rule = "customer_cancelled_before_payment";
   }
 
   if (refundCents > 0) {

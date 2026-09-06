@@ -1,7 +1,7 @@
 <svg width="520" height="128" viewBox="0 0 520 128" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="128" height="128" rx="34" fill="#0B2F25"/>
-  <path d="M64 22C78.6 32.1 91.7 35.6 104 37.4V60.6C104 84.4 87.6 103.8 64 112C40.4 103.8 24 84.4 24 60.6V37.4C36.3 35.6 49.4 32.1 64 22Z" fill="#6EE7B7"/>
-  <path d="M44 64.5L58 78L86 49" stroke="#0B2F25" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="154" y="79" fill="#0B2F25" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="800" letter-spacing="-2">VeroTask</text>
-  <text x="158" y="103" fill="#64748B" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.6">TRUSTED LOCAL SERVICES · VERIFIED WORK</text>
+  <rect width="128" height="128" rx="34" fill="#0A2A3D"/>
+  <path d="M64 22C78.6 32.1 91.7 35.6 104 37.4V60.6C104 84.4 87.6 103.8 64 112C40.4 103.8 24 84.4 24 60.6V37.4C36.3 35.6 49.4 32.1 64 22Z" fill="#72C7E8"/>
+  <path d="M44 64.5L58 78L86 49" stroke="#0A2A3D" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="154" y="79" fill="#0A2A3D" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="800" letter-spacing="-2">VeroTask</text>
+  <text x="158" y="103" fill="#66717D" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" letter-spacing="1.6">TRUSTED LOCAL SERVICES · VERIFIED WORK</text>
 </svg>
