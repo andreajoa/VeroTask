@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { bookingCheckoutSessions } from "@/db/operations-schema";
-import { bookingEvents, bookings, businesses, services, users } from "@/db/schema";
+import { bookingEvents, bookings, services, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { requireCustomerBooking } from "@/lib/booking-access";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
