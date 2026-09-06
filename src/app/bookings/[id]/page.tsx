@@ -2,6 +2,8 @@ import Link from "next/link";
 import { eq, isNull, and } from "drizzle-orm";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import { AcceptedBookingPayment } from "@/components/accepted-booking-payment";
+import { BookingRequestDecision } from "@/components/booking-request-decision";
 import { BookingWorkflowPanel } from "@/components/booking-workflow-panel";
 import { MutualReputationPanel } from "@/components/mutual-reputation-panel";
 import { getDb } from "@/db";
@@ -24,7 +26,7 @@ export default async function BookingPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; requested?: string }>;
 }) {
   const { id } = await params;
   const query = await searchParams;
@@ -60,6 +62,8 @@ export default async function BookingPage({
     ? servicePinForBooking(id)
     : null;
   const canRateCustomer = access.isProvider && ["customer_confirmed", "auto_completed", "paid_out"].includes(access.booking.status);
+  const showPayment = access.isCustomer && ["accepted", "payment_authorized"].includes(access.booking.status);
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -76,6 +80,19 @@ export default async function BookingPage({
         </div>
       </header>
       <section className="container-shell space-y-6 py-8 sm:py-10">
+        <BookingRequestDecision
+          bookingId={id}
+          role={role}
+          status={access.booking.status}
+          customerRating={access.isProvider ? counterpartReputation.rating : 5}
+          customerRatingCount={access.isProvider ? counterpartReputation.ratingCount : 0}
+          customerCompletedJobs={access.isProvider ? counterpartReputation.completedJobs : 0}
+          customerLabel={access.isProvider ? counterpartReputation.label : "New"}
+        />
+        {showPayment && <AcceptedBookingPayment bookingId={id} publishableKey={publishableKey} />}
+        {access.isProvider && ["accepted", "payment_authorized"].includes(access.booking.status) && (
+          <div className="card p-6"><div className="font-black">Request accepted</div><p className="mt-2 text-sm leading-6 text-[var(--muted)]">The customer has been invited to complete secure payment. Do not start the service until this booking changes to scheduled.</p></div>
+        )}
         <MutualReputationPanel
           bookingId={id}
           role={role}
