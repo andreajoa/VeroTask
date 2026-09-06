@@ -1,5 +1,5 @@
 import { index, integer, numeric, pgEnum, pgTable, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
-import { bookings, businesses, users } from "@/db/schema";
+import { bookings, businesses, users } from "./schema";
 
 export const ratingDirection = pgEnum("rating_direction", [
   "customer_to_provider",
