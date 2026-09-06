@@ -5,6 +5,8 @@ import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { checkProviderAvailability } from "@/lib/availability";
 import { requireProviderBooking } from "@/lib/booking-access";
+import { sendCustomerAcceptedNotification } from "@/lib/booking-notifications";
+import { canProviderAccept } from "@/lib/booking-state";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 import { algorithmReputationScore } from "@/lib/reputation-score";
 
@@ -17,7 +19,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   try { access = await requireProviderBooking(id, user.id); }
   catch { return NextResponse.json({ error: "forbidden" }, { status: 403 }); }
 
-  if (access.booking.status !== "requested") {
+  if (!canProviderAccept(access.booking.status)) {
     return NextResponse.json({ error: "booking_not_awaiting_provider" }, { status: 409 });
   }
   if (access.booking.scheduledStart.getTime() <= Date.now()) {
@@ -61,6 +63,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       customerAlgorithmReputationScore: reputationScore
     }
   });
+
+  try { await sendCustomerAcceptedNotification(id); }
+  catch (error) { console.error("[VeroTask booking accepted notification]", error); }
 
   return NextResponse.json({ ok: true, status: "accepted" });
 }
