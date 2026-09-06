@@ -6,7 +6,8 @@ export default defineConfig({
     "./src/db/auth-schema.ts",
     "./src/db/operations-schema.ts",
     "./src/db/analytics-schema.ts",
-    "./src/db/personalization-schema.ts"
+    "./src/db/personalization-schema.ts",
+    "./src/db/reputation-schema.ts"
   ],
   out: "./drizzle",
   dialect: "postgresql",
