@@ -2,6 +2,15 @@
 
 Self-authored under explicit creative delegation from the product owner.
 
+## 0. Implementation guardrails
+- Inspect the existing application before visual changes and preserve the working marketplace architecture.
+- Keep the existing Next.js/React application and existing database, Stripe, CRM, booking, reputation, evidence and audit flows unless a functional bug requires a targeted fix.
+- Reuse existing VeroTask assets where they remain appropriate. New imagery may use properly licensed public photography or generated assets when needed. Do not use KIE.
+- Competitor references are for familiar marketplace patterns and user expectations, not visual cloning.
+- Visual redesign must not alter transaction semantics, authorization rules, payout logic, dispute logic or auditability.
+- Public interactive controls must maintain clear foreground/background contrast and visible keyboard focus.
+- Hero imagery and motion must be implemented with performance and LCP in mind; motion may not block search or navigation.
+
 ## 1. Vibe
 Trusted, premium, American, calm, capable, human.
 
@@ -47,19 +56,40 @@ Distinct scenes, not one continuous cinematic world. This is a working marketpla
 Use existing VeroTask brand assets where still appropriate. Use owner-supplied screenshots only as references, not copied assets. New service photography may use properly licensed public images or generated assets; do not use KIE.
 
 ## Page grammar
-Custom **Marketplace Utility Editorial** grammar: persistent useful header, photographic hero/search, guided modal utility surface, visual category catalog, trust editorial, provider acquisition section, utility footer. No fake app chrome and no decorative scroll-only sections.
+Custom **Marketplace Utility Editorial** grammar: persistent useful header, photographic hero/search, guided modal utility surface, visual category catalog, trust editorial, provider acquisition summary, utility footer. Major navigation subjects open dedicated pages instead of relying on homepage anchor jumps.
+
+Public information architecture:
+- `/services` — discovery and matching
+- `/how-it-works` — end-to-end marketplace journey
+- `/protection` — protection, evidence, disputes and refunds
+- `/providers` — provider proposition and optional plans
+- `/providers/join` — provider onboarding
 
 ## Fingerprint gate
 No prior VeroTask Scroll Craft fingerprint is registered in this repository. Planned fingerprint:
 - Grammar: Marketplace Utility Editorial
-- Nav: service-marketplace utility header with customer/provider split
+- Nav: service-marketplace utility header with customer/provider split and dedicated destination pages
 - Hero: rotating photographic service scenes + persistent search surface
-- Sequence: search → guided brief → visual category catalog → trust → provider growth → pricing → close
+- Sequence: search → guided brief → visual category catalog → trust → provider growth → local close
 - Close: dual-path marketplace close (find help / offer help)
 - Signature move: Brief Builder Transition
 
 ## Mobile art direction
-Search is first-screen priority. Hero photography crops to a single clear worker/task scene; no desktop-style multi-column overlays. Guided brief becomes a bottom-sheet/full-screen stepper with large tap targets and a persistent Continue button.
+Search is first-screen priority. Hero photography crops to a single clear worker/task scene; no desktop-style multi-column overlays. Guided brief becomes a bottom-sheet/full-screen stepper with large tap targets and a persistent Continue button. Dedicated public pages retain the same navigation hierarchy without horizontal overflow.
 
 ## Reduced motion
 Hero rotation stops on reduced-motion preference and shows one stable service scene. Guided brief remains fully functional with no reliance on animation.
+
+## Verification pass
+Before the redesign is considered complete:
+1. Confirm Next.js/React and marketplace business architecture were preserved.
+2. Verify public routes and all primary navigation destinations in EN, PT-BR and ES.
+3. Verify primary/secondary/destructive CTA contrast, hover, disabled and keyboard-focus states.
+4. Verify the Brief Builder signature move from hero request through provider-results URL.
+5. Verify mobile art direction at narrow phone width, tablet width and desktop width.
+6. Verify reduced-motion behavior.
+7. Check hero/category imagery for cropping, text readability and obvious broken remote assets; keep photography subordinate to search usability.
+8. Check for horizontal overflow and obscured sticky/fixed controls.
+9. Verify provider/customer transactional states were not changed by visual work.
+10. Run deterministic CI: `npm ci`, typecheck, lint, tests and production build.
+11. Treat successful build as necessary but not sufficient: perform a runtime smoke pass on the deployed public routes when environment access is available.
