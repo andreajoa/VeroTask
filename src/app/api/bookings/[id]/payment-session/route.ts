@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
+import { bookingPricingDetails, jobRequests } from "@/db/marketplace-schema";
 import { bookingCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, services, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
@@ -45,9 +46,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       .where(eq(bookingCheckoutSessions.id, existing.id));
   }
 
-  if (!access.booking.serviceId) return NextResponse.json({ error: "service_not_found" }, { status: 409 });
-  const [service] = await db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1);
-  if (!service) return NextResponse.json({ error: "service_not_found" }, { status: 409 });
+  const [service, pricing] = await Promise.all([
+    access.booking.serviceId
+      ? db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1).then((rows) => rows[0] ?? null)
+      : Promise.resolve(null),
+    db.select().from(bookingPricingDetails).where(eq(bookingPricingDetails.bookingId, id)).limit(1).then((rows) => rows[0] ?? null)
+  ]);
+  const job = pricing?.jobRequestId
+    ? await db.select().from(jobRequests).where(eq(jobRequests.id, pricing.jobRequestId)).limit(1).then((rows) => rows[0] ?? null)
+    : null;
+  const serviceName = service?.name ?? job?.title ?? "VeroTask local service";
 
   let customerId = user.stripeCustomerId;
   if (!customerId) {
@@ -60,34 +68,63 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await db.update(users).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(users.id, user.id));
   }
 
+  const lineItems = pricing ? [
+    {
+      quantity: 1,
+      price_data: {
+        currency: access.booking.currency,
+        unit_amount: pricing.serviceSubtotalCents,
+        product_data: {
+          name: serviceName,
+          description: `${access.business.name} · ${access.business.city}, ${access.business.state}`
+        }
+      }
+    },
+    ...(pricing.customerProtectionFeeCents - pricing.rewardsCreditCents > 0 ? [{
+      quantity: 1,
+      price_data: {
+        currency: access.booking.currency,
+        unit_amount: pricing.customerProtectionFeeCents - pricing.rewardsCreditCents,
+        product_data: {
+          name: "Vero Protection & Service Fee",
+          description: pricing.rewardsCreditCents > 0
+            ? `Vero Protect support and booking protection · $${(pricing.rewardsCreditCents / 100).toFixed(2)} Vero Rewards applied`
+            : "Vero Protect support, payment records and dispute workflow"
+        }
+      }
+    }] : [])
+  ] : [{
+    quantity: 1,
+    price_data: {
+      currency: access.booking.currency,
+      unit_amount: access.booking.subtotalCents,
+      product_data: {
+        name: serviceName,
+        description: `${access.business.name} · ${access.business.city}, ${access.business.state}`
+      }
+    }
+  }];
+
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded",
     mode: "payment",
     customer: customerId,
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency: access.booking.currency,
-        unit_amount: access.booking.subtotalCents,
-        product_data: {
-          name: service.name,
-          description: `${access.business.name} · ${access.business.city}, ${access.business.state}`
-        }
-      }
-    }],
+    line_items: lineItems,
     payment_intent_data: {
       transfer_group: `verotask_booking_${id}`,
       metadata: {
         verotask_booking_id: id,
         verotask_business_id: access.business.id,
-        verotask_policy_version: POLICY_VERSION
+        verotask_policy_version: POLICY_VERSION,
+        verotask_protected_booking: "true"
       }
     },
     metadata: {
       verotask_booking_id: id,
       verotask_business_id: access.business.id,
-      verotask_service_id: service.id,
+      verotask_service_id: service?.id ?? "",
+      verotask_job_request_id: pricing?.jobRequestId ?? "",
       verotask_policy_version: POLICY_VERSION
     },
     return_url: `${baseUrl}/bookings/${id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
@@ -115,7 +152,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       eventType: "checkout_started",
       previousStatus: "accepted",
       nextStatus: "payment_authorized",
-      metadata: { stripeCheckoutSessionId: session.id, expiresAt: expiresAt.toISOString() }
+      metadata: {
+        stripeCheckoutSessionId: session.id,
+        expiresAt: expiresAt.toISOString(),
+        serviceSubtotalCents: pricing?.serviceSubtotalCents ?? access.booking.subtotalCents,
+        veroProtectionFeeCents: pricing?.customerProtectionFeeCents ?? 0,
+        veroRewardsAppliedCents: pricing?.rewardsCreditCents ?? 0,
+        chargedTotalCents: access.booking.subtotalCents
+      }
     });
   }
 
