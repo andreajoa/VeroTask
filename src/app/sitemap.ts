@@ -4,8 +4,22 @@ import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 
+function resolveBaseUrl() {
+  const fallback = "https://verotask.com";
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!configured) return fallback;
+  try {
+    const candidate = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
+    const parsed = new URL(candidate);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fallback;
+    return parsed.toString().replace(/\/$/, "");
+  } catch {
+    return fallback;
+  }
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = (process.env.NEXT_PUBLIC_APP_URL ?? "https://verotask.com").replace(/\/$/, "");
+  const base = resolveBaseUrl();
   const now = new Date();
   const entries: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
@@ -14,9 +28,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/services`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/pt-br/services`, lastModified: now, changeFrequency: "daily", priority: 0.75 },
     { url: `${base}/es/services`, lastModified: now, changeFrequency: "daily", priority: 0.75 },
-    { url: `${base}/protection`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
-    { url: `${base}/pt-br/protection`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    { url: `${base}/es/protection`, lastModified: now, changeFrequency: "monthly", priority: 0.6 }
+    { url: `${base}/how-it-works`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/pt-br/how-it-works`, lastModified: now, changeFrequency: "monthly", priority: 0.68 },
+    { url: `${base}/es/how-it-works`, lastModified: now, changeFrequency: "monthly", priority: 0.68 },
+    { url: `${base}/protection`, lastModified: now, changeFrequency: "monthly", priority: 0.78 },
+    { url: `${base}/pt-br/protection`, lastModified: now, changeFrequency: "monthly", priority: 0.65 },
+    { url: `${base}/es/protection`, lastModified: now, changeFrequency: "monthly", priority: 0.65 },
+    { url: `${base}/providers`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${base}/pt-br/providers`, lastModified: now, changeFrequency: "weekly", priority: 0.68 },
+    { url: `${base}/es/providers`, lastModified: now, changeFrequency: "weekly", priority: 0.68 }
   ];
 
   if (!process.env.DATABASE_URL) return entries;
