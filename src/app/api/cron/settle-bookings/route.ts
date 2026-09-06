@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { runCrmAutomations } from "@/lib/crm-automation";
 import { retryEligibleProviderTransfers } from "@/lib/payout-retry";
 import { sendProtectionReminders } from "@/lib/protection-reminders";
 import { autoSettleExpiredBookings } from "@/lib/settlement";
@@ -13,10 +14,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const [settlements, payoutRetries, reminders] = await Promise.all([
+  const [settlements, payoutRetries, reminders, crm] = await Promise.all([
     autoSettleExpiredBookings(75),
     retryEligibleProviderTransfers(75),
-    sendProtectionReminders(75)
+    sendProtectionReminders(75),
+    runCrmAutomations(100)
   ]);
 
   return NextResponse.json({
@@ -24,6 +26,7 @@ export async function GET(request: NextRequest) {
     ranAt: new Date().toISOString(),
     settlements,
     payoutRetries,
-    reminders
+    reminders,
+    crm
   });
 }
