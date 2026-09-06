@@ -3,10 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getDb } from "@/db";
 import { bookingEvents, bookings, businesses, disputes, providerSubscriptions, refunds } from "@/db/schema";
+import { sendBookingThankYou, sendProviderPlanThankYou } from "@/lib/crm-automation";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
+
+async function safely(label: string, fn: () => Promise<unknown>) {
+  try { await fn(); } catch (error) { console.error(`[VeroTask webhook side effect: ${label}]`, error); }
+}
 
 async function upsertProviderSubscription(subscription: Stripe.Subscription) {
   const businessId = subscription.metadata?.verotask_business_id;
@@ -42,6 +47,7 @@ async function upsertProviderSubscription(subscription: Stripe.Subscription) {
   }
 
   await db.update(businesses).set({ plan: active ? plan : "free", updatedAt: new Date() }).where(eq(businesses.id, businessId));
+  if (active) await safely("provider-plan-thank-you", () => sendProviderPlanThankYou(businessId, subscription.id, plan));
 }
 
 async function markBookingPaid(bookingId: string, paymentIntentInput: string | Stripe.PaymentIntent) {
@@ -72,6 +78,7 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
       metadata: { paymentIntentId: paymentIntent.id, chargeId: chargeId ?? null }
     });
   }
+  await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
 }
 
 async function markCheckoutExpired(session: Stripe.Checkout.Session) {
