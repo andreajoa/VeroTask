@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Clock3, History, RotateCcw } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getReturningContext } from "@/lib/personalization";
+import { getReturningContext, type ReturningContext } from "@/lib/personalization";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
 
 const labels = {
@@ -32,8 +32,22 @@ const labels = {
 } as const;
 
 export async function ReturningCustomerPrompt({ locale }: { locale: PublicLocale }) {
-  const user = await getCurrentUser();
-  const context = await getReturningContext(user?.id);
+  let context: ReturningContext;
+
+  try {
+    const user = await getCurrentUser();
+    context = await getReturningContext(user?.id);
+  } catch (error) {
+    // Personalization is an enhancement, never a homepage availability dependency.
+    // Keep the public marketplace usable even if the database or a migration is
+    // temporarily unavailable. /api/ready remains the operational health signal.
+    console.error(
+      "[VeroTask] returning-customer personalization unavailable",
+      error instanceof Error ? error.message : "unknown_error"
+    );
+    return null;
+  }
+
   const c = labels[locale];
 
   if (!context.rebook && !context.recentSearch) return null;
