@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookingPricingDetails, rewardAccounts, rewardLedger } from "@/db/marketplace-schema";
 import { bookings } from "@/db/schema";
@@ -13,6 +13,75 @@ export async function getRewardAccount(userId: string) {
   await db.insert(rewardAccounts).values({ userId }).onConflictDoNothing({ target: rewardAccounts.userId });
   const [account] = await db.select().from(rewardAccounts).where(eq(rewardAccounts.userId, userId)).limit(1);
   return account;
+}
+
+export async function redeemCreditsForBooking(userId: string, bookingId: string, maximumCents: number) {
+  if (!Number.isInteger(maximumCents) || maximumCents <= 0) return 0;
+  const db = getDb();
+  const eventKey = `booking:${bookingId}:reward-redemption`;
+  const [existing] = await db.select().from(rewardLedger).where(eq(rewardLedger.eventKey, eventKey)).limit(1);
+  if (existing) return Math.max(0, -existing.amountCents);
+
+  const account = await getRewardAccount(userId);
+  const amountCents = Math.min(account?.availableCreditsCents ?? 0, maximumCents);
+  if (amountCents <= 0) return 0;
+
+  const [claim] = await db.insert(rewardLedger).values({
+    userId,
+    bookingId,
+    eventKey,
+    type: "booking_redeemed",
+    amountCents: -amountCents,
+    balanceAfterCents: 0,
+    metadata: { maximumCents }
+  }).onConflictDoNothing({ target: rewardLedger.eventKey }).returning();
+  if (!claim) {
+    const [row] = await db.select().from(rewardLedger).where(eq(rewardLedger.eventKey, eventKey)).limit(1);
+    return Math.max(0, -(row?.amountCents ?? 0));
+  }
+
+  const [updated] = await db.update(rewardAccounts).set({
+    availableCreditsCents: sql`${rewardAccounts.availableCreditsCents} - ${amountCents}`,
+    lifetimeRedeemedCents: sql`${rewardAccounts.lifetimeRedeemedCents} + ${amountCents}`,
+    updatedAt: new Date()
+  }).where(and(eq(rewardAccounts.userId, userId), gte(rewardAccounts.availableCreditsCents, amountCents))).returning();
+
+  if (!updated) {
+    await db.delete(rewardLedger).where(eq(rewardLedger.id, claim.id));
+    return 0;
+  }
+
+  await db.update(rewardLedger).set({ balanceAfterCents: updated.availableCreditsCents }).where(eq(rewardLedger.id, claim.id));
+  return amountCents;
+}
+
+export async function restoreBookingRewardCredit(bookingId: string) {
+  const db = getDb();
+  const redemptionKey = `booking:${bookingId}:reward-redemption`;
+  const restoreKey = `booking:${bookingId}:reward-restored`;
+  const [redemption] = await db.select().from(rewardLedger).where(eq(rewardLedger.eventKey, redemptionKey)).limit(1);
+  if (!redemption || redemption.amountCents >= 0) return 0;
+  const amountCents = -redemption.amountCents;
+
+  const [claim] = await db.insert(rewardLedger).values({
+    userId: redemption.userId,
+    bookingId,
+    eventKey: restoreKey,
+    type: "booking_redemption_restored",
+    amountCents,
+    balanceAfterCents: 0,
+    metadata: { redemptionEventKey: redemptionKey }
+  }).onConflictDoNothing({ target: rewardLedger.eventKey }).returning();
+  if (!claim) return 0;
+
+  const [updated] = await db.update(rewardAccounts).set({
+    availableCreditsCents: sql`${rewardAccounts.availableCreditsCents} + ${amountCents}`,
+    lifetimeRedeemedCents: sql`greatest(0, ${rewardAccounts.lifetimeRedeemedCents} - ${amountCents})`,
+    updatedAt: new Date()
+  }).where(eq(rewardAccounts.userId, redemption.userId)).returning();
+
+  await db.update(rewardLedger).set({ balanceAfterCents: updated?.availableCreditsCents ?? amountCents }).where(eq(rewardLedger.id, claim.id));
+  return amountCents;
 }
 
 export async function awardCompletionReward(bookingId: string) {
