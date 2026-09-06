@@ -3,6 +3,7 @@ import { eq, isNull, and } from "drizzle-orm";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AcceptedBookingPayment } from "@/components/accepted-booking-payment";
+import { BookingMessages } from "@/components/booking-messages";
 import { BookingRequestDecision } from "@/components/booking-request-decision";
 import { BookingWorkflowPanel } from "@/components/booking-workflow-panel";
 import { MutualReputationPanel } from "@/components/mutual-reputation-panel";
@@ -64,6 +65,7 @@ export default async function BookingPage({
   const canRateCustomer = access.isProvider && ["customer_confirmed", "auto_completed", "paid_out"].includes(access.booking.status);
   const showPayment = access.isCustomer && ["accepted", "payment_authorized"].includes(access.booking.status);
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
+  const conversationClosed = ["cancelled", "refunded"].includes(access.booking.status);
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -104,6 +106,7 @@ export default async function BookingPage({
           customerAlreadyRated={Boolean(providerCustomerRating)}
           locale={locale}
         />
+        <BookingMessages bookingId={id} closed={conversationClosed} />
         <BookingWorkflowPanel
           bookingId={id}
           role={role}
