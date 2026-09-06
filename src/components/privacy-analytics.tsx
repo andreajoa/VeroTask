@@ -51,6 +51,7 @@ function pagePayload(consent: Consent) {
 
 export function PrivacyAnalytics() {
   const pathname = usePathname();
+  const isAdminPath = pathname.startsWith("/admin");
   const [consent, setConsent] = useState<Consent | null>(null);
   const [ready, setReady] = useState(false);
   const activeSince = useRef<number | null>(null);
@@ -63,20 +64,15 @@ export function PrivacyAnalytics() {
   }, []);
 
   useEffect(() => {
-    if (!ready || !consent?.analytics) return;
+    if (isAdminPath || !ready || !consent?.analytics) return;
     const path = `${window.location.pathname}${window.location.search}`;
     if (lastPath.current === path) return;
     lastPath.current = path;
     sendEvent(pagePayload(consent));
-  }, [pathname, consent, ready]);
+  }, [pathname, consent, ready, isAdminPath]);
 
   useEffect(() => {
-    if (!ready || !consent?.analytics) return;
-
-    const setActive = () => {
-      if (document.visibilityState === "visible" && activeSince.current === null) activeSince.current = Date.now();
-      if (document.visibilityState !== "visible" && activeSince.current !== null) flushActive(true);
-    };
+    if (isAdminPath || !ready || !consent?.analytics) return;
 
     const flushActive = (beacon = false) => {
       if (activeSince.current === null) return;
@@ -89,6 +85,11 @@ export function PrivacyAnalytics() {
         activeDeltaSeconds: delta,
         consent
       }, beacon);
+    };
+
+    const setActive = () => {
+      if (document.visibilityState === "visible" && activeSince.current === null) activeSince.current = Date.now();
+      if (document.visibilityState !== "visible" && activeSince.current !== null) flushActive(true);
     };
 
     const onClick = (event: MouseEvent) => {
@@ -123,21 +124,23 @@ export function PrivacyAnalytics() {
       }
     };
 
+    const onPageHide = () => flushActive(true);
     activeSince.current = document.visibilityState === "visible" ? Date.now() : null;
     const timer = window.setInterval(() => flushActive(false), 15_000);
     document.addEventListener("visibilitychange", setActive);
     document.addEventListener("click", onClick, true);
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("pagehide", () => flushActive(true));
+    window.addEventListener("pagehide", onPageHide);
 
     return () => {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", setActive);
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pagehide", onPageHide);
       flushActive(true);
     };
-  }, [consent, ready]);
+  }, [consent, ready, isAdminPath]);
 
   function save(next: Consent) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -151,7 +154,7 @@ export function PrivacyAnalytics() {
     });
   }
 
-  if (!ready || consent) return null;
+  if (isAdminPath || !ready || consent) return null;
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
