@@ -13,7 +13,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Cleaning",
     shortLabel: "Cleaning",
     description: "Home, move-out and vacation-rental cleaning.",
-    image: "https://images.pexels.com/photos/6195949/pexels-photo-6195949.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/6197117/pexels-photo-6197117.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "House cleaning"
   },
   {
@@ -21,7 +21,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Handyman & Home Repairs",
     shortLabel: "Home repairs",
     description: "Repairs, installations and small home projects.",
-    image: "https://images.pexels.com/photos/6474122/pexels-photo-6474122.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/5767926/pexels-photo-5767926.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Handyman"
   },
   {
@@ -29,7 +29,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Furniture Assembly",
     shortLabel: "Assembly",
     description: "Beds, desks, shelves, cribs and flat-pack furniture.",
-    image: "https://images.pexels.com/photos/5217135/pexels-photo-5217135.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/4554423/pexels-photo-4554423.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Furniture assembly"
   },
   {
@@ -37,7 +37,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Moving Help",
     shortLabel: "Moving",
     description: "Packing, lifting, loading, unloading and in-home moves.",
-    image: "https://images.pexels.com/photos/6647005/pexels-photo-6647005.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/7489130/pexels-photo-7489130.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Moving help"
   },
   {
@@ -45,7 +45,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Lawn & Outdoor Help",
     shortLabel: "Outdoor help",
     description: "Lawn care, yard work and outdoor maintenance.",
-    image: "https://images.pexels.com/photos/9029162/pexels-photo-9029162.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/9029162/pexels-photo-9029162.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Lawn care"
   },
   {
@@ -53,7 +53,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Delivery & Errands",
     shortLabel: "Errands",
     description: "Pickups, local delivery, shopping and everyday errands.",
-    image: "https://images.pexels.com/photos/4174744/pexels-photo-4174744.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/4174744/pexels-photo-4174744.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Delivery and errands"
   },
   {
@@ -61,7 +61,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Personal Assistant",
     shortLabel: "Assistant",
     description: "Local or remote help with organization and admin tasks.",
-    image: "https://images.pexels.com/photos/6077067/pexels-photo-6077067.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/6077067/pexels-photo-6077067.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Personal assistant"
   },
   {
@@ -69,7 +69,7 @@ export const MARKETPLACE_CATEGORIES: MarketplaceCategory[] = [
     label: "Home Organization",
     shortLabel: "Organization",
     description: "Closets, rooms, decluttering and household organization.",
-    image: "https://images.pexels.com/photos/8454352/pexels-photo-8454352.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    image: "https://images.pexels.com/photos/8454352/pexels-photo-8454352.jpeg?auto=compress&cs=tinysrgb&w=1400",
     query: "Home organization"
   }
 ];
@@ -83,19 +83,25 @@ export const HERO_SCENES = [
   },
   {
     eyebrow: "Cleaning",
-    title: "From a quick clean to a full turnover, find the right pro.",
+    title: "A fresh home starts with the right pair of hands.",
     image: MARKETPLACE_CATEGORIES[0].image,
     query: "House cleaning"
   },
   {
     eyebrow: "Assembly",
-    title: "Furniture in boxes. Help can be on the way.",
+    title: "From boxes to finished. Find help that gets it done.",
     image: MARKETPLACE_CATEGORIES[2].image,
     query: "Furniture assembly"
   },
   {
+    eyebrow: "Moving help",
+    title: "Big move or one heavy item, get an extra pair of hands.",
+    image: MARKETPLACE_CATEGORIES[3].image,
+    query: "Moving help"
+  },
+  {
     eyebrow: "Everyday help",
-    title: "Need an extra pair of hands? VeroTask can match the task.",
+    title: "Busy day? Find local help for errands and everyday tasks.",
     image: MARKETPLACE_CATEGORIES[5].image,
     query: "Delivery and errands"
   }
