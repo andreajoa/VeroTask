@@ -50,8 +50,22 @@ type JobResponse = {
   };
   quotes: QuoteRow[];
 };
+type JobApiResponse = JobResponse & { error?: string };
 
 function money(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
+
+async function fetchConversationMessages(jobId: string, businessId: string) {
+  const response = await fetch(`/api/jobs/${jobId}/messages?businessId=${encodeURIComponent(businessId)}`, { cache: "no-store" });
+  if (!response.ok) return [] as Message[];
+  const data = await response.json() as { messages?: Message[] };
+  return data.messages ?? [];
+}
+
+async function fetchJobResponse(jobId: string) {
+  const response = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
+  const body = await response.json() as JobApiResponse;
+  return { ok: response.ok, body };
+}
 
 function Conversation({ jobId, businessId }: { jobId: string; businessId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -59,12 +73,16 @@ function Conversation({ jobId, businessId }: { jobId: string; businessId: string
   const [sending, setSending] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch(`/api/jobs/${jobId}/messages?businessId=${encodeURIComponent(businessId)}`, { cache: "no-store" });
-    const data = await response.json() as { messages?: Message[] };
-    if (response.ok) setMessages(data.messages ?? []);
+    setMessages(await fetchConversationMessages(jobId, businessId));
   }, [businessId, jobId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    void fetchConversationMessages(jobId, businessId).then((nextMessages) => {
+      if (active) setMessages(nextMessages);
+    });
+    return () => { active = false; };
+  }, [businessId, jobId]);
 
   async function send(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -109,16 +127,26 @@ export function QuoteComparison({ jobId }: { jobId: string }) {
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const response = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
-    const body = await response.json() as JobResponse & { error?: string };
-    if (!response.ok || body.role !== "customer") {
+    const { ok, body } = await fetchJobResponse(jobId);
+    if (!ok || body.role !== "customer") {
       setError(body.error ?? "Unable to load quotes");
       return;
     }
     setData(body);
   }, [jobId]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    let active = true;
+    void fetchJobResponse(jobId).then(({ ok, body }) => {
+      if (!active) return;
+      if (!ok || body.role !== "customer") {
+        setError(body.error ?? "Unable to load quotes");
+        return;
+      }
+      setData(body);
+    });
+    return () => { active = false; };
+  }, [jobId]);
 
   async function accept(quoteId: string) {
     setBusy(quoteId);
