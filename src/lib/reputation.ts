@@ -2,6 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bilateralRatings, customerReputation } from "@/db/reputation-schema";
 import { bookings, businesses } from "@/db/schema";
+import { algorithmReputationScore, averageStars, reputationConfidence, reputationLabel, type ReputationLabel } from "@/lib/reputation-score";
 
 const COMPLETED_BOOKING_STATUSES = ["customer_confirmed", "auto_completed", "paid_out"] as const;
 
@@ -9,13 +10,20 @@ export type ReputationSummary = {
   rating: number;
   ratingCount: number;
   completedJobs: number;
-  label: "New" | "Building history" | "Established";
+  label: ReputationLabel;
+  confidence: number;
+  algorithmScore: number;
 };
 
-function labelFor(ratingCount: number, completedJobs: number): ReputationSummary["label"] {
-  if (ratingCount === 0 && completedJobs < 2) return "New";
-  if (ratingCount < 10 || completedJobs < 10) return "Building history";
-  return "Established";
+function summary(rating: number, ratingCount: number, completedJobs: number): ReputationSummary {
+  return {
+    rating,
+    ratingCount,
+    completedJobs,
+    label: reputationLabel(ratingCount, completedJobs),
+    confidence: reputationConfidence(ratingCount, completedJobs),
+    algorithmScore: algorithmReputationScore({ rating, ratingCount, completedJobs })
+  };
 }
 
 export async function getCustomerReputationSummary(customerId: string): Promise<ReputationSummary> {
@@ -31,7 +39,7 @@ export async function getCustomerReputationSummary(customerId: string): Promise<
   const ratingCount = stored?.ratingCount ?? 0;
   const completedJobs = Math.max(stored?.completedJobs ?? 0, completed.length);
   const rating = ratingCount === 0 ? 5 : Number(stored?.averageRating ?? 5);
-  return { rating, ratingCount, completedJobs, label: labelFor(ratingCount, completedJobs) };
+  return summary(rating, ratingCount, completedJobs);
 }
 
 export async function getProviderReputationSummary(businessId: string): Promise<ReputationSummary> {
@@ -42,14 +50,9 @@ export async function getProviderReputationSummary(businessId: string): Promise<
     completedJobs: businesses.completedJobs
   }).from(businesses).where(eq(businesses.id, businessId)).limit(1);
 
-  if (!business) return { rating: 5, ratingCount: 0, completedJobs: 0, label: "New" };
+  if (!business) return summary(5, 0, 0);
   const rating = business.reviewCount === 0 ? 5 : Number(business.averageRating);
-  return {
-    rating,
-    ratingCount: business.reviewCount,
-    completedJobs: business.completedJobs,
-    label: labelFor(business.reviewCount, business.completedJobs)
-  };
+  return summary(rating, business.reviewCount, business.completedJobs);
 }
 
 export async function refreshCustomerReputation(customerId: string) {
@@ -65,9 +68,7 @@ export async function refreshCustomerReputation(customerId: string) {
     ))
   ]);
 
-  const average = ratings.length
-    ? ratings.reduce((sum, row) => sum + row.rating, 0) / ratings.length
-    : 5;
+  const average = averageStars(ratings.map((row) => row.rating));
 
   await db.insert(customerReputation).values({
     customerId,
@@ -85,10 +86,5 @@ export async function refreshCustomerReputation(customerId: string) {
     }
   });
 
-  return {
-    rating: ratings.length === 0 ? 5 : average,
-    ratingCount: ratings.length,
-    completedJobs: completed.length,
-    label: labelFor(ratings.length, completed.length)
-  } satisfies ReputationSummary;
+  return summary(average, ratings.length, completed.length);
 }
