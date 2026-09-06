@@ -24,8 +24,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
     }).from(crmEmailSends).leftJoin(crmEmailEvents, sql`${crmEmailEvents.sendId} = ${crmEmailSends.id}`)
   ]);
   const marketing = EMAIL_TEMPLATES.filter((template) => template.kind === "marketing");
-  const recovery = EMAIL_TEMPLATES.filter((template) => template.kind === "abandoned_checkout" || template.kind === "abandoned_cart");
-  const transactional = EMAIL_TEMPLATES.filter((template) => template.kind === "transactional");
 
   return (
     <AdminShell active="/admin/email">
