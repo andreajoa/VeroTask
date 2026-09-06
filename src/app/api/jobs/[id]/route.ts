@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { jobMatches, jobRequests, quoteOffers, quotes } from "@/db/marketplace-schema";
+import { jobMatches, quoteOffers, quotes } from "@/db/marketplace-schema";
 import { businesses } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { publicJobView, requireCustomerJob, requireProviderJob } from "@/lib/job-access";
