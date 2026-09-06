@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { bookingEvents, bookings, disputes, providerTransfers } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { refundBookingPayment, releaseProviderTransfer, reverseProviderTransfer } from "@/lib/booking-workflow";
+import { restoreBookingRewardCredit } from "@/lib/rewards";
 
 const schema = z.object({
   outcome: z.enum(["customer", "provider", "split"]),
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
   }
 
+  const fullRefund = parsed.data.refundCents === booking.subtotalCents;
+  const rewardsRestoredCents = fullRefund ? await restoreBookingRewardCredit(booking.id) : 0;
   const disputeStatus = parsed.data.outcome === "customer"
     ? "resolved_customer"
     : parsed.data.outcome === "provider" ? "resolved_provider" : "resolved_split";
@@ -61,7 +64,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     resolvedAt: now
   }).where(eq(disputes.id, dispute.id));
 
-  const fullRefund = parsed.data.refundCents === booking.subtotalCents;
   await db.update(bookings).set({
     status: fullRefund ? "refunded" : "customer_confirmed",
     payoutEligibleAt: parsed.data.providerCents > 0 ? now : null,
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       disputeId: dispute.id,
       outcome: parsed.data.outcome,
       refundCents: parsed.data.refundCents,
+      rewardsRestoredCents,
       providerCents: parsed.data.providerCents,
       note: parsed.data.note
     }
@@ -88,5 +91,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     catch { payoutPending = true; }
   }
 
-  return NextResponse.json({ ok: true, disputeStatus, refundCents: parsed.data.refundCents, providerCents: parsed.data.providerCents, payoutPending });
+  return NextResponse.json({
+    ok: true,
+    disputeStatus,
+    refundCents: parsed.data.refundCents,
+    rewardsRestoredCents,
+    providerCents: parsed.data.providerCents,
+    payoutPending
+  });
 }
