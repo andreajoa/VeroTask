@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getDb } from "@/db";
 import { authTokens, sessions } from "@/db/auth-schema";
 import { users } from "@/db/schema";
+import { claimAnonymousPersonalizationForUser } from "@/lib/personalization";
 
 const SESSION_COOKIE = "verotask_session";
 const SESSION_DAYS = 30;
@@ -69,6 +70,8 @@ export async function consumeMagicLink(rawToken: string) {
     path: "/",
     expires: expiresAt
   });
+
+  await claimAnonymousPersonalizationForUser(user.id);
 
   return { user, redirectPath: safeRedirectPath(record.redirectPath) };
 }
