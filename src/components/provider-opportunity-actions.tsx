@@ -10,6 +10,13 @@ type ChatMessage = { id: string; body: string; senderUserId: string; createdAt: 
 
 function money(cents: number) { return `$${(cents / 100).toFixed(2)}`; }
 
+async function fetchMessages(jobId: string, businessId: string) {
+  const response = await fetch(`/api/jobs/${jobId}/messages?businessId=${encodeURIComponent(businessId)}`, { cache: "no-store" });
+  if (!response.ok) return [] as ChatMessage[];
+  const body = await response.json() as { messages?: ChatMessage[] };
+  return body.messages ?? [];
+}
+
 export function ProviderOpportunityActions({ jobId, businessId, quote, latestOffer }: { jobId: string; businessId: string; quote: ExistingQuote; latestOffer: LatestOffer }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -17,11 +24,16 @@ export function ProviderOpportunityActions({ jobId, businessId, quote, latestOff
   const [messages, setMessages] = useState<ChatMessage[]>([]);
 
   const loadMessages = useCallback(async () => {
-    const response = await fetch(`/api/jobs/${jobId}/messages?businessId=${encodeURIComponent(businessId)}`, { cache: "no-store" });
-    const body = await response.json() as { messages?: ChatMessage[] };
-    if (response.ok) setMessages(body.messages ?? []);
+    setMessages(await fetchMessages(jobId, businessId));
   }, [businessId, jobId]);
-  useEffect(() => { void loadMessages(); }, [loadMessages]);
+
+  useEffect(() => {
+    let active = true;
+    void fetchMessages(jobId, businessId).then((nextMessages) => {
+      if (active) setMessages(nextMessages);
+    });
+    return () => { active = false; };
+  }, [businessId, jobId]);
 
   async function submitQuote(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(null);
