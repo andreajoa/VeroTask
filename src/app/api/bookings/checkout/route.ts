@@ -8,6 +8,7 @@ import { bookingEvents, bookings, businesses, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
+import { sendProviderNewRequestNotification } from "@/lib/booking-notifications";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
@@ -99,6 +100,9 @@ export async function POST(request: NextRequest) {
       providerDecisionRequiredBeforePayment: true
     }
   });
+
+  try { await sendProviderNewRequestNotification(booking.id); }
+  catch (error) { console.error("[VeroTask booking request notification]", error); }
 
   return NextResponse.json({ bookingId: booking.id, status: booking.status });
 }
