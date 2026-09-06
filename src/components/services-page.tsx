@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { and, eq, ilike, or } from "drizzle-orm";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Phone, Search, ShieldCheck } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
@@ -69,12 +71,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="container-shell flex min-h-[70px] items-center justify-between gap-4">
-          <Link href={localePath(locale, "/")} className="flex items-center gap-2.5 text-xl font-black tracking-[-0.035em] text-[var(--brand-strong)]"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand-strong)] text-sky-200"><BadgeCheck size={20} /></span>VeroTask</Link>
-          <div className="flex items-center gap-4"><Link href={localePath(locale, "/protection")} className="hidden items-center gap-2 text-sm font-black text-slate-600 sm:flex"><ShieldCheck size={16} /> Payment protection</Link><Link href={localePath(locale, "/providers/join")} className="text-sm font-black text-[var(--brand)]">Join as a pro</Link></div>
-        </div>
-      </header>
+      <SiteHeader locale={locale} currentPath="/services" />
 
       <section className="border-b border-slate-200 bg-white py-6">
         <div className="container-shell">
@@ -88,7 +85,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
 
       <section className="container-shell py-9 lg:py-12">
         <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-          <aside className="space-y-4 lg:sticky lg:top-6">
+          <aside className="space-y-4 lg:sticky lg:top-24">
             <div className="rounded-[18px] border border-slate-200 bg-white p-5">
               <div className="flex items-center gap-2 text-sm font-black text-slate-950"><BriefcaseBusiness size={17} className="text-[var(--brand)]" /> Your job brief</div>
               <dl className="mt-5 space-y-4 text-sm">
@@ -133,6 +130,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
           </div>
         </div>
       </section>
+      <SiteFooter locale={locale} />
     </main>
   );
 }
