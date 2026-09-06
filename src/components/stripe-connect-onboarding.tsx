@@ -23,8 +23,9 @@ export function StripeConnectOnboarding({ businessId, publishableKey }: { busine
     },
     appearance: {
       variables: {
-        colorPrimary: "#126a4b",
-        colorText: "#13231d",
+        colorPrimary: "#123b56",
+        colorText: "#17212b",
+        colorBackground: "#ffffff",
         borderRadius: "12px"
       }
     }
@@ -32,9 +33,9 @@ export function StripeConnectOnboarding({ businessId, publishableKey }: { busine
 
   if (exited) {
     return (
-      <div className="card p-7 text-center">
-        <h2 className="text-xl font-black">Checking your Stripe status</h2>
-        <p className="mt-2 text-sm text-[var(--muted)]">VeroTask will enable marketplace bookings only after Stripe confirms the required account capabilities.</p>
+      <div className="rounded-[18px] border border-slate-200 bg-white p-7 text-center">
+        <h2 className="text-xl font-black text-slate-950">Checking your Stripe status</h2>
+        <p className="mt-2 text-sm text-slate-600">VeroTask will enable marketplace bookings only after Stripe confirms the required account capabilities.</p>
         <button className="btn-primary mt-5" onClick={() => { setExited(false); router.refresh(); }}>Refresh status</button>
       </div>
     );
