@@ -48,8 +48,11 @@ async function wireErrors(page, label) {
   page.on("pageerror", (error) => report.pageErrors.push({ page: label, text: error.message }));
   page.on("requestfailed", (request) => {
     const url = request.url();
-    if (!url.includes("images.pexels.com")) {
-      report.failedRequests.push({ page: label, url, error: request.failure()?.errorText || "request failed" });
+    const error = request.failure()?.errorText || "request failed";
+    const isExternalImage = url.includes("images.pexels.com");
+    const isCancelledNextPrefetch = url.includes("_rsc=") && /ERR_ABORTED|NS_BINDING_ABORTED/i.test(error);
+    if (!isExternalImage && !isCancelledNextPrefetch) {
+      report.failedRequests.push({ page: label, url, error });
     }
   });
 }
@@ -66,7 +69,7 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function assertInteractiveContrast(page, label) {
-  const results = await page.locator("a,button").evaluateAll((nodes) => nodes
+  const results = await page.locator("a,button,summary").evaluateAll((nodes) => nodes
     .filter((node) => {
       const rect = node.getBoundingClientRect();
       const style = getComputedStyle(node);
@@ -81,7 +84,7 @@ async function assertInteractiveContrast(page, label) {
         if (parent) background = getComputedStyle(parent).backgroundColor;
       }
       return {
-        text: (node.textContent || "").trim().replace(/\s+/g, " ").slice(0, 100),
+        text: ((node.getAttribute("aria-label") || node.textContent || "").trim()).replace(/\s+/g, " ").slice(0, 100),
         foreground: style.color,
         background,
         backgroundImage: style.backgroundImage,
@@ -162,14 +165,15 @@ try {
   await mobilePage.waitForTimeout(800);
   await assertNoHorizontalOverflow(mobilePage, "mobile home");
   await assertInteractiveContrast(mobilePage, "mobile home");
-  const menuButton = mobilePage.getByRole("button", { name: /menu/i }).first();
-  if (await menuButton.count()) {
-    await menuButton.click();
+  const menuControl = mobilePage.locator('summary[aria-label="Open navigation"]').first();
+  if (await menuControl.count()) {
+    await menuControl.click();
     await mobilePage.waitForTimeout(200);
-    record("mobile: navigation opens", await mobilePage.locator('a[href="/providers"]').count() > 0 && await mobilePage.locator('a[href="/how-it-works"]').count() > 0);
+    const mobileNav = mobilePage.locator('nav[aria-label="Mobile navigation"]');
+    record("mobile: navigation opens", await mobileNav.isVisible() && await mobileNav.locator('a[href="/providers"]').count() > 0 && await mobileNav.locator('a[href="/how-it-works"]').count() > 0);
     await saveShot(mobilePage, "mobile-menu");
   } else {
-    record("mobile: menu button exists", false);
+    record("mobile: menu control exists", false);
   }
   await saveShot(mobilePage, "mobile-home-top");
   const mobileHeight = await mobilePage.evaluate(() => document.documentElement.scrollHeight);
@@ -190,7 +194,7 @@ try {
 
   record("runtime: no page errors", report.pageErrors.length === 0, report.pageErrors);
   record("runtime: no console errors", report.consoleErrors.length === 0, report.consoleErrors.slice(0, 20));
-  record("runtime: no first-party failed requests", report.failedRequests.length === 0, report.failedRequests.slice(0, 20));
+  record("runtime: no unexpected first-party failed requests", report.failedRequests.length === 0, report.failedRequests.slice(0, 20));
 } finally {
   await browser.close();
   await fs.writeFile(path.join(outputDir, "report.json"), JSON.stringify(report, null, 2));
