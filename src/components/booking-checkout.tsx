@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { CalendarClock, MapPin, ShieldCheck } from "lucide-react";
 
 export function BookingCheckout({
@@ -19,6 +20,7 @@ export function BookingCheckout({
   servicePriceCents: number;
   durationMinutes: number;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,8 +50,8 @@ export function BookingCheckout({
       return;
     }
 
-    window.location.assign(`/bookings/${data.bookingId}?requested=1`);
-  }, [businessId, serviceId]);
+    router.push(`/bookings/${data.bookingId}?requested=1`);
+  }, [businessId, router, serviceId]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
