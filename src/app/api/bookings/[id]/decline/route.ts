@@ -5,6 +5,8 @@ import { getDb } from "@/db";
 import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { requireProviderBooking } from "@/lib/booking-access";
+import { sendCustomerDeclinedNotification } from "@/lib/booking-notifications";
+import { canProviderDeclineBeforePayment } from "@/lib/booking-state";
 
 const schema = z.object({ reason: z.string().trim().max(500).optional() });
 
@@ -19,7 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   try { access = await requireProviderBooking(id, user.id); }
   catch { return NextResponse.json({ error: "forbidden" }, { status: 403 }); }
 
-  if (!["requested", "accepted"].includes(access.booking.status)) {
+  if (!canProviderDeclineBeforePayment(access.booking.status)) {
     return NextResponse.json({ error: "booking_cannot_be_declined" }, { status: 409 });
   }
 
@@ -37,6 +39,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     nextStatus: "cancelled",
     metadata: { reason: parsed.data.reason ?? null, paymentCaptured: false }
   });
+
+  try { await sendCustomerDeclinedNotification(id); }
+  catch (error) { console.error("[VeroTask booking declined notification]", error); }
 
   return NextResponse.json({ ok: true, status: "cancelled" });
 }
