@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { autoSettleExpiredBookings } from "@/lib/booking-workflow";
 import { retryEligibleProviderTransfers } from "@/lib/payout-retry";
 import { sendProtectionReminders } from "@/lib/protection-reminders";
+import { autoSettleExpiredBookings } from "@/lib/settlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
