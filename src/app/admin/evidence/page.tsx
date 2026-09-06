@@ -16,7 +16,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const db = getDb();
 
   const conditions = [];
-  if (q) conditions.push(or(ilike(bookings.id, `%${q}%`), ilike(businesses.name, `%${q}%`), ilike(users.email, `%${q}%`)));
+  if (q) conditions.push(or(sql`${bookings.id}::text ilike ${`%${q}%`}`, ilike(businesses.name, `%${q}%`), ilike(users.email, `%${q}%`)));
   const evidenceTypes = ["geo_check_in", "geo_check_out", "customer_pin", "before_photo", "after_photo", "checklist", "message", "provider_note", "customer_note"] as const;
   if (evidenceTypes.includes(type as typeof evidenceTypes[number])) conditions.push(eq(bookingEvidence.type, type as typeof evidenceTypes[number]));
 
