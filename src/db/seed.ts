@@ -159,6 +159,64 @@ const businessSeed = [
     publicPhone: "+14079069303",
     description: "Pressure washing service in Orlando.",
     categories: ["pressure-washing"]
+  },
+  {
+    name: "Just Assemble Services",
+    slug: "just-assemble-services-orlando",
+    city: "Orlando",
+    state: "FL",
+    publicPhone: "+14073011460",
+    websiteUrl: "https://justassemble.net/",
+    sourceUrl: "https://justassemble.net/furniture-assembly-orlando/",
+    description: "Orlando-based assembly and installation service for furniture, TV mounting, outdoor structures, equipment and related home projects.",
+    categories: ["furniture-assembly", "tv-mounting", "mounting", "handyman", "smart-home-installation"]
+  },
+  {
+    name: "iHandyman Pro",
+    slug: "ihandyman-pro-orlando",
+    city: "Orlando",
+    state: "FL",
+    publicPhone: "+13864504564",
+    websiteUrl: "https://www.ihandymanpro.com/",
+    sourceUrl: "https://www.ihandymanpro.com/services/furniture-assembly-orlando",
+    description: "Furniture assembly and handyman service serving Orlando and nearby Central Florida communities, including flat-pack furniture and installation work.",
+    categories: ["furniture-assembly", "handyman", "mounting", "tv-mounting"]
+  },
+  {
+    name: "JM Connect Services",
+    slug: "jm-connect-services-orlando",
+    city: "Orlando",
+    state: "FL",
+    publicPhone: "+14072710581",
+    websiteUrl: "https://jmconnectservices.com/",
+    sourceUrl: "https://jmconnectservices.com/services/furniture-assembly",
+    description: "Central Florida furniture assembly and home project service for flat-pack furniture, anchoring, installation and related handyman work.",
+    categories: ["furniture-assembly", "handyman", "mounting"]
+  },
+  {
+    name: "Smart Assembly Solutions",
+    slug: "smart-assembly-solutions-orlando",
+    city: "Orlando",
+    state: "FL",
+    publicPhone: "+14074379514",
+    publicEmail: "info@smartassemblysolutions.com",
+    websiteUrl: "https://smartassemblysolutions.com/",
+    sourceUrl: "https://smartassemblysolutions.com/",
+    description: "Orlando furniture assembly and installation service offering assembly, closet installation, TV mounting and home improvement projects.",
+    categories: ["furniture-assembly", "mounting", "tv-mounting", "handyman"]
+  },
+  {
+    name: "Best USA Movers Orlando",
+    slug: "best-usa-movers-orlando",
+    city: "Orlando",
+    state: "FL",
+    postalCode: "32811",
+    addressLine1: "5542 L B McLeod Rd",
+    publicPhone: "+13213453985",
+    websiteUrl: "https://orlandobestusamovers.com/",
+    sourceUrl: "https://orlandobestusamovers.com/",
+    description: "Orlando moving company offering local moving, labor-only help, packing and unpacking, loading, unloading and furniture handling.",
+    categories: ["moving-help", "packing", "furniture-assembly"]
   }
 ] as const;
 
