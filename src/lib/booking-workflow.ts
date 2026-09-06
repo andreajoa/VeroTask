@@ -10,10 +10,11 @@ import {
   refunds
 } from "@/db/schema";
 import { scoreEvidence } from "@/lib/booking";
+import { awardCompletionReward } from "@/lib/rewards";
 import { getStripe } from "@/lib/stripe";
 import { canAutoComplete, evidenceConfidence } from "@/lib/trust";
 
-export const POLICY_VERSION = "2026-09-05";
+export const POLICY_VERSION = "2026-09-06";
 
 export async function getBookingContext(bookingId: string) {
   const db = getDb();
@@ -91,6 +92,12 @@ async function ensureProviderTransfer(bookingId: string, amountCents?: number) {
   return created;
 }
 
+async function awardRewardsAfterCompletedService(bookingId: string, previousStatus: string) {
+  if (!["customer_confirmed", "auto_completed"].includes(previousStatus)) return;
+  try { await awardCompletionReward(bookingId); }
+  catch (error) { console.error("[VeroTask rewards award]", error); }
+}
+
 export async function releaseProviderTransfer(bookingId: string, amountCents?: number) {
   const db = getDb();
   const context = await getBookingContext(bookingId);
@@ -105,6 +112,7 @@ export async function releaseProviderTransfer(bookingId: string, amountCents?: n
   if (transfer.amountCents === 0) {
     const [zero] = await db.update(providerTransfers).set({ status: "paid", transferredAt: new Date() })
       .where(eq(providerTransfers.id, transfer.id)).returning();
+    await awardRewardsAfterCompletedService(bookingId, context.booking.status);
     return zero;
   }
 
@@ -145,6 +153,7 @@ export async function releaseProviderTransfer(bookingId: string, amountCents?: n
       nextStatus: "paid_out",
       metadata: { amountCents: claimed.amountCents, stripeTransferId: stripeTransfer.id }
     });
+    await awardRewardsAfterCompletedService(bookingId, context.booking.status);
     return paid;
   } catch (error) {
     await db.update(providerTransfers).set({ status: "failed" }).where(eq(providerTransfers.id, claimed.id));
