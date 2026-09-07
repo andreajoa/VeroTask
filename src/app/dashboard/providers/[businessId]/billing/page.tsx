@@ -43,7 +43,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <section className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr]">
             <aside className="card h-fit p-6">
               <h2 className="text-xl font-black">{PROVIDER_PLANS[selectedPlan].name}</h2>
-              <p className="mt-2 text-3xl font-black">${PROVIDER_PLANS[selectedPlan].monthlyPriceCents / 100}<span className="text-sm font-medium text-[var(--muted)]">/month</span></p>
+              <p className="mt-2 text-3xl font-black">R${PROVIDER_PLANS[selectedPlan].monthlyPriceCents / 100}<span className="text-sm font-medium text-[var(--muted)]">/mês</span></p>
               <p className="mt-2 text-sm font-bold text-[var(--brand)]">{PROVIDER_PLANS[selectedPlan].commissionBps / 100}% marketplace fee</p>
               <Link className="mt-5 block text-sm font-black text-[var(--muted)]" href={`/dashboard/providers/${business.id}/billing`}>← Compare plans</Link>
             </aside>
@@ -58,7 +58,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               return (
                 <article className={`card p-6 ${plan.highlighted ? "ring-2 ring-[var(--brand)]" : ""}`} key={plan.key}>
                   <div className="flex items-center justify-between gap-2"><h2 className="text-xl font-black">{plan.name}</h2>{current && <span className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><BadgeCheck size={14} /> Current</span>}</div>
-                  <div className="mt-4 text-3xl font-black">${plan.monthlyPriceCents / 100}<span className="text-sm font-medium text-[var(--muted)]">/month</span></div>
+                  <div className="mt-4 text-3xl font-black">R${plan.monthlyPriceCents / 100}<span className="text-sm font-medium text-[var(--muted)]">/mês</span></div>
                   <div className="mt-2 text-sm font-bold text-[var(--brand)]">{plan.commissionBps / 100}% marketplace fee</div>
                   <ul className="mt-5 space-y-2 text-sm leading-6 text-[var(--muted)]">{plan.benefits.map((benefit) => <li key={benefit} className="flex gap-2"><ShieldCheck size={15} className="mt-1 shrink-0 text-[var(--brand)]" />{benefit}</li>)}</ul>
                   {!current && plan.key === "free" && <form action={scheduleFreePlan.bind(null, business.id)}><button className="btn-secondary mt-6 w-full" type="submit">Move to Free</button></form>}

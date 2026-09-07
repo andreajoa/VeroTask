@@ -80,6 +80,8 @@ export async function createProviderProfile(formData: FormData) {
     updatedAt: new Date()
   }).where(eq(users.id, user.id));
 
-  const planQuery = parsed.data.plan === "free" ? "" : `?plan=${parsed.data.plan}`;
-  redirect(`/dashboard/providers/${business.id}/onboarding${planQuery}`);
+  if (parsed.data.plan !== "free") {
+    redirect(`/dashboard/providers/${business.id}/billing?plan=${parsed.data.plan}`);
+  }
+  redirect(`/dashboard/providers/${business.id}/services`);
 }
