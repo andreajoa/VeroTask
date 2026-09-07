@@ -34,7 +34,7 @@ export async function saveAvailability(formData: FormData) {
     if (!timePattern.test(startTime) || !timePattern.test(endTime) || startTime >= endTime) {
       redirect(`/dashboard/providers/${business.id}/availability?error=invalid-hours`);
     }
-    rows.push({ businessId: business.id, dayOfWeek: day, startTime, endTime, timezone: "America/New_York", active: true });
+    rows.push({ businessId: business.id, dayOfWeek: day, startTime, endTime, timezone: "America/Sao_Paulo", active: true });
   }
 
   await db.delete(providerAvailability).where(eq(providerAvailability.businessId, business.id));

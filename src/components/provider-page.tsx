@@ -43,7 +43,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
               <span className="inline-flex items-center gap-2"><MapPin size={16} /> {business.city}, {business.state} {business.postalCode ?? ""}</span>
               {business.publicPhone && <a href={`tel:${business.publicPhone}`} className="inline-flex items-center gap-2 font-black text-[var(--brand)] underline-offset-4 hover:underline"><Phone size={16} /> {business.publicPhone}</a>}
             </div>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)]">{business.description ?? "Local service provider serving Central Florida."}</p>
+            <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)]">{business.description ?? "Profissional local disponível para serviços."}</p>
             <div className="mt-6 flex flex-wrap gap-2">
               {categoryRows.map((category) => <Link key={category.slug} href={`${localePath(locale, "/services")}?q=${encodeURIComponent(category.name)}`} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 transition hover:border-slate-500 hover:bg-slate-50">{category.name}</Link>)}
             </div>

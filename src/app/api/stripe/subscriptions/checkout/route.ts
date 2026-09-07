@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     mode: "subscription",
     customer: customerId,
     line_items: [{ quantity: 1, ...(priceId ? { price: priceId } : { price_data: {
-      currency: "usd", unit_amount: PROVIDER_PLANS[parsed.data.plan].monthlyPriceCents,
+      currency: "brl", unit_amount: PROVIDER_PLANS[parsed.data.plan].monthlyPriceCents,
       recurring: { interval: "month" as const }, product_data: { name: `VeroTask ${PROVIDER_PLANS[parsed.data.plan].name}` }
     } }) }],
     return_url: `${baseUrl}/dashboard/providers/${business.id}/billing/return?session_id={CHECKOUT_SESSION_ID}`,

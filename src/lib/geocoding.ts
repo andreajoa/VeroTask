@@ -1,33 +1,36 @@
-type CensusMatch = {
-  coordinates?: { x?: number; y?: number };
-  matchedAddress?: string;
+type GoogleGeocodeResult = {
+  geometry?: { location?: { lat?: number; lng?: number } };
+  formatted_address?: string;
 };
 
-type CensusResponse = {
-  result?: { addressMatches?: CensusMatch[] };
+type GoogleGeocodeResponse = {
+  results?: GoogleGeocodeResult[];
 };
 
 export type GeocodedAddress = {
   latitude: number;
   longitude: number;
   matchedAddress?: string;
-  source: "us-census";
+  source: "google-maps";
 };
 
 /**
- * Best-effort geocoding for US service addresses using the public US Census
- * Geocoder. Booking must continue to work when geocoding is unavailable; in
- * that case GPS evidence is not treated as geofence-verified automatically.
+ * Best-effort geocoding for Brazilian service addresses using Google Maps Geocoding API.
+ * Biased towards São Paulo region. Booking must continue to work when geocoding is
+ * unavailable; in that case GPS evidence is not treated as geofence-verified automatically.
  */
-export async function geocodeUsAddress(address: string): Promise<GeocodedAddress | null> {
+export async function geocodeAddress(address: string): Promise<GeocodedAddress | null> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3500);
 
   try {
-    const url = new URL("https://geocoding.geo.census.gov/geocoder/locations/onelineaddress");
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return null;
+
+    const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
     url.searchParams.set("address", address);
-    url.searchParams.set("benchmark", "Public_AR_Current");
-    url.searchParams.set("format", "json");
+    url.searchParams.set("components", "country:BR");
+    url.searchParams.set("key", apiKey);
 
     const response = await fetch(url, {
       signal: controller.signal,
@@ -36,14 +39,14 @@ export async function geocodeUsAddress(address: string): Promise<GeocodedAddress
     });
     if (!response.ok) return null;
 
-    const data = await response.json() as CensusResponse;
-    const match = data.result?.addressMatches?.[0];
-    const longitude = match?.coordinates?.x;
-    const latitude = match?.coordinates?.y;
+    const data = await response.json() as GoogleGeocodeResponse;
+    const result = data.results?.[0];
+    const latitude = result?.geometry?.location?.lat;
+    const longitude = result?.geometry?.location?.lng;
     if (typeof latitude !== "number" || typeof longitude !== "number") return null;
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
 
-    return { latitude, longitude, matchedAddress: match?.matchedAddress, source: "us-census" };
+    return { latitude, longitude, matchedAddress: result?.formatted_address, source: "google-maps" };
   } catch {
     return null;
   } finally {

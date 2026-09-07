@@ -24,9 +24,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "booking_time_expired" }, { status: 409 });
   }
   if (access.booking.stripePaymentIntentId) return NextResponse.json({ error: "booking_already_paid" }, { status: 409 });
-  if (!access.business.stripeConnectAccountId || !access.business.stripePayoutsEnabled) {
-    return NextResponse.json({ error: "provider_payout_not_ready" }, { status: 409 });
-  }
 
   const db = getDb();
   const stripe = getStripe();
@@ -71,7 +68,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       quantity: 1,
       price_data: {
         currency: access.booking.currency,
-        unit_amount: access.booking.subtotalCents,
+        unit_amount: access.booking.marketplaceFeeCents,
         product_data: {
           name: service.name,
           description: `${access.business.name} · ${access.business.city}, ${access.business.state}`
@@ -79,7 +76,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }],
     payment_intent_data: {
-      transfer_group: `verotask_booking_${id}`,
       metadata: {
         verotask_booking_id: id,
         verotask_business_id: access.business.id,

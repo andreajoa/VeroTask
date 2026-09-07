@@ -65,7 +65,7 @@ export function BookingMessages({ bookingId, closed = false }: { bookingId: stri
             <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${message.mine ? "bg-[var(--brand)] text-white" : "border border-[var(--line)] bg-white"}`}>
               <div className={`mb-1 text-[10px] font-black uppercase tracking-wide ${message.mine ? "text-white/70" : "text-[var(--muted)]"}`}>{message.mine ? "You" : message.senderRole}</div>
               <div className="whitespace-pre-wrap break-words">{message.body}</div>
-              <div className={`mt-1 text-[10px] ${message.mine ? "text-white/70" : "text-[var(--muted)]"}`}>{new Date(message.createdAt).toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "short", timeStyle: "short" })}</div>
+              <div className={`mt-1 text-[10px] ${message.mine ? "text-white/70" : "text-[var(--muted)]"}`}>{new Date(message.createdAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}</div>
             </div>
           </div>
         ))}

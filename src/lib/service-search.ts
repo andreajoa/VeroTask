@@ -35,7 +35,7 @@ export function classifyServiceRequest(value: string) {
 }
 export function parseSearchLocation(value: string) {
   const query = value.trim().replace(/\s+/g, " ").slice(0, 120);
-  if (/^\d{5}(?:-\d{4})?$/.test(query)) return { postalCode: query.slice(0, 5), city: "", state: "" };
-  const match = query.match(/^(.*?)(?:,?\s+(FL|Florida))$/i);
-  return { postalCode: "", city: (match ? match[1] : query).replace(/,$/, "").trim(), state: match ? "FL" : "" };
+  if (/^\d{5}(?:-?\d{3})?$/.test(query.replace("-", ""))) return { postalCode: query.replace(/\s/g, ""), city: "", state: "" };
+  const match = query.match(/^(.*?)(?:,?\s+([A-Z]{2}))$/i);
+  return { postalCode: "", city: (match ? match[1] : query).replace(/,$/, "").trim(), state: match ? match[2].toUpperCase() : "" };
 }

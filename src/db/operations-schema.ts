@@ -7,7 +7,7 @@ export const providerAvailability = pgTable("provider_availability", {
   dayOfWeek: integer("day_of_week").notNull(),
   startTime: time("start_time").notNull(),
   endTime: time("end_time").notNull(),
-  timezone: varchar("timezone", { length: 80 }).notNull().default("America/New_York"),
+  timezone: varchar("timezone", { length: 80 }).notNull().default("America/Sao_Paulo"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (t) => [index("provider_availability_business_day_idx").on(t.businessId, t.dayOfWeek)]);

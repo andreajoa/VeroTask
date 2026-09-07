@@ -10,7 +10,7 @@ import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
 import { sendProviderNewRequestNotification } from "@/lib/booking-notifications";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
-import { geocodeUsAddress } from "@/lib/geocoding";
+import { geocodeAddress } from "@/lib/geocoding";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
 
 const schema = z.object({
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
   }
 
   const amounts = calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey);
-  const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
+  const geocoded = await geocodeAddress(parsed.data.serviceAddress);
 
   const [booking] = await db.insert(bookings).values({
     customerId: user.id,

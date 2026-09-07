@@ -32,7 +32,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         <div className="max-w-3xl">
           <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><CalendarClock size={15} /> Weekly availability</div>
           <h1 className="mt-4 text-3xl font-black tracking-tight">Working hours for {business.name}</h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Set the hours when you normally accept VeroTask jobs. Times use Orlando / Eastern Time. Accepted jobs automatically block overlapping requests.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Defina os horários em que você aceita agendamentos VeroTask. Horário de Brasília. Agendamentos aceitos bloqueiam automaticamente solicitações sobrepostas.</p>
         </div>
 
         {query.notice && <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">Availability saved.</div>}

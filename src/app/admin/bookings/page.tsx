@@ -10,7 +10,7 @@ import { isAdminSession } from "@/lib/admin-auth";
 export const dynamic = "force-dynamic";
 
 function money(cents?: number | null) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents ?? 0) / 100);
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format((cents ?? 0) / 100);
 }
 
 function Timestamp({ value }: { value?: Date | null }) {

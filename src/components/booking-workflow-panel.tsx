@@ -155,12 +155,12 @@ const COPY = {
 } as const;
 
 function money(cents: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
 
 function localDate(value: string, locale: Props["locale"]) {
   const language = locale === "pt-br" ? "pt-BR" : locale === "es" ? "es" : "en-US";
-  return new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" }).format(new Date(value));
+  return new Intl.DateTimeFormat(language, { dateStyle: "medium", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(value));
 }
 
 export function BookingWorkflowPanel(props: Props) {

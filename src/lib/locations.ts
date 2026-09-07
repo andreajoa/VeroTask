@@ -1,13 +1,13 @@
 export const LAUNCH_LOCATIONS = [
-  { slug: "orlando-fl", city: "Orlando", state: "FL", label: "Orlando, FL" },
-  { slug: "kissimmee-fl", city: "Kissimmee", state: "FL", label: "Kissimmee, FL" },
-  { slug: "davenport-fl", city: "Davenport", state: "FL", label: "Davenport, FL" },
-  { slug: "celebration-fl", city: "Celebration", state: "FL", label: "Celebration, FL" },
-  { slug: "clermont-fl", city: "Clermont", state: "FL", label: "Clermont, FL" },
-  { slug: "winter-garden-fl", city: "Winter Garden", state: "FL", label: "Winter Garden, FL" },
-  { slug: "lake-buena-vista-fl", city: "Lake Buena Vista", state: "FL", label: "Lake Buena Vista, FL" },
-  { slug: "windermere-fl", city: "Windermere", state: "FL", label: "Windermere, FL" },
-  { slug: "st-cloud-fl", city: "St. Cloud", state: "FL", label: "St. Cloud, FL" }
+  { slug: "sao-paulo-sp", city: "São Paulo", state: "SP", label: "São Paulo, SP" },
+  { slug: "guarulhos-sp", city: "Guarulhos", state: "SP", label: "Guarulhos, SP" },
+  { slug: "osasco-sp", city: "Osasco", state: "SP", label: "Osasco, SP" },
+  { slug: "santo-andre-sp", city: "Santo André", state: "SP", label: "Santo André, SP" },
+  { slug: "sao-bernardo-do-campo-sp", city: "São Bernardo do Campo", state: "SP", label: "São Bernardo do Campo, SP" },
+  { slug: "diadema-sp", city: "Diadema", state: "SP", label: "Diadema, SP" },
+  { slug: "campinas-sp", city: "Campinas", state: "SP", label: "Campinas, SP" },
+  { slug: "jundiai-sp", city: "Jundiaí", state: "SP", label: "Jundiaí, SP" },
+  { slug: "sorocaba-sp", city: "Sorocaba", state: "SP", label: "Sorocaba, SP" }
 ] as const;
 
 export type LaunchLocation = typeof LAUNCH_LOCATIONS[number];

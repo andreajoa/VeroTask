@@ -335,7 +335,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.locationBody}</p>
                   <label className="mt-7 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 px-4 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand-soft)]">
                     <MapPin size={20} className="text-slate-500" />
-                    <input aria-label={c.locationTitle} maxLength={120} value={state.location} onChange={(event) => setState((current) => ({ ...current, location: event.target.value }))} className="w-full bg-transparent outline-none" placeholder="Orlando, FL or 32801" />
+                    <input aria-label={c.locationTitle} maxLength={120} value={state.location} onChange={(event) => setState((current) => ({ ...current, location: event.target.value }))} className="w-full bg-transparent outline-none" placeholder="São Paulo, SP ou 01310-100" />
                   </label>
                   <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600"><strong className="text-slate-900">Why we ask:</strong> provider availability, travel range and licensing can vary by location.</div>
                 </div>

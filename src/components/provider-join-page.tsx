@@ -67,12 +67,12 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="phone">Phone</label><input id="phone" name="phone" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="(407) 555-0123" /></div>
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="postalCode">ZIP code</label><input id="postalCode" name="postalCode" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="32801" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="phone">Phone</label><input id="phone" name="phone" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="(11) 99999-0000" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="postalCode">ZIP code</label><input id="postalCode" name="postalCode" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="01310-100" /></div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="city">Primary city</label><input id="city" name="city" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Orlando" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="city">Primary city</label><input id="city" name="city" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="São Paulo" /></div>
                   <div><label className="text-sm font-black text-slate-800" htmlFor="categorySlug">Primary service</label><select id="categorySlug" name="categorySlug" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" defaultValue=""><option value="" disabled>Select a service</option>{categoryRows.map((category) => <option value={category.slug} key={category.slug}>{category.name}</option>)}</select></div>
                 </div>
 

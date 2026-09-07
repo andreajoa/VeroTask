@@ -64,12 +64,7 @@ export default async function Page() {
                       <div><div className="font-black">{business.name}</div><div className="mt-1 text-xs uppercase tracking-wide text-[var(--muted)]">{business.plan} plan · {business.status}</div></div>
                       <Link className="text-sm font-black text-[var(--brand)]" href={`/providers/${business.slug}`}>View profile</Link>
                     </div>
-                    <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-                      <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Stripe charges:</span> {business.stripeChargesEnabled ? "Enabled" : "Pending"}</div>
-                      <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Payouts:</span> {business.stripePayoutsEnabled ? "Enabled" : "Pending"}</div>
-                    </div>
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/onboarding`}>Stripe verification</Link>
                       <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/customers`}><UsersRound size={16} /> Customer memory</Link>
                       <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/availability`}><CalendarClock size={16} /> Availability</Link>
                       <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/services`}>Services</Link>

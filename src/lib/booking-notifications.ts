@@ -34,7 +34,7 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
   const [owner] = await ctx.db.select().from(users).where(eq(users.id, ctx.business.ownerUserId)).limit(1);
   if (!owner) return false;
   const reputation = await getCustomerReputationSummary(ctx.booking.customerId);
-  const when = ctx.booking.scheduledStart.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  const when = ctx.booking.scheduledStart.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "medium", timeStyle: "short" });
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   return sendTransactionalEmail({
     to: owner.email,

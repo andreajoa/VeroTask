@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     default: "VeroTask | Trusted Local Services",
     template: "%s | VeroTask"
   },
-  description: "Find trusted local professionals in Orlando and Central Florida with protected payments, verified service evidence, transparent disputes and customer reviews.",
+  description: "Encontre profissionais locais confiáveis com pagamento protegido, evidência de serviço verificada, disputas transparentes e avaliações de clientes.",
   applicationName: "VeroTask",
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION || undefined,

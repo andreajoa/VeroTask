@@ -17,7 +17,7 @@ export function SiteFooter({ locale = "en" }: { locale?: PublicLocale }) {
         <div><h3 className="text-sm font-black">Company</h3><div className="mt-4 space-y-2 text-sm text-[var(--muted)]"><Link className="block hover:text-[var(--brand)]" href="/support">Support</Link><Link className="block hover:text-[var(--brand)]" href="/accessibility">Accessibility</Link><Link className="block hover:text-[var(--brand)]" href={localePath(locale, "/privacy")}>Privacy</Link><Link className="block hover:text-[var(--brand)]" href={localePath(locale, "/terms")}>Terms</Link></div></div>
         <div><h3 className="text-sm font-black">Privacy & safety</h3><div className="mt-4 space-y-2 text-sm text-[var(--muted)]"><CookiePreferencesButton /><Link className="block hover:text-[var(--brand)]" href={localePath(locale, "/privacy")}>Data practices</Link><Link className="block hover:text-[var(--brand)]" href={localePath(locale, "/protection")}>Disputes & refunds</Link><a className="block hover:text-[var(--brand)]" href="mailto:support@verotask.com">support@verotask.com</a></div></div>
       </div>
-      <div className="container-shell mt-10 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)]"><div className="flex flex-wrap items-center justify-between gap-3"><span>© {new Date().getFullYear()} VeroTask. All rights reserved.</span><span>Orlando & Central Florida · United States</span></div></div>
+      <div className="container-shell mt-10 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)]"><div className="flex flex-wrap items-center justify-between gap-3"><span>© {new Date().getFullYear()} VeroTask. All rights reserved.</span><span>São Paulo · Brazil</span></div></div>
     </footer>
   );
 }

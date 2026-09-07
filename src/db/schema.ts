@@ -96,7 +96,7 @@ export const businesses = pgTable("businesses", {
   addressLine1: varchar("address_line_1", { length: 220 }),
   addressLine2: varchar("address_line_2", { length: 220 }),
   city: varchar("city", { length: 120 }).notNull(),
-  state: varchar("state", { length: 40 }).notNull().default("FL"),
+  state: varchar("state", { length: 40 }).notNull().default(""),
   postalCode: varchar("postal_code", { length: 16 }),
   country: varchar("country", { length: 2 }).notNull().default("BR"),
   latitude: doublePrecision("latitude"),

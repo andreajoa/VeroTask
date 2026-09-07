@@ -4,7 +4,7 @@ import { fromZonedTime } from "date-fns-tz";
 import { bookingEvidence } from "@/db/schema";
 import { DEFAULT_GEOFENCE_METERS, proofOfServiceScore, type EvidenceSignal } from "@/lib/trust";
 
-export const SERVICE_TIMEZONE = "America/New_York";
+export const SERVICE_TIMEZONE = "America/Sao_Paulo";
 
 export function parseServiceLocalDateTime(value: string) {
   const parsed = fromZonedTime(value, SERVICE_TIMEZONE);

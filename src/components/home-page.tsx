@@ -5,7 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { localePath, publicCopy, type PublicLocale } from "@/lib/site-copy";
 
-const cityLinks = ["Orlando", "Kissimmee", "Davenport", "Winter Garden", "Clermont", "St. Cloud"];
+const cityLinks = ["São Paulo", "Guarulhos", "Osasco", "Santo André", "São Bernardo do Campo", "Diadema"];
 
 export function HomePage({ locale }: { locale: PublicLocale }) {
   const c = publicCopy[locale];
@@ -88,9 +88,9 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
 
       <section className="border-y border-slate-200 bg-[var(--background)] py-12">
         <div className="container-shell">
-          <div className="mb-5 flex items-center justify-center gap-2 text-sm font-black text-slate-500"><Star size={15} className="text-[var(--accent)]" fill="currentColor" /> Find help across Central Florida</div>
+          <div className="mb-5 flex items-center justify-center gap-2 text-sm font-black text-slate-500"><Star size={15} className="text-[var(--accent)]" fill="currentColor" /> Find help across São Paulo</div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-bold text-slate-700">
-            {cityLinks.map((city) => <Link href={`${localePath(locale, "/services")}?location=${encodeURIComponent(`${city}, FL`)}`} key={city} className="hover:text-[var(--brand)]">{city}, FL</Link>)}
+            {cityLinks.map((city) => <Link href={`${localePath(locale, "/services")}?location=${encodeURIComponent(`${city}, SP`)}`} key={city} className="hover:text-[var(--brand)]">{city}, SP</Link>)}
           </div>
         </div>
       </section>

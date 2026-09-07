@@ -8,7 +8,7 @@ export function GET() {
 
 > Trusted local services. Verified work.
 
-VeroTask is a local-services marketplace focused initially on Orlando and Central Florida. Customers can discover public business listings and, for providers that have claimed and verified their profiles, book and pay for eligible services through VeroTask.
+VeroTask is a local-services marketplace focused initially on São Paulo, Brazil. Customers can discover public business listings and, for providers that have claimed and verified their profiles, book and pay for eligible services through VeroTask.
 
 ## Core trust model
 - Stripe-based marketplace payments.

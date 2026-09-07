@@ -5,7 +5,7 @@ export const SUPPORTED_LOCALES: PublicLocale[] = ["en", "pt-br", "es"];
 export const publicCopy = {
   en: {
     nav: { find: "Find services", how: "How it works", pricing: "For providers", protection: "Protection", signIn: "Sign in" },
-    heroEyebrow: "Orlando & Central Florida",
+    heroEyebrow: "São Paulo",
     heroTitle: "Trusted local services. Verified work.",
     heroBody: "Find, book and pay local professionals with clear service rules, protected payments and evidence-based resolution when something goes wrong.",
     searchPlaceholder: "What service do you need?",
@@ -21,7 +21,7 @@ export const publicCopy = {
       ["Transparent refunds", "Full and partial refunds are recorded against the booking with a clear reason and audit history."]
     ],
     providerTitle: "Grow your local service business",
-    providerBody: "Create or claim your business profile, receive bookings, get paid through Stripe Connect and build a verified service history.",
+    providerBody: "Create or claim your business profile, receive bookings, grow your client base and build a verified service history.",
     howTitle: "How VeroTask works",
     howSteps: [
       ["1. Find", "Search by service and location, then compare qualified local providers."],
@@ -38,11 +38,11 @@ export const publicCopy = {
   },
   "pt-br": {
     nav: { find: "Encontrar serviços", how: "Como funciona", pricing: "Para profissionais", protection: "Proteção", signIn: "Entrar" },
-    heroEyebrow: "Orlando e Flórida Central",
+    heroEyebrow: "São Paulo",
     heroTitle: "Serviços locais confiáveis. Trabalho comprovado.",
     heroBody: "Encontre, contrate e pague profissionais locais com regras claras, pagamento protegido e resolução baseada em evidências quando houver algum problema.",
     searchPlaceholder: "Qual serviço você precisa?",
-    locationPlaceholder: "CEP americano ou cidade",
+    locationPlaceholder: "CEP ou cidade",
     searchButton: "Encontrar profissionais",
     popular: "Serviços populares",
     trustTitle: "Proteção para os dois lados",
@@ -54,7 +54,7 @@ export const publicCopy = {
       ["Reembolsos transparentes", "Reembolsos totais ou parciais ficam registrados na reserva, com motivo e histórico de auditoria."]
     ],
     providerTitle: "Faça seu negócio local crescer",
-    providerBody: "Crie ou reivindique o perfil da sua empresa, receba reservas, seja pago pelo Stripe Connect e construa um histórico de serviços verificado.",
+    providerBody: "Crie ou reivindique o perfil da sua empresa, receba agendamentos, amplie sua base de clientes e construa um histórico de serviços verificado.",
     howTitle: "Como a VeroTask funciona",
     howSteps: [
       ["1. Encontre", "Pesquise por serviço e localização e compare profissionais locais qualificados."],
@@ -71,7 +71,7 @@ export const publicCopy = {
   },
   es: {
     nav: { find: "Buscar servicios", how: "Cómo funciona", pricing: "Para proveedores", protection: "Protección", signIn: "Ingresar" },
-    heroEyebrow: "Orlando y Florida Central",
+    heroEyebrow: "São Paulo",
     heroTitle: "Servicios locales confiables. Trabajo verificado.",
     heroBody: "Encuentra, contrata y paga profesionales locales con reglas claras, pagos protegidos y resolución basada en evidencia cuando algo sale mal.",
     searchPlaceholder: "¿Qué servicio necesitas?",
@@ -87,7 +87,7 @@ export const publicCopy = {
       ["Reembolsos transparentes", "Los reembolsos totales o parciales quedan registrados con su motivo e historial de auditoría."]
     ],
     providerTitle: "Haz crecer tu negocio local",
-    providerBody: "Crea o reclama el perfil de tu empresa, recibe reservas, cobra a través de Stripe Connect y construye un historial de servicios verificado.",
+    providerBody: "Crea o reclama el perfil de tu empresa, recibe reservas, amplía tu base de clientes y construye un historial de servicios verificado.",
     howTitle: "Cómo funciona VeroTask",
     howSteps: [
       ["1. Encuentra", "Busca por servicio y ubicación y compara proveedores locales calificados."],

@@ -92,7 +92,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
               <div className="flex items-center gap-2 text-sm font-black text-slate-950"><BriefcaseBusiness size={17} className="text-[var(--brand)]" /> Your job brief</div>
               <dl className="mt-5 space-y-4 text-sm">
                 <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Task</dt><dd className="mt-1 font-black text-slate-900">{q || "Any local service"}</dd></div>
-                <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Location</dt><dd className="mt-1 font-black text-slate-900">{location || "Central Florida"}</dd></div>
+                <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Location</dt><dd className="mt-1 font-black text-slate-900">{location || "Brasil"}</dd></div>
                 {searchParams.size && <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Scope</dt><dd className="mt-1 font-black text-slate-900">{humanize(searchParams.size)}</dd></div>}
                 {searchParams.timeline && <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Timeline</dt><dd className="mt-1 font-black text-slate-900">{humanize(searchParams.timeline)}{searchParams.date ? ` · ${searchParams.date}` : ""}</dd></div>}
                 {searchParams.details && <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Details</dt><dd className="mt-1 line-clamp-5 leading-5 text-slate-600">{searchParams.details}</dd></div>}
@@ -111,7 +111,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
             </div>
 
             {rows.length === 0 ? (
-              <div className="rounded-[20px] border border-slate-200 bg-white p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">No exact match yet</h2><p className="mx-auto mt-2 max-w-lg text-slate-600">Try a broader service name or a nearby Central Florida city. New providers can also join VeroTask for these task categories.</p><Link href={localePath(locale, "/providers/join")} className="btn-secondary mt-6">Offer this service</Link></div>
+              <div className="rounded-[20px] border border-slate-200 bg-white p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">No exact match yet</h2><p className="mx-auto mt-2 max-w-lg text-slate-600">Tente um nome de serviço mais amplo ou uma cidade próxima. New providers can also join VeroTask for these task categories.</p><Link href={localePath(locale, "/providers/join")} className="btn-secondary mt-6">Offer this service</Link></div>
             ) : (
               <div className="space-y-4">
                 {rows.map((business) => (
