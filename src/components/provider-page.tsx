@@ -22,7 +22,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
   ]);
 
   const verified = business.status === "active" && Boolean(business.ownerUserId);
-  const bookable = verified && business.stripePayoutsEnabled && Boolean(business.stripeConnectAccountId);
+  const bookable = verified;
   const activeServices = serviceRows.filter((service) => service.active && service.pricingType === "fixed" && (service.basePriceCents ?? 0) > 0);
   const displayRating = business.reviewCount === 0 ? 5 : Number(business.averageRating);
 
@@ -53,16 +53,16 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
           <aside className="card h-fit p-6">
             {bookable ? (
               <>
-                <div className="flex items-center gap-2 font-black text-[var(--brand)]"><ShieldCheck size={20} /> VeroTask booking enabled</div>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Pay through VeroTask and use the platform&apos;s service evidence, 24-hour protection window and dispute workflow.</p>
+                <div className="flex items-center gap-2 font-black text-[var(--brand)]"><ShieldCheck size={20} /> Agendamento VeroTask disponível</div>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Agende pelo VeroTask e pague uma pequena taxa de agendamento. O valor do serviço é combinado e pago diretamente ao profissional.</p>
                 {activeServices.length > 0 ? <a href="#bookable-services" className="btn-primary mt-6 w-full">Choose a service</a> : <div className="mt-5 rounded-xl bg-[var(--background)] p-4 text-sm text-[var(--muted)]">This verified provider has not published a fixed-price service yet.</div>}
               </>
             ) : (
               <>
-                <div className="flex items-center gap-2 font-black text-slate-950"><ShieldAlert size={20} /> Booking not enabled yet</div>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">This business was added from public commercial information and has not yet completed VeroTask verification and payout onboarding. VeroTask does not accept payment for this listing.</p>
-                {business.publicPhone && <a href={`tel:${business.publicPhone}`} className="btn-secondary mt-6 w-full">Call business</a>}
-                {!business.ownerUserId && <Link href={localePath(locale, `/providers/${business.slug}/claim`)} className="mt-4 block text-center text-sm font-black text-[var(--brand)] underline-offset-4 hover:underline">Is this your business? Claim this profile</Link>}
+                <div className="flex items-center gap-2 font-black text-slate-950"><ShieldAlert size={20} /> Agendamento indisponível</div>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Este profissional foi adicionado a partir de informações públicas e ainda não completou a verificação VeroTask.</p>
+                {business.publicPhone && <a href={`tel:${business.publicPhone}`} className="btn-secondary mt-6 w-full">Ligar para o profissional</a>}
+                {!business.ownerUserId && <Link href={localePath(locale, `/providers/${business.slug}/claim`)} className="mt-4 block text-center text-sm font-black text-[var(--brand)] underline-offset-4 hover:underline">Este é o seu negócio? Reivindique este perfil</Link>}
               </>
             )}
           </aside>
@@ -71,13 +71,13 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
 
       {bookable && activeServices.length > 0 && (
         <section id="bookable-services" className="container-shell py-10">
-          <div className="mb-6"><h2 className="text-2xl font-black tracking-tight text-slate-950">Bookable services</h2><p className="mt-2 text-sm text-[var(--muted)]">The displayed price is the customer&apos;s service price. VeroTask does not add a surprise marketplace fee at checkout.</p></div>
+          <div className="mb-6"><h2 className="text-2xl font-black tracking-tight text-slate-950">Serviços disponíveis</h2><p className="mt-2 text-sm text-[var(--muted)]">O preço exibido é o valor do serviço que você paga diretamente ao profissional. Uma taxa de agendamento VeroTask é cobrada separadamente.</p></div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeServices.map((service) => (
               <article className="card flex flex-col p-6" key={service.id}>
                 <h3 className="text-lg font-black text-slate-950">{service.name}</h3>
                 <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{service.description ?? "Fixed-price local service."}</p>
-                <div className="mt-5 flex items-end justify-between gap-3"><div><div className="text-2xl font-black text-slate-950">${((service.basePriceCents ?? 0) / 100).toFixed(2)}</div><div className="text-xs text-[var(--muted)]">Approx. {service.durationMinutes ?? 60} min</div></div><Link href={localePath(locale, `/book/${business.slug}?service=${service.id}`)} className="btn-primary">Book</Link></div>
+                <div className="mt-5 flex items-end justify-between gap-3"><div><div className="text-2xl font-black text-slate-950">R$ {((service.basePriceCents ?? 0) / 100).toFixed(2).replace(".", ",")}</div><div className="text-xs text-[var(--muted)]">Aprox. {service.durationMinutes ?? 60} min</div></div><Link href={localePath(locale, `/book/${business.slug}?service=${service.id}`)} className="btn-primary">Agendar</Link></div>
               </article>
             ))}
           </div>
@@ -86,8 +86,8 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
 
       <section className="container-shell py-10">
         <div className="grid gap-5 md:grid-cols-2">
-          <article className="card p-6"><h2 className="font-black text-slate-950">Payment status</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">{bookable ? "This provider has completed marketplace payout onboarding and can receive protected VeroTask bookings." : "VeroTask payment protection does not apply to calls or transactions completed outside VeroTask."}</p></article>
-          <article className="card p-6"><h2 className="font-black text-slate-950">Listing transparency</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">Public business information can be shown before a business joins VeroTask. The verified badge only appears after the owner claims the listing and completes the required verification steps.</p></article>
+          <article className="card p-6"><h2 className="font-black text-slate-950">Como funciona</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">{bookable ? "Agende pelo VeroTask, pague a taxa de agendamento e combine o pagamento do serviço diretamente com o profissional no local." : "A proteção VeroTask não se aplica a contatos ou transações realizadas fora da plataforma."}</p></article>
+          <article className="card p-6"><h2 className="font-black text-slate-950">Transparência</h2><p className="mt-3 text-sm leading-6 text-[var(--muted)]">Informações públicas podem ser exibidas antes do profissional se cadastrar no VeroTask. O selo de verificado só aparece após o profissional reivindicar o perfil e completar a verificação.</p></article>
         </div>
       </section>
       <SiteFooter locale={locale} />

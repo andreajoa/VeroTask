@@ -16,14 +16,13 @@ export const PROVIDER_PLANS: Record<PlanKey, ProviderPlanDefinition> = {
     name: "Free",
     monthlyPriceCents: 0,
     commissionBps: 1500,
-    description: "Start receiving VeroTask bookings with no monthly fee.",
+    description: "Comece a receber agendamentos VeroTask sem mensalidade.",
     benefits: [
-      "Public provider profile",
-      "Eligible for local service search",
-      "Protected Stripe payments",
-      "Booking and dispute center",
-      "Verified customer reviews",
-      "15% marketplace fee on completed bookings"
+      "Perfil público do profissional",
+      "Visível na busca de serviços locais",
+      "Central de agendamentos e disputas",
+      "Avaliações verificadas de clientes",
+      "Taxa de agendamento de 15% cobrada do cliente"
     ]
   },
   pro: {
@@ -31,16 +30,16 @@ export const PROVIDER_PLANS: Record<PlanKey, ProviderPlanDefinition> = {
     name: "Pro",
     monthlyPriceCents: 3900,
     commissionBps: 1000,
-    description: "For active local professionals who want more visibility and lower fees.",
+    description: "Para profissionais ativos que querem mais visibilidade e taxas menores para seus clientes.",
     benefits: [
-      "Everything in Free",
-      "10% marketplace fee on completed bookings",
-      "Priority placement over comparable Free providers",
-      "Expanded service-area controls",
-      "Business performance dashboard",
-      "Lead and conversion insights",
-      "Faster support queue",
-      "Pro profile badge"
+      "Tudo do plano Free",
+      "Taxa de agendamento reduzida para 10%",
+      "Prioridade no ranking sobre profissionais Free",
+      "Controles avançados de área de atendimento",
+      "Painel de desempenho do negócio",
+      "Insights de leads e conversão",
+      "Fila de suporte prioritário",
+      "Selo Pro no perfil"
     ],
     highlighted: true
   },
@@ -49,16 +48,16 @@ export const PROVIDER_PLANS: Record<PlanKey, ProviderPlanDefinition> = {
     name: "Elite",
     monthlyPriceCents: 9900,
     commissionBps: 700,
-    description: "For high-volume providers and teams operating across Central Florida.",
+    description: "Para profissionais de alto volume e equipes que atendem múltiplas regiões.",
     benefits: [
-      "Everything in Pro",
-      "7% marketplace fee on completed bookings",
-      "Highest organic placement among equally qualified providers",
-      "Multiple team members",
-      "Multiple service areas",
-      "Advanced analytics and reliability metrics",
-      "Priority dispute support",
-      "Elite profile badge"
+      "Tudo do plano Pro",
+      "Taxa de agendamento reduzida para 7%",
+      "Maior destaque orgânico entre profissionais igualmente qualificados",
+      "Múltiplos membros da equipe",
+      "Múltiplas áreas de atendimento",
+      "Análises avançadas e métricas de confiabilidade",
+      "Suporte prioritário em disputas",
+      "Selo Elite no perfil"
     ]
   }
 };

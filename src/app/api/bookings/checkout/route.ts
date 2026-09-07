@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   const db = getDb();
   const [business] = await db.select().from(businesses).where(eq(businesses.id, parsed.data.businessId)).limit(1);
-  if (!business || business.status !== "active" || !business.ownerUserId || !business.stripePayoutsEnabled || !business.stripeConnectAccountId) {
+  if (!business || business.status !== "active" || !business.ownerUserId) {
     return NextResponse.json({ error: "provider_not_bookable" }, { status: 409 });
   }
   if (business.ownerUserId === user.id) return NextResponse.json({ error: "cannot_book_own_business" }, { status: 409 });
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     subtotalCents: amounts.totalCents,
     marketplaceFeeCents: amounts.marketplaceFeeCents,
     providerAmountCents: amounts.providerAmountCents,
-    currency: "usd",
+    currency: "brl",
     commissionBpsSnapshot: amounts.commissionBps
   }).returning();
 

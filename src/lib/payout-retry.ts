@@ -13,8 +13,7 @@ export async function retryEligibleProviderTransfers(limit = 50) {
   const results: Array<{ bookingId: string; ok: boolean }> = [];
   for (const row of rows) {
     try {
-      const transfer = await releaseProviderTransfer(row.bookingId, row.amountCents);
-      if (transfer.status !== "paid") throw new Error("transfer_not_completed");
+      await releaseProviderTransfer(row.bookingId, row.amountCents);
       results.push({ bookingId: row.bookingId, ok: true });
     } catch {
       results.push({ bookingId: row.bookingId, ok: false });
