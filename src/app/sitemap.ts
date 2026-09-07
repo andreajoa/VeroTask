@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
+import { publicProviderSlug } from "@/lib/public-provider";
 
 function resolveBaseUrl() {
   const fallback = "https://verotask.com";
@@ -43,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const db = getDb();
     const [providerRows, combinationRows] = await Promise.all([
-      db.select({ slug: businesses.slug, updatedAt: businesses.updatedAt }).from(businesses).where(eq(businesses.active, true)),
+      db.select({ id: businesses.id, updatedAt: businesses.updatedAt }).from(businesses).where(eq(businesses.active, true)),
       db.select({ categorySlug: categories.slug, city: businesses.city, state: businesses.state })
         .from(businessCategories)
         .innerJoin(categories, eq(categories.id, businessCategories.categoryId))
@@ -53,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     for (const provider of providerRows) {
       for (const prefix of ["", "/pt-br", "/es"]) {
-        entries.push({ url: `${base}${prefix}/providers/${provider.slug}`, lastModified: provider.updatedAt, changeFrequency: "weekly", priority: prefix ? 0.55 : 0.7 });
+        entries.push({ url: `${base}${prefix}/providers/${publicProviderSlug(provider.id)}`, lastModified: provider.updatedAt, changeFrequency: "weekly", priority: prefix ? 0.55 : 0.7 });
       }
     }
 

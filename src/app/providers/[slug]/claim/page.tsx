@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
 import { BadgeCheck, Globe2, MailCheck, ShieldCheck } from "lucide-react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { businessClaims, businesses } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { publicProviderId, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
 import { startBusinessClaim, verifyWebsiteClaim } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { slug } = await params;
   const query = await searchParams;
   const db = getDb();
-  const [business] = await db.select().from(businesses).where(eq(businesses.slug, slug)).limit(1);
+  const publicId = publicProviderId(slug);
+  const [business] = await db.select().from(businesses).where(publicId ? eq(businesses.id, publicId) : eq(businesses.slug, slug)).limit(1);
   if (!business) notFound();
+  if (slug !== publicProviderSlug(business.id)) redirect(`/providers/${publicProviderSlug(business.id)}/claim?${new URLSearchParams(Object.entries(query).filter((entry): entry is [string, string] => typeof entry[1] === "string"))}`);
 
   const user = await getCurrentUser();
   let claim = null;
@@ -31,7 +34,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       <section className="container-shell max-w-3xl py-12">
         <div className="card p-7 sm:p-9">
           <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]">BUSINESS OWNERSHIP</div>
-          <h1 className="mt-5 text-3xl font-black tracking-tight">Claim {business.name}</h1>
+          <h1 className="mt-5 text-3xl font-black tracking-tight">Claim {publicProviderName(business.id)}</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Claiming a public listing gives you control of the profile, but VeroTask bookings remain disabled until business ownership is verified and Stripe Connect onboarding is complete.</p>
 
           {!user ? (
@@ -52,7 +55,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           ) : claim.verificationMethod === "public_email" ? (
             <div className="mt-7 rounded-2xl bg-[var(--background)] p-6">
               <div className="flex items-center gap-2 font-black"><MailCheck size={20} className="text-[var(--brand)]" /> Verify through the public business email</div>
-              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">A verification link was sent to the business email shown in public commercial information{metadata.sentTo ? ` (${metadata.sentTo})` : ""}. Whoever controls that inbox must approve the claim.</p>
+              <p className="mt-3 text-sm leading-6 text-[var(--muted)]">A verification link was sent to the business email on record. Whoever controls that inbox must approve the claim.</p>
               {query.sent === "1" && <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-semibold text-emerald-900">Verification email sent successfully.</p>}
             </div>
           ) : claim.verificationMethod === "website_meta" ? (

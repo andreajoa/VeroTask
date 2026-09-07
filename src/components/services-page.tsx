@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { and, eq, ilike, inArray, or, notInArray } from "drizzle-orm";
-import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Phone, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Search, ShieldCheck } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
+import { publicProviderDescription, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
@@ -32,9 +33,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
 
   if (q) {
     conditions.push(or(
-      ilike(businesses.name, `%${q}%`),
       ...(matchedCategories.length ? [inArray(categories.slug, matchedCategories)] : []),
-      ilike(businesses.description, `%${q}%`),
       ilike(categories.nameEn, `%${q}%`),
       ilike(categories.namePtBr, `%${q}%`),
       ilike(categories.nameEs, `%${q}%`)
@@ -50,13 +49,9 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
 
   const rows = await db.selectDistinct({
     id: businesses.id,
-    name: businesses.name,
-    slug: businesses.slug,
-    description: businesses.description,
     city: businesses.city,
     state: businesses.state,
     postalCode: businesses.postalCode,
-    publicPhone: businesses.publicPhone,
     averageRating: businesses.averageRating,
     reviewCount: businesses.reviewCount,
     completedJobs: businesses.completedJobs,
@@ -69,6 +64,15 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
     .where(and(...conditions))
     .limit(80);
 
+  const categoryRows = rows.length ? await db.select({ businessId: businessCategories.businessId, en: categories.nameEn, pt: categories.namePtBr, es: categories.nameEs })
+    .from(businessCategories).innerJoin(categories, eq(categories.id, businessCategories.categoryId))
+    .where(inArray(businessCategories.businessId, rows.map(row => row.id))) : [];
+  const categoryLabels = new Map<string, string[]>();
+  for (const row of categoryRows) {
+    const label = locale === "pt-br" ? row.pt : locale === "es" ? row.es : row.en;
+    categoryLabels.set(row.businessId, [...(categoryLabels.get(row.businessId) || []), label]);
+  }
+
   const hasBrief = Boolean(searchParams.size || searchParams.timeline || searchParams.details || searchParams.date);
 
   return (
@@ -78,7 +82,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
       <section className="border-b border-slate-200 bg-white py-6">
         <div className="container-shell">
           <form className="grid gap-2 rounded-[18px] border border-slate-200 bg-white p-2 shadow-[0_8px_30px_rgba(15,23,42,.05)] md:grid-cols-[1.4fr_1fr_auto]" action={localePath(locale, "/services")}>
-            <label className="flex min-h-13 items-center gap-3 rounded-xl px-4"><Search size={19} className="text-slate-500" /><input defaultValue={q} name="q" className="w-full bg-transparent outline-none" placeholder="Service, task or business" /></label>
+            <label className="flex min-h-13 items-center gap-3 rounded-xl px-4"><Search size={19} className="text-slate-500" /><input defaultValue={q} name="q" className="w-full bg-transparent outline-none" placeholder="Service or task" /></label>
             <label className="flex min-h-13 items-center gap-3 border-t border-slate-200 px-4 md:border-l md:border-t-0"><MapPin size={19} className="text-slate-500" /><input defaultValue={location} name="location" className="w-full bg-transparent outline-none" placeholder="City or ZIP code" /></label>
             <button type="submit" className="btn-primary">Search</button>
           </form>
@@ -117,14 +121,14 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                 {rows.map((business) => (
                   <article key={business.id} className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_8px_25px_rgba(15,23,42,.04)] transition hover:border-slate-300 hover:shadow-[0_14px_36px_rgba(15,23,42,.07)] sm:p-6">
                     <div className="grid gap-5 sm:grid-cols-[72px_1fr_auto] sm:items-start">
-                      <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]">{business.name.slice(0, 1)}</div>
+                      <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]"><BriefcaseBusiness size={28} aria-hidden="true" /></div>
                       <div>
-                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{business.name}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
+                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{publicProviderName(business.id, locale)}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500"><span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state} {business.postalCode ?? ""}</span>{Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}{business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}</div>
-                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{business.description ?? "Local service provider."}</p>
-                        {business.publicPhone && <a className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`tel:${business.publicPhone}`}><Phone size={15} /> {business.publicPhone}</a>}
+                        <div className="mt-3 flex flex-wrap gap-2">{(categoryLabels.get(business.id) || []).slice(0, 3).map(label => <span key={label} className="rounded-lg bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700">{label}</span>)}</div>
+                        <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{publicProviderDescription(business.city, business.state, locale)}</p>
                       </div>
-                      <Link href={localePath(locale, `/providers/${business.slug}`)} className="btn-secondary whitespace-nowrap sm:self-center">View profile <ArrowRight size={16} className="ml-2" /></Link>
+                      <Link href={localePath(locale, `/providers/${publicProviderSlug(business.id)}`)} className="btn-secondary whitespace-nowrap sm:self-center">View profile <ArrowRight size={16} className="ml-2" /></Link>
                     </div>
                   </article>
                 ))}

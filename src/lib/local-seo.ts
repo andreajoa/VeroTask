@@ -12,7 +12,12 @@ export async function loadLocalServicePage(categorySlug: string, locationSlug: s
   const [category] = await db.select().from(categories).where(and(eq(categories.slug, categorySlug), eq(categories.active, true))).limit(1);
   if (!category) return null;
 
-  const providers = await db.select({ business: businesses })
+  const providers = await db.select({
+    id: businesses.id, city: businesses.city, state: businesses.state,
+    country: businesses.country, postalCode: businesses.postalCode,
+    status: businesses.status, ownerUserId: businesses.ownerUserId,
+    reviewCount: businesses.reviewCount, averageRating: businesses.averageRating
+  })
     .from(businessCategories)
     .innerJoin(businesses, eq(businesses.id, businessCategories.businessId))
     .where(and(
@@ -25,5 +30,5 @@ export async function loadLocalServicePage(categorySlug: string, locationSlug: s
   if (providers.length === 0) return null;
   const name = locale === "pt-br" ? category.namePtBr : locale === "es" ? category.nameEs : category.nameEn;
   const description = locale === "pt-br" ? category.descriptionPtBr : locale === "es" ? category.descriptionEs : category.descriptionEn;
-  return { category, categoryName: name, categoryDescription: description, location, providers: providers.map((row) => row.business) };
+  return { category, categoryName: name, categoryDescription: description, location, providers };
 }

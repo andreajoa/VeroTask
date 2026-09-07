@@ -1,6 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
+import { publicProviderSlug } from "@/lib/public-provider";
 import { getDb } from "@/db";
 import { businessClaims, businesses, users } from "@/db/schema";
 
@@ -33,14 +34,14 @@ export async function GET(request: NextRequest) {
   const ageMs = Date.now() - row.claim.createdAt.getTime();
   if (ageMs > 24 * 60 * 60 * 1000) {
     await db.update(businessClaims).set({ status: "rejected", resolvedAt: new Date() }).where(eq(businessClaims.id, row.claim.id));
-    return NextResponse.redirect(new URL(`/providers/${row.business.slug}/claim?error=expired-claim`, request.url));
+    return NextResponse.redirect(new URL(`/providers/${publicProviderSlug(row.business.id)}/claim?error=expired-claim`, request.url));
   }
 
   const metadata = row.claim.verificationMetadata as { tokenHash?: string };
   const expected = metadata.tokenHash;
   const supplied = hash(rawToken);
   if (!expected || !equalHash(expected, supplied)) {
-    return NextResponse.redirect(new URL(`/providers/${row.business.slug}/claim?claim=${claimId}&error=invalid-token`, request.url));
+    return NextResponse.redirect(new URL(`/providers/${publicProviderSlug(row.business.id)}/claim?claim=${claimId}&error=invalid-token`, request.url));
   }
 
   const now = new Date();
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
   if (claimed.length === 0) {
     await db.update(businessClaims).set({ status: "rejected", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));
-    return NextResponse.redirect(new URL(`/providers/${row.business.slug}?claim=already-owned`, request.url));
+    return NextResponse.redirect(new URL(`/providers/${publicProviderSlug(row.business.id)}?claim=already-owned`, request.url));
   }
 
   await db.update(businessClaims).set({ status: "verified", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));
