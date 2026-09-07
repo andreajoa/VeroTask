@@ -30,12 +30,13 @@ export async function checkProviderAvailability(businessId: string, start: Date,
 
   const rules = await db.select().from(providerAvailability).where(and(
     eq(providerAvailability.businessId, businessId),
-    eq(providerAvailability.dayOfWeek, weekday),
     eq(providerAvailability.active, true)
   ));
 
+  if (formatInTimeZone(start, SERVICE_TIMEZONE, "yyyy-MM-dd") !== formatInTimeZone(end, SERVICE_TIMEZONE, "yyyy-MM-dd")) return { available: false, reason: "outside_provider_hours" as const };
+
   if (rules.length > 0) {
-    const insidePublishedHours = rules.some((rule) => startMinutes >= minutes(rule.startTime) && endMinutes <= minutes(rule.endTime));
+    const insidePublishedHours = rules.filter((rule) => rule.dayOfWeek === weekday).some((rule) => startMinutes >= minutes(rule.startTime) && endMinutes <= minutes(rule.endTime));
     if (!insidePublishedHours) return { available: false, reason: "outside_provider_hours" as const };
   }
 

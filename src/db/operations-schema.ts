@@ -33,3 +33,14 @@ export const bookingCheckoutSessions = pgTable("booking_checkout_sessions", {
   uniqueIndex("booking_checkout_sessions_stripe_unique").on(t.stripeSessionId),
   index("booking_checkout_sessions_status_idx").on(t.status, t.expiresAt)
 ]);
+
+export const providerCheckoutSessions = pgTable("provider_checkout_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  businessId: uuid("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  stripeSessionId: varchar("stripe_session_id", { length: 255 }).notNull(),
+  plan: varchar("plan", { length: 16 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("open"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (t) => [uniqueIndex("provider_checkout_business_unique").on(t.businessId), uniqueIndex("provider_checkout_stripe_unique").on(t.stripeSessionId)]);

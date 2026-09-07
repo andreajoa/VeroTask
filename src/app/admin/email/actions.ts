@@ -2,11 +2,11 @@
 
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
-import { Resend } from "resend";
+import { sendCrmEmail } from "@/lib/crm-email";
 import { getDb } from "@/db";
-import { crmCampaigns } from "@/db/analytics-schema";
+import { crmCampaigns, crmContacts } from "@/db/analytics-schema";
 import { isAdminSession } from "@/lib/admin-auth";
-import { EMAIL_TEMPLATES, getEmailTemplate, renderVeroTaskEmail } from "@/lib/crm-templates";
+import { EMAIL_TEMPLATES, getEmailTemplate } from "@/lib/crm-templates";
 
 async function requireAdmin() {
   if (!(await isAdminSession())) redirect("/admin/signin");
@@ -18,6 +18,7 @@ export async function scheduleCampaign(formData: FormData) {
   const template = getEmailTemplate(templateKey);
   if (!template || template.kind !== "marketing") redirect("/admin/email?error=invalid-template");
   const segment = String(formData.get("segment") || "all_marketable").slice(0, 160);
+  if (!["all_marketable", "customers", "providers", "lapsed_customers"].includes(segment) && !/^(city|country):[\p{L} .'-]{2,120}$/u.test(segment)) redirect("/admin/email?error=invalid-segment");
   const scheduledInput = String(formData.get("scheduledAt") || "");
   const scheduledAt = scheduledInput ? new Date(scheduledInput) : new Date();
   if (Number.isNaN(scheduledAt.getTime())) redirect("/admin/email?error=invalid-date");
@@ -43,18 +44,14 @@ export async function sendTestEmail(formData: FormData) {
   const to = String(formData.get("email") || "").trim().toLowerCase();
   const template = getEmailTemplate(templateKey);
   if (!template || !/^\S+@\S+\.\S+$/.test(to)) redirect("/admin/email?error=invalid-test");
-  const key = process.env.RESEND_API_KEY;
-  if (!key) redirect("/admin/email?error=resend-not-configured");
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
-  const resend = new Resend(key);
-  const { error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM ?? "VeroTask <notifications@verotask.com>",
-    to,
-    subject: `[TEST] ${template.subject}`,
-    html: renderVeroTaskEmail({ template, firstName: "Test", actionUrl: `${appUrl}${template.ctaPath}`, transactional: true }),
-    tags: [{ name: "template", value: template.key }, { name: "kind", value: "admin-test" }]
-  });
-  if (error) redirect(`/admin/email?error=${encodeURIComponent(error.message.slice(0, 80))}`);
+  let failed = false;
+  try {
+    const [contact] = await getDb().insert(crmContacts).values({ email: to, tags: ["admin-test"] })
+      .onConflictDoUpdate({ target: crmContacts.email, set: { updatedAt: new Date() } }).returning();
+    await sendCrmEmail({ contactId: contact.id, templateKey, idempotencyKey: `admin-test:${randomUUID()}`, subjectPrefix: "[TEST] ", actionUrl: `${appUrl}${template.ctaPath}`, transactional: true });
+  } catch { failed = true; }
+  if (failed) redirect("/admin/email?error=email-unavailable");
   redirect("/admin/email?notice=test-sent");
 }
 

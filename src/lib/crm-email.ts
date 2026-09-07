@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
-import { Resend } from "resend";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { deliverEmail, localEmailEnabled } from "@/lib/email-delivery";
 import { getDb } from "@/db";
 import { crmContacts, crmEmailSends } from "@/db/analytics-schema";
 import { getEmailTemplate, renderVeroTaskEmail } from "@/lib/crm-templates";
@@ -32,16 +32,6 @@ export function verifyUnsubscribeToken(token: string) {
   }
 }
 
-function resendClient() {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  return new Resend(key);
-}
-
-function fromAddress() {
-  return process.env.EMAIL_FROM ?? "VeroTask <notifications@verotask.com>";
-}
-
 export async function sendCrmEmail(input: {
   contactId: string;
   templateKey: string;
@@ -51,6 +41,7 @@ export async function sendCrmEmail(input: {
   sequenceIndex?: number | null;
   actionUrl?: string;
   transactional?: boolean;
+  subjectPrefix?: string;
 }) {
   const db = getDb();
   const template = getEmailTemplate(input.templateKey);
@@ -64,15 +55,17 @@ export async function sendCrmEmail(input: {
     if (!contact.marketingConsent || contact.unsubscribedAt || contact.suppressionReason || contact.lifecycle === "suppressed") {
       return { skipped: true, reason: "not_marketable" as const };
     }
-    if (process.env.NODE_ENV === "production" && !process.env.MARKETING_POSTAL_ADDRESS) {
+    if (process.env.NODE_ENV === "production" && !localEmailEnabled() && !process.env.MARKETING_POSTAL_ADDRESS) {
       throw new Error("MARKETING_POSTAL_ADDRESS is required for marketing email");
     }
   }
 
   const [existing] = await db.select().from(crmEmailSends).where(eq(crmEmailSends.idempotencyKey, input.idempotencyKey)).limit(1);
-  if (existing) return { skipped: true, reason: "already_processed" as const, send: existing };
+  if (existing?.status === "sending") return { skipped: true, reason: "in_progress" as const };
+  if (existing && !["failed", "development_skipped", "queued"].includes(existing.status)) return { skipped: true, reason: "already_processed" as const, send: existing };
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
+  const subject = `${input.subjectPrefix || ""}${template.subject}`;
   const token = unsubscribeToken(contact.id, contact.email);
   const unsubscribeUrl = `${appUrl}/api/crm/unsubscribe?token=${encodeURIComponent(token)}`;
   const html = renderVeroTaskEmail({
@@ -89,42 +82,31 @@ export async function sendCrmEmail(input: {
     bookingId: input.bookingId,
     templateKey: template.key,
     toEmail: contact.email,
-    subject: template.subject,
+    subject,
     status: "queued",
     sequenceIndex: input.sequenceIndex,
     idempotencyKey: input.idempotencyKey
-  }).returning();
+  }).onConflictDoUpdate({ target: crmEmailSends.idempotencyKey, set: { updatedAt: new Date() } }).returning();
 
-  const resend = resendClient();
-  if (!resend) {
-    if (process.env.NODE_ENV === "production") throw new Error("RESEND_API_KEY is not configured");
-    await db.update(crmEmailSends).set({ status: "development_skipped", updatedAt: new Date() }).where(eq(crmEmailSends.id, send.id));
-    return { skipped: true, reason: "development_no_resend" as const, send };
-  }
+  // A conditional claim prevents simultaneous cron requests from delivering twice.
+  const [claimed] = await db.update(crmEmailSends).set({ status: "sending", updatedAt: new Date() })
+    .where(and(eq(crmEmailSends.id, send.id), sql`${crmEmailSends.status} in ('queued', 'failed', 'development_skipped')`)).returning();
+  if (!claimed) return { skipped: true, reason: "in_progress" as const };
 
-  const { data, error } = await resend.emails.send({
-    from: fromAddress(),
-    to: contact.email,
-    subject: template.subject,
-    html,
-    headers: transactional ? undefined : { "List-Unsubscribe": `<${unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
-    tags: [
-      { name: "template", value: template.key.slice(0, 256) },
-      { name: "kind", value: template.kind }
-    ]
-  });
-
-  if (error) {
+  try {
+    const delivered = await deliverEmail({
+      to: contact.email, subject, html,
+      idempotencyKey: input.idempotencyKey,
+      headers: transactional ? undefined : { "List-Unsubscribe": `<${unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
+      tags: [{ name: "template", value: template.key }, { name: "kind", value: template.kind }]
+    });
+    await db.update(crmEmailSends).set({ resendEmailId: delivered.local ? null : delivered.id, status: delivered.local ? "local_delivered" : "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(crmEmailSends.id, send.id));
+    await db.update(crmContacts).set({ lastEmailAt: new Date(), updatedAt: new Date() }).where(eq(crmContacts.id, contact.id));
+    return { skipped: false, sendId: send.id, resendEmailId: delivered.id };
+  } catch (error) {
     await db.update(crmEmailSends).set({ status: "failed", updatedAt: new Date() }).where(eq(crmEmailSends.id, send.id));
-    throw new Error(error.message);
+    throw error;
   }
-
-  await Promise.all([
-    db.update(crmEmailSends).set({ resendEmailId: data?.id, status: "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(crmEmailSends.id, send.id)),
-    db.update(crmContacts).set({ lastEmailAt: new Date(), updatedAt: new Date() }).where(eq(crmContacts.id, contact.id))
-  ]);
-
-  return { skipped: false, sendId: send.id, resendEmailId: data?.id };
 }
 
 export async function marketableContacts(limit = 500) {

@@ -1,12 +1,13 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getDb } from "@/db";
-import { bookingCheckoutSessions } from "@/db/operations-schema";
+import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, disputes, providerSubscriptions, refunds } from "@/db/schema";
 import { sendBookingThankYou, sendProviderPlanThankYou } from "@/lib/crm-automation";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
+import { validateBookingPayment, canSchedulePaidBooking } from "@/lib/payment-policy";
 
 export const runtime = "nodejs";
 
@@ -22,32 +23,20 @@ async function upsertProviderSubscription(subscription: Stripe.Subscription) {
   const db = getDb();
   const active = subscription.status === "active" || subscription.status === "trialing";
   const priceId = subscription.items.data[0]?.price?.id;
-  const [existing] = await db.select().from(providerSubscriptions)
-    .where(eq(providerSubscriptions.stripeSubscriptionId, subscription.id))
-    .limit(1);
+  await db.insert(providerSubscriptions).values({
+    businessId, plan, stripeSubscriptionId: subscription.id, stripePriceId: priceId,
+    commissionBps: PROVIDER_PLANS[plan].commissionBps, active,
+    cancelAtPeriodEnd: subscription.cancel_at_period_end
+  }).onConflictDoUpdate({ target: providerSubscriptions.stripeSubscriptionId, set: {
+    plan, stripePriceId: priceId, commissionBps: PROVIDER_PLANS[plan].commissionBps,
+    active, cancelAtPeriodEnd: subscription.cancel_at_period_end, updatedAt: new Date()
+  } });
+  const [currentPlan] = await db.select().from(providerSubscriptions)
+    .where(and(eq(providerSubscriptions.businessId, businessId), eq(providerSubscriptions.active, true)))
+    .orderBy(desc(providerSubscriptions.createdAt)).limit(1);
+  await db.update(businesses).set({ plan: currentPlan?.plan ?? "free", updatedAt: new Date() }).where(eq(businesses.id, businessId));
+  if (active) await db.update(providerCheckoutSessions).set({ status: "complete", updatedAt: new Date() }).where(eq(providerCheckoutSessions.businessId, businessId));
 
-  if (existing) {
-    await db.update(providerSubscriptions).set({
-      plan,
-      stripePriceId: priceId,
-      commissionBps: PROVIDER_PLANS[plan].commissionBps,
-      active,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end,
-      updatedAt: new Date()
-    }).where(eq(providerSubscriptions.id, existing.id));
-  } else {
-    await db.insert(providerSubscriptions).values({
-      businessId,
-      plan,
-      stripeSubscriptionId: subscription.id,
-      stripePriceId: priceId,
-      commissionBps: PROVIDER_PLANS[plan].commissionBps,
-      active,
-      cancelAtPeriodEnd: subscription.cancel_at_period_end
-    });
-  }
-
-  await db.update(businesses).set({ plan: active ? plan : "free", updatedAt: new Date() }).where(eq(businesses.id, businessId));
   if (active) await safely("provider-plan-thank-you", () => sendProviderPlanThankYou(businessId, subscription.id, plan));
 }
 
@@ -62,40 +51,50 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return;
 
-  const shouldSchedule = ["accepted", "payment_authorized", "requested"].includes(booking.status);
-  await db.update(bookings).set({
+  const invalid = validateBookingPayment(booking, paymentIntent);
+  if (invalid) throw new Error(invalid);
+  const shouldSchedule = canSchedulePaidBooking(booking.status);
+  if (booking.stripePaymentIntentId === paymentIntent.id && !shouldSchedule) {
+    await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
+    return;
+  }
+  const [claimed] = await db.update(bookings).set({
     status: shouldSchedule ? "scheduled" : booking.status,
     stripePaymentIntentId: paymentIntent.id,
     stripeChargeId: chargeId ?? booking.stripeChargeId,
     updatedAt: new Date()
-  }).where(eq(bookings.id, bookingId));
+  }).where(and(eq(bookings.id, bookingId), eq(bookings.status, booking.status), isNull(bookings.stripePaymentIntentId))).returning();
+  if (!claimed) return;
   await db.update(bookingCheckoutSessions).set({ status: "complete", updatedAt: new Date() })
     .where(eq(bookingCheckoutSessions.bookingId, bookingId));
 
-  if (shouldSchedule) {
     await db.insert(bookingEvents).values({
       bookingId,
-      eventType: "payment_succeeded",
+      eventType: shouldSchedule ? "payment_succeeded" : "payment_requires_review",
       previousStatus: booking.status,
-      nextStatus: "scheduled",
+      nextStatus: claimed.status,
       metadata: { paymentIntentId: paymentIntent.id, chargeId: chargeId ?? null }
     });
-  }
-  await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
+  if (shouldSchedule) await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
 }
 
 async function markCheckoutExpired(session: Stripe.Checkout.Session) {
   const bookingId = session.metadata?.verotask_booking_id;
-  if (!bookingId) return;
   const db = getDb();
-  await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() })
-    .where(eq(bookingCheckoutSessions.stripeSessionId, session.id));
+  if (!bookingId) {
+    await db.update(providerCheckoutSessions).set({ status: "expired", updatedAt: new Date() }).where(and(eq(providerCheckoutSessions.stripeSessionId, session.id), eq(providerCheckoutSessions.status, "open")));
+    return;
+  }
+  const [expired] = await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() })
+    .where(and(eq(bookingCheckoutSessions.stripeSessionId, session.id), eq(bookingCheckoutSessions.status, "open"))).returning();
+  if (!expired) return;
 
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
   if (!booking) return;
 
   if (booking.status === "payment_authorized") {
-    await db.update(bookings).set({ status: "accepted", updatedAt: new Date() }).where(eq(bookings.id, bookingId));
+    const [changed] = await db.update(bookings).set({ status: "accepted", updatedAt: new Date() }).where(and(eq(bookings.id, bookingId), eq(bookings.status, "payment_authorized"), isNull(bookings.stripePaymentIntentId))).returning();
+    if (!changed) return;
     await db.insert(bookingEvents).values({
       bookingId,
       eventType: "checkout_expired",
@@ -169,7 +168,7 @@ export async function POST(request: NextRequest) {
     case "checkout.session.async_payment_succeeded": {
       const session = event.data.object;
       const bookingId = session.metadata?.verotask_booking_id;
-      if (bookingId && session.payment_intent) await markBookingPaid(bookingId, session.payment_intent as string | Stripe.PaymentIntent);
+      if (bookingId && session.payment_status === "paid" && session.payment_intent) await markBookingPaid(bookingId, session.payment_intent as string | Stripe.PaymentIntent);
       break;
     }
     case "checkout.session.expired":
@@ -199,16 +198,12 @@ export async function POST(request: NextRequest) {
 
     case "customer.subscription.created":
     case "customer.subscription.updated":
-      await upsertProviderSubscription(event.data.object);
+      await upsertProviderSubscription(await stripe.subscriptions.retrieve(event.data.object.id));
       break;
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object;
-      const businessId = subscription.metadata?.verotask_business_id;
-      if (!businessId) break;
-      const db = getDb();
-      await db.update(businesses).set({ plan: "free", updatedAt: new Date() }).where(eq(businesses.id, businessId));
-      await db.update(providerSubscriptions).set({ active: false, updatedAt: new Date() }).where(eq(providerSubscriptions.stripeSubscriptionId, subscription.id));
+      await upsertProviderSubscription(subscription);
       break;
     }
   }

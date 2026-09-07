@@ -1,5 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle as postgresDrizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as coreSchema from "./schema";
 import * as authSchema from "./auth-schema";
 import * as operationsSchema from "./operations-schema";
@@ -16,17 +18,20 @@ const schema = {
   ...reputationSchema
 };
 
-let cached: ReturnType<typeof drizzle<typeof schema>> | null = null;
+type Database = ReturnType<typeof drizzle<typeof schema>> | ReturnType<typeof postgresDrizzle<typeof schema>>;
+const globalDb = globalThis as unknown as { verotaskDb?: Database };
 
 export function getDb() {
-  if (cached) return cached;
+  if (globalDb.verotaskDb) return globalDb.verotaskDb;
 
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error("DATABASE_URL is not configured");
   }
 
-  const sql = neon(connectionString);
-  cached = drizzle(sql, { schema });
-  return cached;
+  const localPostgres = process.env.DATABASE_DRIVER === "postgres";
+  globalDb.verotaskDb = localPostgres
+    ? postgresDrizzle(new Pool({ connectionString, max: 10, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, allowExitOnIdle: true }), { schema })
+    : drizzle(neon(connectionString), { schema });
+  return globalDb.verotaskDb;
 }

@@ -2,8 +2,8 @@ import { chromium } from "playwright-core";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const baseURL = process.env.VERIFY_BASE_URL || "http://127.0.0.1:3000";
-const chromePath = process.env.SCROLLCRAFT_CHROME || process.env.CHROME_PATH || undefined;
+const baseURL = process.env.VERIFY_BASE_URL || "http://localhost:3046";
+const chromePath = process.env.SCROLLCRAFT_CHROME || process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const outputDir = path.resolve("scrollcraft/builds/verotask-marketplace/verification");
 await fs.mkdir(outputDir, { recursive: true });
 
@@ -49,9 +49,8 @@ async function wireErrors(page, label) {
   page.on("requestfailed", (request) => {
     const url = request.url();
     const error = request.failure()?.errorText || "request failed";
-    const isExternalImage = url.includes("images.pexels.com");
     const isCancelledNextPrefetch = url.includes("_rsc=") && /ERR_ABORTED|NS_BINDING_ABORTED/i.test(error);
-    if (!isExternalImage && !isCancelledNextPrefetch) {
+    if (!isCancelledNextPrefetch) {
       report.failedRequests.push({ page: label, url, error });
     }
   });
@@ -59,7 +58,7 @@ async function wireErrors(page, label) {
 
 async function saveShot(page, name, fullPage = false) {
   const file = path.join(outputDir, `${name}.png`);
-  await page.screenshot({ path: file, fullPage });
+  await page.screenshot({ path: file, fullPage, caret: "initial", timeout: 90000 });
   report.screenshots.push(path.relative(process.cwd(), file));
 }
 
@@ -113,8 +112,10 @@ try {
   const desktop = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const desktopPage = await desktop.newPage();
   await wireErrors(desktopPage, "desktop-home");
-  await desktopPage.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await desktopPage.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await desktopPage.waitForTimeout(1200);
+  const consent = desktopPage.getByRole("button", { name: "Essential only", exact: true });
+  if (await consent.isVisible()) await consent.click();
   record("home: dedicated Services link", await desktopPage.locator('a[href="/services"]').count() > 0);
   record("home: dedicated How it works link", await desktopPage.locator('a[href="/how-it-works"]').count() > 0);
   record("home: dedicated Protection link", await desktopPage.locator('a[href="/protection"]').count() > 0);
@@ -136,10 +137,12 @@ try {
     const submit = desktopPage.locator("form button[type=submit]").first();
     if (await submit.count()) await submit.click();
     await desktopPage.waitForTimeout(350);
-    const dialogCount = await desktopPage.locator('[role="dialog"]').count();
+    const dialogCount = await desktopPage.getByRole('dialog').count();
     const contextualTask = await desktopPage.getByText("TV mounting", { exact: false }).count();
-    record("signature move: Brief Builder opens", dialogCount > 0 || contextualTask > 1, { dialogCount, contextualTask });
+    record("signature move: Brief Builder opens", dialogCount > 0, { dialogCount, contextualTask });
     await saveShot(desktopPage, "desktop-brief-builder");
+    await desktopPage.keyboard.press("Escape");
+    record("signature move: Escape closes dialog", await desktopPage.getByRole("dialog").count() === 0);
   } else {
     record("signature move: Brief Builder input found", false);
   }
@@ -147,13 +150,13 @@ try {
   for (const route of ["/how-it-works", "/protection", "/providers"]) {
     const page = await desktop.newPage();
     await wireErrors(page, `desktop-${route}`);
-    const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    const response = await page.goto(`${baseURL}${route}`, { waitUntil: "domcontentloaded", timeout: 90000 });
     await page.waitForTimeout(250);
     record(`${route}: HTTP success`, Boolean(response && response.status() < 400), response?.status());
     record(`${route}: has H1`, await page.locator("h1").count() === 1);
     await assertNoHorizontalOverflow(page, `desktop ${route}`);
     await assertInteractiveContrast(page, `desktop ${route}`);
-    await saveShot(page, `desktop-${route.replaceAll("/", "") || "home"}`, true);
+    await saveShot(page, `desktop-${route.replaceAll("/", "") || "home"}`);
     await page.close();
   }
   await desktop.close();
@@ -161,8 +164,10 @@ try {
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
   const mobilePage = await mobile.newPage();
   await wireErrors(mobilePage, "mobile-home");
-  await mobilePage.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await mobilePage.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await mobilePage.waitForTimeout(800);
+  const mobileConsent = mobilePage.getByRole("button", { name: "Essential only", exact: true });
+  if (await mobileConsent.isVisible()) await mobileConsent.click();
   await assertNoHorizontalOverflow(mobilePage, "mobile home");
   await assertInteractiveContrast(mobilePage, "mobile home");
   const menuControl = mobilePage.locator('summary[aria-label="Open navigation"]').first();
@@ -172,6 +177,7 @@ try {
     const mobileNav = mobilePage.locator('nav[aria-label="Mobile navigation"]');
     record("mobile: navigation opens", await mobileNav.isVisible() && await mobileNav.locator('a[href="/providers"]').count() > 0 && await mobileNav.locator('a[href="/how-it-works"]').count() > 0);
     await saveShot(mobilePage, "mobile-menu");
+    await menuControl.click();
   } else {
     record("mobile: menu control exists", false);
   }
@@ -185,8 +191,13 @@ try {
   const reduced = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
   const reducedPage = await reduced.newPage();
   await wireErrors(reducedPage, "reduced-motion");
-  await reducedPage.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+  await reducedPage.goto(`${baseURL}/`, { waitUntil: "domcontentloaded", timeout: 90000 });
   await reducedPage.waitForTimeout(700);
+  const reducedConsent = reducedPage.getByRole("button", { name: "Essential only", exact: true });
+  if (await reducedConsent.isVisible()) await reducedConsent.click();
+  const initialTitle = await reducedPage.locator("h1").textContent();
+  await reducedPage.waitForTimeout(7000);
+  record("reduced motion: slideshow stays still", await reducedPage.locator("h1").textContent() === initialTitle);
   const firstBackground = await reducedPage.locator(".marketplace-hero > div").first().getAttribute("class").catch(() => null);
   record("reduced motion: home remains renderable", await reducedPage.locator("h1").count() > 0, firstBackground);
   await saveShot(reducedPage, "reduced-motion-home");

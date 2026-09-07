@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { bookingEvidence, bookingEvents } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
-import { isEvidenceObjectRef } from "@/lib/storage";
+import { evidenceObjectExists, isEvidenceObjectRef } from "@/lib/storage";
 
 const schema = z.object({
   type: z.enum(["before_photo", "after_photo", "checklist", "message", "provider_note", "customer_note"]),
@@ -39,6 +39,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (parsed.data.objectRef && !parsed.data.objectRef.includes(`/booking-evidence/${id}/`)) {
     return NextResponse.json({ error: "evidence_reference_booking_mismatch" }, { status: 400 });
+  }
+  if (isPhoto && parsed.data.objectRef) {
+    const kind = parsed.data.type === "before_photo" ? "before" : "after";
+    if (!parsed.data.objectRef.includes(`/${id}/${kind}/`) || !(await evidenceObjectExists(parsed.data.objectRef))) return NextResponse.json({ error: "photo_upload_not_found" }, { status: 400 });
   }
 
   const db = getDb();

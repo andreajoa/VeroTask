@@ -162,7 +162,7 @@ export const providerSubscriptions = pgTable("provider_subscriptions", {
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
-});
+}, (t) => [uniqueIndex("provider_subscription_stripe_unique").on(t.stripeSubscriptionId)]);
 
 export const bookings = pgTable("bookings", {
   id: uuid("id").defaultRandom().primaryKey(),

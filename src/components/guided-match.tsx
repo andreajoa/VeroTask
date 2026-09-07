@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Clock3, MapPin, Search, ShieldCheck, X } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Clock3, MapPin, Pause, Play, Search, ShieldCheck, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { HERO_SCENES, MARKETPLACE_CATEGORIES } from "@/lib/marketplace-categories";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
@@ -28,7 +28,7 @@ const copy = {
     sizeTitle: "How big is the task?",
     sizeBody: "A quick answer helps us avoid showing you the wrong kind of pro.",
     timelineTitle: "What’s your timeline?",
-    timelineBody: "We’ll prioritize people who can actually fit your schedule.",
+    timelineBody: "Tell the professional your preferred timing. Availability is confirmed when they accept your request.",
     locationTitle: "Where do you need help?",
     locationBody: "Enter the city or ZIP where the work will happen.",
     detailsTitle: "Anything else the pro should know?",
@@ -49,7 +49,7 @@ const copy = {
     sizeTitle: "Qual é o tamanho da tarefa?",
     sizeBody: "Uma resposta rápida ajuda a evitar profissionais que não combinam com o serviço.",
     timelineTitle: "Para quando você precisa?",
-    timelineBody: "Vamos priorizar quem realmente pode atender no seu prazo.",
+    timelineBody: "Informe o prazo desejado. O profissional confirma a disponibilidade ao aceitar seu pedido.",
     locationTitle: "Onde o serviço será realizado?",
     locationBody: "Informe a cidade ou ZIP code do local.",
     detailsTitle: "Há mais alguma informação importante?",
@@ -70,7 +70,7 @@ const copy = {
     sizeTitle: "¿Qué tan grande es la tarea?",
     sizeBody: "Una respuesta rápida ayuda a evitar profesionales que no encajan con el trabajo.",
     timelineTitle: "¿Para cuándo lo necesitas?",
-    timelineBody: "Priorizaremos a quienes realmente puedan ajustarse a tu horario.",
+    timelineBody: "Indica tu fecha preferida. El profesional confirma disponibilidad al aceptar tu solicitud.",
     locationTitle: "¿Dónde necesitas ayuda?",
     locationBody: "Ingresa la ciudad o código postal donde se realizará el trabajo.",
     detailsTitle: "¿Hay algo más que el profesional deba saber?",
@@ -103,6 +103,8 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
   const c = copy[locale];
   const [activeScene, setActiveScene] = useState(0);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [step, setStep] = useState(0);
   const [state, setState] = useState<WizardState>({
     request: "",
@@ -115,12 +117,33 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
 
   useEffect(() => {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (reduce.matches) return;
-    const timer = window.setInterval(() => {
-      setActiveScene((current) => (current + 1) % HERO_SCENES.length);
-    }, 6500);
-    return () => window.clearInterval(timer);
-  }, []);
+    const mobile = window.matchMedia("(max-width: 639px)");
+    let timer: ReturnType<typeof setInterval> | undefined;
+    function update() {
+      clearInterval(timer);
+      if (reduce.matches || mobile.matches || paused || wizardOpen) return;
+      timer = setInterval(() => {
+        if (document.visibilityState === "visible") setActiveScene((current) => (current + 1) % HERO_SCENES.length);
+      }, 6500);
+    }
+    update();
+    reduce.addEventListener("change", update);
+    mobile.addEventListener("change", update);
+    return () => { clearInterval(timer); reduce.removeEventListener("change", update); mobile.removeEventListener("change", update); };
+  }, [paused, wizardOpen]);
+
+  useEffect(() => {
+    if (!wizardOpen) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    dialogRef.current?.showModal();
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = overflow; previous?.focus(); };
+  }, [wizardOpen]);
+
+  useEffect(() => {
+    if (wizardOpen) dialogRef.current?.querySelector<HTMLElement>("h2")?.focus();
+  }, [step, wizardOpen]);
 
   const scene = HERO_SCENES[activeScene];
   const steps = useMemo(() => ["size", "timeline", "location", "details"] as const, []);
@@ -141,7 +164,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
   function canContinue() {
     const current = steps[step];
     if (current === "size") return Boolean(state.projectSize);
-    if (current === "timeline") return Boolean(state.timeline) && (state.timeline !== "specific" || Boolean(state.specificDate));
+    if (current === "timeline") return Boolean(state.timeline) && (state.timeline !== "specific" || (/^\d{4}-\d{2}-\d{2}$/.test(state.specificDate) && state.specificDate >= new Date().toISOString().slice(0, 10)));
     if (current === "location") return state.location.trim().length >= 3;
     return true;
   }
@@ -153,7 +176,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
       size: state.projectSize,
       timeline: state.timeline
     });
-    if (state.specificDate) params.set("date", state.specificDate);
+    if (state.timeline === "specific" && state.specificDate) params.set("date", state.specificDate);
     if (state.details.trim()) params.set("details", state.details.trim());
     setWizardOpen(false);
     router.push(`${localePath(locale, "/services")}?${params.toString()}`);
@@ -191,12 +214,13 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
             <h1 className="max-w-3xl text-4xl font-black leading-[.98] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{scene.title}</h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/82 sm:text-lg">Tell us what needs doing in your own words. VeroTask turns it into a clearer job brief before matching local professionals.</p>
 
-            <form onSubmit={submitSearch} className="mt-8 grid max-w-3xl gap-2 rounded-[22px] bg-white p-2.5 text-slate-950 shadow-[0_24px_70px_rgba(0,0,0,.22)] md:grid-cols-[1.4fr_.72fr_auto]">
+            <form action={localePath(locale, "/services")} onFocus={() => setPaused(true)} onSubmit={submitSearch} className="mt-8 grid max-w-3xl gap-2 rounded-[22px] bg-white p-2.5 text-slate-950 shadow-[0_24px_70px_rgba(0,0,0,.22)] md:grid-cols-[1.4fr_.72fr_auto]">
               <label className="flex min-h-14 items-center gap-3 rounded-2xl px-4">
                 <Search size={21} className="shrink-0 text-slate-500" />
                 <span className="sr-only">Service or task</span>
                 <input
                   value={state.request}
+                  name="q" required maxLength={500}
                   onChange={(event) => setState((current) => ({ ...current, request: event.target.value }))}
                   className="w-full bg-transparent text-[15px] outline-none placeholder:text-slate-500"
                   placeholder={c.searchPlaceholder}
@@ -207,6 +231,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
                 <span className="sr-only">Location</span>
                 <input
                   value={state.location}
+                  name="location" maxLength={120}
                   onChange={(event) => setState((current) => ({ ...current, location: event.target.value }))}
                   className="w-full bg-transparent text-[15px] outline-none placeholder:text-slate-500"
                   placeholder={c.locationPlaceholder}
@@ -230,10 +255,12 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
               key={item.eyebrow}
               type="button"
               aria-label={`Show ${item.eyebrow}`}
-              onClick={() => setActiveScene(index)}
-              className={`h-2.5 rounded-full transition-all ${index === activeScene ? "w-8 bg-white" : "w-2.5 bg-white/45 hover:bg-white/70"}`}
-            />
+              aria-pressed={index === activeScene}
+              onClick={() => { setActiveScene(index); setPaused(true); }}
+              className="grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-white"
+            ><span className={`h-2.5 rounded-full transition-[width,background-color] ${index === activeScene ? "w-8 bg-white" : "w-2.5 bg-white/65"}`} /></button>
           ))}
+          <button type="button" onClick={() => setPaused((value) => !value)} className="grid h-11 w-11 place-items-center rounded-full text-white" aria-label={paused ? "Play hero slideshow" : "Pause hero slideshow"}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>
         </div>
       </section>
 
@@ -270,7 +297,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
       </section>
 
       {wizardOpen && (
-        <div className="fixed inset-0 z-[120] grid bg-slate-950/55 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="guided-match-title">
+        <dialog ref={dialogRef} onCancel={() => setWizardOpen(false)} className="fixed inset-0 z-[120] m-0 h-dvh max-h-none w-screen max-w-none bg-transparent p-0 backdrop:bg-slate-950/55 backdrop:backdrop-blur-[2px] open:grid sm:place-items-center sm:p-5" aria-modal="true" aria-labelledby="guided-match-title">
           <div className="flex h-full w-full flex-col bg-white sm:h-auto sm:max-h-[90vh] sm:max-w-[620px] sm:overflow-hidden sm:rounded-[24px] sm:shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <button type="button" onClick={() => step > 0 ? setStep((current) => current - 1) : setWizardOpen(false)} className="grid h-10 w-10 place-items-center rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50" aria-label={step > 0 ? c.back : c.close}>
@@ -288,7 +315,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
 
               {currentStep === "size" && (
                 <div>
-                  <h2 id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.sizeTitle}</h2>
+                  <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.sizeTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.sizeBody}</p>
                   <div className="mt-7 space-y-3">{sizeOptions.map((option) => <ChoiceRow key={option.value} active={state.projectSize === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, projectSize: option.value }))} />)}</div>
                 </div>
@@ -296,19 +323,19 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
 
               {currentStep === "timeline" && (
                 <div>
-                  <h2 id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.timelineTitle}</h2>
+                  <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.timelineTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.timelineBody}</p>
-                  <div className="mt-7 space-y-3">{timelineOptions.map((option) => <div key={option.value}><ChoiceRow active={state.timeline === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, timeline: option.value }))} />{option.value === "specific" && state.timeline === "specific" && <input type="date" value={state.specificDate} onChange={(event) => setState((current) => ({ ...current, specificDate: event.target.value }))} className="mt-3 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />}</div>)}</div>
+                  <div className="mt-7 space-y-3">{timelineOptions.map((option) => <div key={option.value}><ChoiceRow active={state.timeline === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, timeline: option.value }))} />{option.value === "specific" && state.timeline === "specific" && <input type="date" aria-label="Preferred service date" min={new Date().toISOString().slice(0, 10)} value={state.specificDate} onChange={(event) => setState((current) => ({ ...current, specificDate: event.target.value }))} className="mt-3 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />}</div>)}</div>
                 </div>
               )}
 
               {currentStep === "location" && (
                 <div>
-                  <h2 id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.locationTitle}</h2>
+                  <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.locationTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.locationBody}</p>
                   <label className="mt-7 flex min-h-14 items-center gap-3 rounded-2xl border border-slate-300 px-4 focus-within:border-[var(--brand)] focus-within:ring-2 focus-within:ring-[var(--brand-soft)]">
                     <MapPin size={20} className="text-slate-500" />
-                    <input autoFocus value={state.location} onChange={(event) => setState((current) => ({ ...current, location: event.target.value }))} className="w-full bg-transparent outline-none" placeholder="Orlando, FL or 32801" />
+                    <input aria-label={c.locationTitle} maxLength={120} value={state.location} onChange={(event) => setState((current) => ({ ...current, location: event.target.value }))} className="w-full bg-transparent outline-none" placeholder="Orlando, FL or 32801" />
                   </label>
                   <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600"><strong className="text-slate-900">Why we ask:</strong> provider availability, travel range and licensing can vary by location.</div>
                 </div>
@@ -316,9 +343,9 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
 
               {currentStep === "details" && (
                 <div>
-                  <h2 id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.detailsTitle}</h2>
+                  <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.detailsTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.detailsBody}</p>
-                  <textarea value={state.details} onChange={(event) => setState((current) => ({ ...current, details: event.target.value }))} rows={6} className="mt-7 w-full resize-none rounded-2xl border border-slate-300 p-4 leading-6 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Example: two 55-inch TVs, drywall, mounts already purchased, parking available..." />
+                  <textarea aria-label={c.detailsTitle} maxLength={2000} value={state.details} onChange={(event) => setState((current) => ({ ...current, details: event.target.value }))} rows={6} className="mt-7 w-full resize-none rounded-2xl border border-slate-300 p-4 leading-6 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Example: two 55-inch TVs, drywall, mounts already purchased, parking available..." />
                   <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 sm:grid-cols-2">
                     <div><span className="text-slate-500">Task</span><div className="font-black">{state.request}</div></div>
                     <div><span className="text-slate-500">Location</span><div className="font-black">{state.location}</div></div>
@@ -335,7 +362,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
               </button>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </>
   );
@@ -343,7 +370,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
 
 function ChoiceRow({ active, title, body, onClick }: { active: boolean; title: string; body: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className={`flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition ${active ? "border-[var(--brand)] bg-[var(--brand-soft)] shadow-[0_0_0_1px_var(--brand)]" : "border-slate-200 hover:border-slate-400 hover:bg-slate-50"}`}>
+    <button type="button" aria-pressed={active} onClick={onClick} className={`flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition ${active ? "border-[var(--brand)] bg-[var(--brand-soft)] shadow-[0_0_0_1px_var(--brand)]" : "border-slate-200 hover:border-slate-400 hover:bg-slate-50"}`}>
       <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border ${active ? "border-[var(--brand)] bg-[var(--brand)] text-white" : "border-slate-300 bg-white"}`}>{active && <Check size={13} strokeWidth={3} />}</span>
       <span><span className="block font-black text-slate-950">{title}</span><span className="mt-1 block text-sm text-slate-500">{body}</span></span>
     </button>

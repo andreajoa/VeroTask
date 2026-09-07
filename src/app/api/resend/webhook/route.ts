@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   let send: typeof crmEmailSends.$inferSelect | undefined;
   if (emailId) [send] = await db.select().from(crmEmailSends).where(eq(crmEmailSends.resendEmailId, emailId)).limit(1);
 
-  await db.insert(crmEmailEvents).values({
+  const inserted = await db.insert(crmEmailEvents).values({
     sendId: send?.id,
     webhookEventId: id,
     resendEmailId: emailId,
@@ -57,7 +57,8 @@ export async function POST(request: NextRequest) {
     recipient,
     metadata: verified.data ?? {},
     occurredAt
-  }).onConflictDoNothing();
+  }).onConflictDoNothing().returning();
+  if (!inserted.length) return NextResponse.json({ received: true, duplicate: true });
 
   if (send) {
     const statusMap: Record<string, string> = {

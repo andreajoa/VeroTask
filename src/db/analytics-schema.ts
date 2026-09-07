@@ -182,6 +182,7 @@ export const crmAbandonments = pgTable("crm_abandonments", {
   contactId: uuid("contact_id").notNull().references(() => crmContacts.id, { onDelete: "cascade" }),
   bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "set null" }),
   sessionId: uuid("session_id").references(() => visitorSessions.id, { onDelete: "set null" }),
+  providerCheckoutSessionId: varchar("provider_checkout_session_id", { length: 255 }),
   context: jsonb("context").$type<Record<string, unknown>>().notNull().default({}),
   stepSent: integer("step_sent").notNull().default(0),
   nextRunAt: timestamp("next_run_at", { withTimezone: true }),
@@ -192,6 +193,9 @@ export const crmAbandonments = pgTable("crm_abandonments", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (t) => [
   index("crm_abandonments_due_idx").on(t.status, t.nextRunAt),
+  uniqueIndex("crm_abandonments_booking_unique").on(t.bookingId, t.kind),
+  uniqueIndex("crm_abandonments_session_unique").on(t.sessionId, t.kind),
+  uniqueIndex("crm_abandonments_provider_checkout_unique").on(t.providerCheckoutSessionId),
   index("crm_abandonments_contact_idx").on(t.contactId, t.createdAt)
 ]);
 

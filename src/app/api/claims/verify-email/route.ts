@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     ownerUserId: row.claim.claimantUserId,
     status: "pending",
     updatedAt: now
-  }).where(and(eq(businesses.id, row.business.id), isNull(businesses.ownerUserId))).returning({ id: businesses.id });
+  }).where(and(eq(businesses.id, row.business.id), isNull(businesses.ownerUserId))).returning();
 
   if (claimed.length === 0) {
     await db.update(businessClaims).set({ status: "rejected", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));

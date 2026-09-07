@@ -2,6 +2,8 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { BadgeCheck, Building2, CalendarClock, CreditCard, LogOut, ShieldCheck, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
+import { isAdminSession } from "@/lib/admin-auth";
+import AdminOverview from "@/app/admin/page";
 import { getDb } from "@/db";
 import { businessClaims, businesses } from "@/db/schema";
 import { getCurrentUser, signOut } from "@/lib/auth";
@@ -15,6 +17,7 @@ async function logoutAction() {
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
+  if (await isAdminSession()) return <AdminOverview />;
   const user = await getCurrentUser();
   if (!user) redirect("/signin?next=/dashboard");
 
@@ -41,7 +44,7 @@ export default async function Page() {
             <h1 className="mt-1 text-3xl font-black tracking-tight">Welcome{user.name ? `, ${user.name}` : ""}</h1>
             <p className="mt-2 text-sm text-[var(--muted)]">{user.email}</p>
           </div>
-          <div className="flex flex-wrap gap-3"><Link href="/dashboard/bookings" className="btn-secondary">Bookings & jobs</Link><Link href="/services" className="btn-secondary">Find services</Link></div>
+          <div className="flex flex-wrap gap-3"><Link href="/dashboard/profile" className="btn-secondary">Your profile</Link><Link href="/dashboard/bookings" className="btn-secondary">Bookings & jobs</Link><Link href="/services" className="btn-secondary">Find services</Link></div>
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-3">
@@ -66,6 +69,7 @@ export default async function Page() {
                       <div className="rounded-xl bg-[var(--background)] p-3"><span className="font-bold">Payouts:</span> {business.stripePayoutsEnabled ? "Enabled" : "Pending"}</div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-3">
+                      <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/onboarding`}>Stripe verification</Link>
                       <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/customers`}><UsersRound size={16} /> Customer memory</Link>
                       <Link className="inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/availability`}><CalendarClock size={16} /> Availability</Link>
                       <Link className="text-sm font-black text-[var(--brand)]" href={`/dashboard/providers/${business.id}/services`}>Services</Link>

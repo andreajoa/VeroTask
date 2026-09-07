@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { stat } from "node:fs/promises";
+import { localStorageEnabled, localObjectPath, signedLocalStorageUrl } from "@/lib/local-storage";
 
 function storageConfig() {
   const endpoint = process.env.STORAGE_ENDPOINT;
@@ -20,7 +22,7 @@ function clientFor(config: NonNullable<ReturnType<typeof storageConfig>>) {
 }
 
 export function evidenceStorageReady() {
-  return Boolean(storageConfig());
+  return localStorageEnabled() || Boolean(storageConfig());
 }
 
 export function isEvidenceObjectRef(value: string) {
@@ -37,11 +39,11 @@ export async function createEvidenceUpload(input: {
   kind: "before" | "after";
   contentType: "image/jpeg" | "image/png" | "image/webp";
 }) {
-  const config = storageConfig();
-  if (!config) throw new Error("storage_not_configured");
-
   const extension = input.contentType === "image/png" ? "png" : input.contentType === "image/webp" ? "webp" : "jpg";
   const key = `booking-evidence/${input.bookingId}/${input.kind}/${randomUUID()}.${extension}`;
+  if (localStorageEnabled()) return { uploadUrl: signedLocalStorageUrl("PUT", key, input.contentType), objectRef: `r2://${key}` };
+  const config = storageConfig();
+  if (!config) throw new Error("storage_not_configured");
   const command = new PutObjectCommand({
     Bucket: config.bucket,
     Key: key,
@@ -54,9 +56,21 @@ export async function createEvidenceUpload(input: {
 }
 
 export async function createEvidenceDownload(objectRef: string) {
+  const key = keyFromObjectRef(objectRef);
+  if (localStorageEnabled()) return signedLocalStorageUrl("GET", key);
   const config = storageConfig();
   if (!config) throw new Error("storage_not_configured");
-  const key = keyFromObjectRef(objectRef);
   const command = new GetObjectCommand({ Bucket: config.bucket, Key: key });
   return getSignedUrl(clientFor(config), command, { expiresIn: 5 * 60 });
+}
+
+export async function evidenceObjectExists(objectRef: string) {
+  try {
+    const key = keyFromObjectRef(objectRef);
+    if (localStorageEnabled()) { const file = await stat(localObjectPath(key)); return file.isFile() && file.size > 0; }
+    const config = storageConfig();
+    if (!config) return false;
+    const object = await clientFor(config).send(new HeadObjectCommand({ Bucket: config.bucket, Key: key }));
+    return Boolean(object.ContentLength && object.ContentType?.startsWith("image/"));
+  } catch { return false; }
 }

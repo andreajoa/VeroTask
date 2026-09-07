@@ -45,7 +45,7 @@ function decode(value?: string | null): SessionPayload | null {
 export function verifyAdminPassword(input: string) {
   const encoded = process.env.ADMIN_PASSWORD_HASH;
   if (!encoded) throw new Error("ADMIN_PASSWORD_HASH is not configured");
-  const [scheme, saltHex, hashHex] = encoded.split("$");
+  const [scheme, saltHex, hashHex] = encoded.split(/[$:]/);
   if (scheme !== "scrypt" || !saltHex || !hashHex) throw new Error("ADMIN_PASSWORD_HASH has invalid format");
   const derived = scryptSync(input, Buffer.from(saltHex, "hex"), 64);
   const expected = Buffer.from(hashHex, "hex");

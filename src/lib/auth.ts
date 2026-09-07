@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 import { getDb } from "@/db";
 import { authTokens, sessions } from "@/db/auth-schema";
 import { users } from "@/db/schema";
+import { analyticsEvents, crmContacts, visitorSessions } from "@/db/analytics-schema";
+import { sessionKeyHash } from "@/lib/visitor-privacy";
+import { ensureCrmContactForUser } from "@/lib/crm-automation";
+import { sendCrmEmail } from "@/lib/crm-email";
 import { claimAnonymousPersonalizationForUser } from "@/lib/personalization";
 
 const SESSION_COOKIE = "verotask_session";
@@ -14,7 +18,7 @@ function hashToken(value: string) {
 }
 
 function safeRedirectPath(value?: string | null) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/dashboard";
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/dashboard";
   return value.slice(0, 500);
 }
 
@@ -41,19 +45,15 @@ export async function consumeMagicLink(rawToken: string) {
   const tokenHash = hashToken(rawToken);
   const now = new Date();
 
-  const [record] = await db.select().from(authTokens).where(and(
-    eq(authTokens.tokenHash, tokenHash),
-    gt(authTokens.expiresAt, now),
-    isNull(authTokens.usedAt)
-  )).limit(1);
-
+  const [record] = await db.update(authTokens).set({ usedAt: now }).where(and(
+    eq(authTokens.tokenHash, tokenHash), gt(authTokens.expiresAt, now), isNull(authTokens.usedAt)
+  )).returning();
   if (!record) return null;
-
-  await db.update(authTokens).set({ usedAt: now }).where(eq(authTokens.id, record.id));
 
   let [user] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
   if (!user) {
-    [user] = await db.insert(users).values({ email: record.email, role: "customer" }).returning();
+    await db.insert(users).values({ email: record.email, role: "customer" }).onConflictDoNothing();
+    [user] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
   }
 
   const rawSession = randomBytes(32).toString("hex");
@@ -72,6 +72,22 @@ export async function consumeMagicLink(rawToken: string) {
   });
 
   await claimAnonymousPersonalizationForUser(user.id);
+  try {
+    const contact = await ensureCrmContactForUser(user.id);
+    const analyticsKey = cookieStore.get("vt_analytics")?.value;
+    if (analyticsKey && contact) {
+      const [visit] = await db.select().from(visitorSessions).where(eq(visitorSessions.sessionKeyHash, sessionKeyHash(analyticsKey))).limit(1);
+      if (visit && (!visit.userId || visit.userId === user.id)) {
+        await db.update(visitorSessions).set({ userId: user.id }).where(eq(visitorSessions.id, visit.id));
+        await db.update(analyticsEvents).set({ userId: user.id }).where(and(eq(analyticsEvents.sessionId, visit.id), isNull(analyticsEvents.userId)));
+        await db.update(crmContacts).set({
+          countryCode: visit.countryCode, region: visit.region, city: visit.city,
+          ...(visit.marketingConsent && !contact.unsubscribedAt && !contact.suppressionReason ? { marketingConsent: true, consentCapturedAt: visit.startedAt, consentSource: "platform_consent" } : {})
+        }).where(eq(crmContacts.id, contact.id));
+      }
+    }
+    if (contact) await sendCrmEmail({ contactId: contact.id, templateKey: "account-welcome", idempotencyKey: `account-welcome:${user.id}`, transactional: true });
+  } catch { console.error("[VeroTask] Welcome email pending retry"); }
 
   return { user, redirectPath: safeRedirectPath(record.redirectPath) };
 }

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, inArray, or, notInArray } from "drizzle-orm";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Phone, Search, ShieldCheck } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
@@ -26,11 +27,13 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
   const q = searchParams.q?.trim() ?? "";
   const location = searchParams.location?.trim() ?? "";
 
-  const conditions = [eq(businesses.active, true)];
+  const conditions = [eq(businesses.active, true), notInArray(businesses.status, ["suspended", "paused"])];
+  const matchedCategories = classifyServiceRequest(q);
 
   if (q) {
     conditions.push(or(
       ilike(businesses.name, `%${q}%`),
+      ...(matchedCategories.length ? [inArray(categories.slug, matchedCategories)] : []),
       ilike(businesses.description, `%${q}%`),
       ilike(categories.nameEn, `%${q}%`),
       ilike(categories.namePtBr, `%${q}%`),
@@ -39,11 +42,10 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
   }
 
   if (location) {
-    conditions.push(or(
-      ilike(businesses.city, `%${location}%`),
-      ilike(businesses.postalCode, `%${location}%`),
-      ilike(businesses.state, `%${location}%`)
-    )!);
+    const place = parseSearchLocation(location);
+    if (place.postalCode) conditions.push(eq(businesses.postalCode, place.postalCode));
+    if (place.city) conditions.push(ilike(businesses.city, place.city));
+    if (place.state) conditions.push(eq(businesses.state, place.state));
   }
 
   const rows = await db.selectDistinct({
@@ -95,6 +97,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                 {searchParams.timeline && <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Timeline</dt><dd className="mt-1 font-black text-slate-900">{humanize(searchParams.timeline)}{searchParams.date ? ` · ${searchParams.date}` : ""}</dd></div>}
                 {searchParams.details && <div><dt className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">Details</dt><dd className="mt-1 line-clamp-5 leading-5 text-slate-600">{searchParams.details}</dd></div>}
               </dl>
+              {hasBrief && <p className="mt-4 text-xs leading-5 text-slate-600">Your scope and timing are preferences. The provider confirms availability before you pay.</p>}
               {hasBrief && <Link href={localePath(locale, "/")} className="mt-5 inline-flex text-sm font-black text-[var(--brand)]">Start a new request</Link>}
             </div>
 
@@ -116,7 +119,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                     <div className="grid gap-5 sm:grid-cols-[72px_1fr_auto] sm:items-start">
                       <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]">{business.name.slice(0, 1)}</div>
                       <div>
-                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{business.name}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span>}</div>
+                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{business.name}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500"><span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state} {business.postalCode ?? ""}</span>{Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}{business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}</div>
                         <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{business.description ?? "Local service provider."}</p>
                         {business.publicPhone && <a className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`tel:${business.publicPhone}`}><Phone size={15} /> {business.publicPhone}</a>}

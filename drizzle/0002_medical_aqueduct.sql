@@ -1,0 +1,2 @@
+ALTER TABLE "crm_abandonments" ADD COLUMN "provider_checkout_session_id" varchar(255);--> statement-breakpoint
+CREATE UNIQUE INDEX "crm_abandonments_provider_checkout_unique" ON "crm_abandonments" USING btree ("provider_checkout_session_id");

@@ -66,7 +66,7 @@ export async function createProviderProfile(formData: FormData) {
     plan: "free",
     importedFromPublicSource: false,
     active: true
-  }).returning({ id: businesses.id });
+  }).returning();
 
   await db.insert(businessCategories).values({
     businessId: business.id,

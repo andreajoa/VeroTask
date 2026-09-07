@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getDb } from "@/db";
@@ -22,19 +22,19 @@ export async function POST(request: NextRequest) {
   }
 
   if (event.type === "account.updated") {
-    const account = event.data.object;
+    // Webhooks can arrive out of order: use the current Stripe account.
+    const account = await getStripe().accounts.retrieve(event.data.object.id);
     const businessId = account.metadata?.verotask_business_id;
     if (businessId) {
       const transfers = account.capabilities?.transfers;
       const ready = Boolean(account.details_submitted && account.payouts_enabled && transfers === "active");
       const db = getDb();
       await db.update(businesses).set({
-        stripeConnectAccountId: account.id,
         stripeChargesEnabled: account.charges_enabled,
         stripePayoutsEnabled: account.payouts_enabled,
-        status: ready ? "active" : "pending",
+        status: sql`case when ${businesses.status} in ('suspended', 'paused', 'unclaimed') then ${businesses.status} else ${ready ? "active" : "pending"}::provider_status end`,
         updatedAt: new Date()
-      }).where(eq(businesses.id, businessId));
+      }).where(and(eq(businesses.id, businessId), eq(businesses.stripeConnectAccountId, account.id)));
     }
   }
 

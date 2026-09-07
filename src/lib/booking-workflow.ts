@@ -1,4 +1,4 @@
-import { and, eq, isNull, lte, or } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   bookingEvidence,
@@ -11,7 +11,8 @@ import {
 } from "@/db/schema";
 import { scoreEvidence } from "@/lib/booking";
 import { getStripe } from "@/lib/stripe";
-import { canAutoComplete, evidenceConfidence } from "@/lib/trust";
+import { evidenceConfidence } from "@/lib/trust";
+import { canReleasePayment } from "@/lib/payment-policy";
 
 export const POLICY_VERSION = "2026-09-05";
 
@@ -65,20 +66,16 @@ async function ensureProviderTransfer(bookingId: string, amountCents?: number) {
   if (!context) throw new Error("booking_not_found");
 
   const amount = amountCents ?? context.booking.providerAmountCents;
-  if (!Number.isInteger(amount) || amount < 0) throw new Error("invalid_transfer_amount");
+  if (!Number.isInteger(amount) || amount < 0 || amount > context.booking.providerAmountCents) throw new Error("invalid_transfer_amount");
 
   const [existing] = await db.select().from(providerTransfers)
     .where(eq(providerTransfers.bookingId, bookingId))
     .limit(1);
 
   if (existing) {
-    if (existing.status === "paid" || existing.status === "reversed") return existing;
-    const [updated] = await db.update(providerTransfers).set({
-      amountCents: amount,
-      status: "eligible",
-      eligibleAt: new Date()
-    }).where(eq(providerTransfers.id, existing.id)).returning();
-    return updated;
+    // Never reset a claim or change the amount behind a Stripe idempotency key.
+    if (existing.amountCents !== amount) throw new Error("transfer_amount_changed");
+    return existing;
   }
 
   const [created] = await db.insert(providerTransfers).values({
@@ -87,14 +84,19 @@ async function ensureProviderTransfer(bookingId: string, amountCents?: number) {
     amountCents: amount,
     status: "eligible",
     eligibleAt: new Date()
-  }).returning();
-  return created;
+  }).onConflictDoNothing({ target: providerTransfers.bookingId }).returning();
+  if (created) return created;
+  const [concurrent] = await db.select().from(providerTransfers).where(eq(providerTransfers.bookingId, bookingId)).limit(1);
+  if (!concurrent || concurrent.amountCents !== amount) throw new Error("transfer_amount_changed");
+  return concurrent;
 }
 
 export async function releaseProviderTransfer(bookingId: string, amountCents?: number) {
   const db = getDb();
   const context = await getBookingContext(bookingId);
   if (!context) throw new Error("booking_not_found");
+  if (!canReleasePayment(context.booking.status, amountCents !== undefined)) throw new Error("booking_not_eligible_for_payout");
+  if (!context.booking.stripePaymentIntentId || !context.booking.stripeChargeId) throw new Error("payment_not_captured");
   if (!context.business.stripeConnectAccountId || !context.business.stripePayoutsEnabled) {
     throw new Error("provider_payout_not_ready");
   }
@@ -102,6 +104,7 @@ export async function releaseProviderTransfer(bookingId: string, amountCents?: n
 
   const transfer = await ensureProviderTransfer(bookingId, amountCents);
   if (transfer.status === "paid") return transfer;
+  if (transfer.status === "reversed") throw new Error("transfer_already_reversed");
   if (transfer.amountCents === 0) {
     const [zero] = await db.update(providerTransfers).set({ status: "paid", transferredAt: new Date() })
       .where(eq(providerTransfers.id, transfer.id)).returning();
@@ -124,7 +127,7 @@ export async function releaseProviderTransfer(bookingId: string, amountCents?: n
       currency: context.booking.currency,
       destination: context.business.stripeConnectAccountId,
       transfer_group: `verotask_booking_${bookingId}`,
-      source_transaction: context.booking.stripeChargeId ?? undefined,
+      source_transaction: context.booking.stripeChargeId,
       metadata: {
         verotask_booking_id: bookingId,
         verotask_business_id: context.business.id
@@ -137,12 +140,13 @@ export async function releaseProviderTransfer(bookingId: string, amountCents?: n
       transferredAt: new Date()
     }).where(eq(providerTransfers.id, claimed.id)).returning();
 
-    await db.update(bookings).set({ status: "paid_out", updatedAt: new Date() }).where(eq(bookings.id, bookingId));
+    const nextStatus = context.booking.status === "cancelled" ? "cancelled" : "paid_out";
+    await db.update(bookings).set({ status: nextStatus, updatedAt: new Date() }).where(and(eq(bookings.id, bookingId), eq(bookings.status, context.booking.status)));
     await recordBookingEvent({
       bookingId,
       eventType: "provider_transfer_paid",
       previousStatus: context.booking.status,
-      nextStatus: "paid_out",
+      nextStatus,
       metadata: { amountCents: claimed.amountCents, stripeTransferId: stripeTransfer.id }
     });
     return paid;
@@ -214,44 +218,3 @@ export async function reverseProviderTransfer(bookingId: string, amountCents: nu
   return reversal;
 }
 
-export async function autoSettleExpiredBookings(limit = 50) {
-  const db = getDb();
-  const now = new Date();
-  const candidates = await db.select().from(bookings)
-    .where(and(eq(bookings.status, "provider_completed"), lte(bookings.protectionDeadline, now)))
-    .limit(Math.max(1, Math.min(limit, 100)));
-
-  const results: Array<{ bookingId: string; action: string; score?: number }> = [];
-  for (const booking of candidates) {
-    const openDispute = await hasOpenDispute(booking.id);
-    const evidence = await bookingEvidenceSummary(booking.id);
-    if (!canAutoComplete(evidence.score, openDispute)) {
-      results.push({ bookingId: booking.id, action: openDispute ? "dispute_open" : "manual_review", score: evidence.score });
-      continue;
-    }
-
-    const [claimed] = await db.update(bookings).set({
-      status: "auto_completed",
-      autoCompletedAt: now,
-      payoutEligibleAt: now,
-      updatedAt: now
-    }).where(and(eq(bookings.id, booking.id), eq(bookings.status, "provider_completed"))).returning();
-    if (!claimed) continue;
-
-    await recordBookingEvent({
-      bookingId: booking.id,
-      eventType: "booking_auto_completed",
-      previousStatus: "provider_completed",
-      nextStatus: "auto_completed",
-      metadata: { score: evidence.score, confidence: evidence.confidence }
-    });
-
-    try {
-      await releaseProviderTransfer(booking.id);
-      results.push({ bookingId: booking.id, action: "paid", score: evidence.score });
-    } catch {
-      results.push({ bookingId: booking.id, action: "payout_retry_needed", score: evidence.score });
-    }
-  }
-  return results;
-}

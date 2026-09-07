@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, recorded: false });
   }
 
+  if (!process.env.DATABASE_URL) return NextResponse.json({ ok: true, recorded: false });
   const db = getDb();
   const user = await getCurrentUser();
   const geo = requestGeo(request.headers);
@@ -78,11 +79,16 @@ export async function POST(request: NextRequest) {
   const now = new Date();
 
   let rawSessionKey = request.cookies.get("vt_analytics")?.value;
-  const isNewCookie = !rawSessionKey;
   if (!rawSessionKey) rawSessionKey = randomBytes(32).toString("base64url");
-  const keyHash = sessionKeyHash(rawSessionKey);
+  let keyHash = sessionKeyHash(rawSessionKey);
 
   let [session] = await db.select().from(visitorSessions).where(eq(visitorSessions.sessionKeyHash, keyHash)).limit(1);
+  if (session && (session.lastSeenAt.getTime() < now.getTime() - 30 * 60 * 1000 || (user && session.userId && session.userId !== user.id))) {
+    await db.update(visitorSessions).set({ endedAt: session.lastSeenAt }).where(eq(visitorSessions.id, session.id));
+    rawSessionKey = randomBytes(32).toString("base64url");
+    keyHash = sessionKeyHash(rawSessionKey);
+    session = undefined as unknown as typeof session;
+  }
   const path = safePath(parsed.data.path);
   const utms = utm(parsed.data.path);
 
@@ -116,7 +122,7 @@ export async function POST(request: NextRequest) {
     }).where(eq(visitorSessions.id, session.id));
   }
 
-  if (parsed.data.eventType !== "heartbeat") {
+  if (analyticsConsent) {
     await db.insert(analyticsEvents).values({
       sessionId: session.id,
       userId: user?.id,
@@ -128,7 +134,7 @@ export async function POST(request: NextRequest) {
       elementRole: safeLabel(parsed.data.elementRole)?.slice(0, 50),
       elementLabel: safeLabel(parsed.data.elementLabel),
       targetPath: safePath(parsed.data.targetPath),
-      metadata: sanitizeMetadata(parsed.data.metadata),
+      metadata: { ...sanitizeMetadata(parsed.data.metadata), ...(parsed.data.eventType === "heartbeat" ? { durationMs: (parsed.data.activeDeltaSeconds ?? 0) * 1000 } : {}) },
       clientOccurredAt: parsed.data.clientOccurredAt ? new Date(parsed.data.clientOccurredAt) : null,
       requestId: request.headers.get("x-vercel-id")?.slice(0, 160)
     });
@@ -141,7 +147,7 @@ export async function POST(request: NextRequest) {
       name: user.name,
       phone: user.phone,
       locale: user.locale,
-      marketingConsent,
+      marketingConsent: globalPrivacyControl ? false : parsed.data.eventType === "consent_updated" ? marketingConsent : contact?.marketingConsent ?? marketingConsent,
       consentCapturedAt: marketingConsent ? now : contact?.consentCapturedAt,
       consentSource: marketingConsent ? "platform_consent" : contact?.consentSource,
       countryCode: geo.countryCode,
@@ -155,13 +161,13 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ ok: true, recorded: analyticsConsent, sessionId: session.id });
-  if (analyticsConsent && isNewCookie) {
+  if (analyticsConsent) {
     response.cookies.set("vt_analytics", rawSessionKey, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 180
+      maxAge: 60 * 30
     });
   }
   return response;

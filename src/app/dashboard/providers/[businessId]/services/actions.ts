@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -65,7 +65,7 @@ export async function createService(formData: FormData) {
 
 export async function toggleService(serviceId: string, businessId: string, active: boolean) {
   const { db, business } = await requireOwner(businessId);
-  await db.update(services).set({ active }).where(eq(services.id, serviceId));
+  await db.update(services).set({ active }).where(and(eq(services.id, serviceId), eq(services.businessId, business.id)));
   revalidatePath(`/dashboard/providers/${business.id}/services`);
   revalidatePath(`/providers/${business.slug}`);
 }

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { bookingCheckoutSessions } from "@/db/operations-schema";
@@ -23,6 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (access.booking.scheduledStart.getTime() <= Date.now()) {
     return NextResponse.json({ error: "booking_time_expired" }, { status: 409 });
   }
+  if (access.booking.stripePaymentIntentId) return NextResponse.json({ error: "booking_already_paid" }, { status: 409 });
   if (!access.business.stripeConnectAccountId || !access.business.stripePayoutsEnabled) {
     return NextResponse.json({ error: "provider_payout_not_ready" }, { status: 409 });
   }
@@ -38,8 +39,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       if (session.status === "open" && session.client_secret) {
         return NextResponse.json({ bookingId: id, clientSecret: session.client_secret, resumed: true });
       }
+      if (session.status === "complete") return NextResponse.json({ error: "payment_confirmation_pending" }, { status: 409 });
     } catch {
-      // A stale Stripe session is replaced below.
+      return NextResponse.json({ error: "payment_service_unavailable" }, { status: 502 });
     }
     await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() })
       .where(eq(bookingCheckoutSessions.id, existing.id));
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       email: user.email,
       name: user.name ?? undefined,
       metadata: { verotask_user_id: user.id }
-    });
+    }, { idempotencyKey: `verotask-customer-${user.id}` });
     customerId = customer.id;
     await db.update(users).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(users.id, user.id));
   }
@@ -91,7 +93,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       verotask_policy_version: POLICY_VERSION
     },
     return_url: `${baseUrl}/bookings/${id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
-  });
+  }, { idempotencyKey: `verotask-checkout-${id}-${existing?.stripeSessionId ?? "initial"}` });
 
   if (!session.client_secret) return NextResponse.json({ error: "checkout_unavailable" }, { status: 500 });
   const expiresAt = new Date(session.expires_at * 1000);
@@ -108,7 +110,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   });
 
   if (access.booking.status === "accepted") {
-    await db.update(bookings).set({ status: "payment_authorized", updatedAt: new Date() }).where(eq(bookings.id, id));
+    const [claimed] = await db.update(bookings).set({ status: "payment_authorized", updatedAt: new Date() })
+      .where(and(eq(bookings.id, id), inArray(bookings.status, ["accepted", "payment_authorized"]), isNull(bookings.stripePaymentIntentId))).returning();
+    if (!claimed) {
+      await stripe.checkout.sessions.expire(session.id);
+      return NextResponse.json({ error: "booking_changed" }, { status: 409 });
+    }
     await db.insert(bookingEvents).values({
       bookingId: id,
       actorUserId: user.id,

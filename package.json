@@ -11,9 +11,17 @@
     "test": "tsx --test tests/*.test.ts",
     "check": "npm run typecheck && npm run lint && npm test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx src/db/seed.ts",
-    "db:studio": "drizzle-kit studio"
+    "db:migrate": "node --env-file=.env.local node_modules/drizzle-kit/bin.cjs migrate",
+    "db:seed": "tsx --env-file=.env.local src/db/seed.ts",
+    "db:studio": "drizzle-kit studio",
+    "dev:local": "next dev --hostname 127.0.0.1 --port 3046",
+    "local:setup": "node scripts/local-setup.mjs",
+    "local:up": "docker compose --env-file .env.local -f compose.local.yaml up -d --wait",
+    "local:down": "docker compose --env-file .env.local -f compose.local.yaml stop",
+    "verify:scrollcraft": "node scripts/scrollcraft-verify.mjs",
+    "crm:tick": "tsx --env-file=.env.local scripts/crm-tick.ts",
+    "doctor": "tsx --env-file=.env.local scripts/doctor.ts",
+    "worker:local": "node --env-file=.env.local scripts/local-worker.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",
@@ -29,6 +37,7 @@
     "drizzle-orm": "^0.44.5",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",
+    "pg": "^8.23.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^6.0.1",
@@ -39,14 +48,21 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.2",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
     "drizzle-kit": "^0.31.4",
     "eslint": "^9.17.0",
     "eslint-config-next": "^16.0.0",
+    "playwright-core": "^1.63.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
+  },
+  "overrides": {
+    "tsx": {
+      "esbuild": "0.25.5"
+    }
   }
 }

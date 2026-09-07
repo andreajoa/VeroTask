@@ -17,5 +17,5 @@ export async function adminSignIn(formData: FormData) {
 
   if (!valid) redirect("/admin/signin?error=invalid");
   await createAdminSession();
-  redirect("/admin");
+  redirect("/dashboard");
 }

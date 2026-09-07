@@ -1,9 +1,9 @@
 import { addDays, addHours, addMinutes } from "date-fns";
-import { and, desc, eq, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, visitorSessions } from "@/db/analytics-schema";
-import { bookingCheckoutSessions } from "@/db/operations-schema";
-import { bookings, businesses, users } from "@/db/schema";
+import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, crmEmailSends, visitorSessions } from "@/db/analytics-schema";
+import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
+import { bookings, businesses, providerSubscriptions, users } from "@/db/schema";
 import { sendCrmEmail } from "@/lib/crm-email";
 
 function lifecycleRank(value: typeof crmContacts.$inferSelect.lifecycle) {
@@ -38,7 +38,7 @@ export async function ensureCrmContactForUser(userId: string, desired?: typeof c
       phone: user.phone,
       locale: user.locale,
       lifecycle
-    }).returning();
+    }).onConflictDoUpdate({ target: crmContacts.email, set: { userId: user.id, updatedAt: new Date() } }).returning();
   }
   return contact;
 }
@@ -53,7 +53,7 @@ export async function syncCustomerStats(userId: string) {
     lastBookingAt: sql<Date | null>`max(${bookings.createdAt})`
   }).from(bookings).where(eq(bookings.customerId, userId));
   [contact] = await db.update(crmContacts).set({
-    lifecycle: "customer",
+    lifecycle: contact.lifecycle === "suppressed" ? "suppressed" : "customer",
     totalBookings: stats?.totalBookings ?? 0,
     totalSpendCents: stats?.totalSpendCents ?? 0,
     lastBookingAt: stats?.lastBookingAt ?? null,
@@ -66,7 +66,7 @@ export async function syncCustomerStats(userId: string) {
 export async function sendBookingThankYou(bookingId: string) {
   const db = getDb();
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
-  if (!booking) return;
+  if (!booking?.stripePaymentIntentId || !["scheduled", "in_progress", "provider_completed", "customer_confirmed", "auto_completed", "paid_out"].includes(booking.status)) return;
   const contact = await syncCustomerStats(booking.customerId);
   if (!contact) return;
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
@@ -105,8 +105,9 @@ async function discoverAbandonedCheckouts(limit: number) {
     .from(bookingCheckoutSessions)
     .innerJoin(bookings, eq(bookings.id, bookingCheckoutSessions.bookingId))
     .where(and(
-      eq(bookings.status, "payment_authorized"),
-      eq(bookingCheckoutSessions.status, "open"),
+      sql`${bookings.status} in ('payment_authorized', 'accepted')`,
+      sql`${bookingCheckoutSessions.status} in ('open', 'expired')`,
+      sql`${bookings.scheduledStart} > now()`,
       lt(bookingCheckoutSessions.createdAt, threshold)
     ))
     .orderBy(desc(bookingCheckoutSessions.createdAt)).limit(limit);
@@ -130,7 +131,7 @@ async function discoverAbandonedCheckouts(limit: number) {
       },
       nextRunAt: new Date(),
       expiresAt: addDays(checkout.createdAt, 8)
-    });
+    }).onConflictDoNothing();
     created += 1;
   }
   return created;
@@ -172,10 +173,40 @@ async function discoverAbandonedCarts(limit: number) {
       context: { path: event.path },
       nextRunAt: new Date(),
       expiresAt: addDays(event.occurredAt, 8)
-    });
+    }).onConflictDoNothing();
     created += 1;
   }
   return created;
+}
+
+async function discoverAbandonedPlans(limit: number) {
+  const db = getDb();
+  const rows = await db.select({ checkout: providerCheckoutSessions, business: businesses }).from(providerCheckoutSessions)
+    .innerJoin(businesses, eq(businesses.id, providerCheckoutSessions.businessId))
+    .where(and(sql`${providerCheckoutSessions.status} in ('open', 'expired')`, lt(providerCheckoutSessions.createdAt, addMinutes(new Date(), -30)))).limit(limit);
+  let created = 0;
+  for (const { checkout, business } of rows) {
+    if (!business.ownerUserId) continue;
+    const contact = await ensureCrmContactForUser(business.ownerUserId, "provider");
+    if (!contact) continue;
+    const result = await db.insert(crmAbandonments).values({
+      kind: "checkout", contactId: contact.id, providerCheckoutSessionId: checkout.stripeSessionId,
+      context: { businessId: business.id, plan: checkout.plan }, nextRunAt: new Date(), expiresAt: addDays(checkout.createdAt, 8)
+    }).onConflictDoNothing().returning();
+    created += result.length;
+  }
+  return created;
+}
+
+async function planRecoveryState(item: typeof crmAbandonments.$inferSelect) {
+  const db = getDb();
+  const businessId = String(item.context.businessId || "");
+  if (!/^[0-9a-f-]{36}$/i.test(businessId)) return "cancelled" as const;
+  const [subscription] = await db.select().from(providerSubscriptions).where(and(eq(providerSubscriptions.businessId, businessId), eq(providerSubscriptions.active, true))).limit(1);
+  if (subscription) return "recovered" as const;
+  const [checkout] = await db.select().from(providerCheckoutSessions).where(eq(providerCheckoutSessions.businessId, businessId)).limit(1);
+  if (!checkout || checkout.stripeSessionId !== item.providerCheckoutSessionId || !["open", "expired"].includes(checkout.status)) return "cancelled" as const;
+  return "active" as const;
 }
 
 async function recoverConvertedAbandonments(limit: number) {
@@ -184,14 +215,14 @@ async function recoverConvertedAbandonments(limit: number) {
   let recovered = 0;
   for (const item of active) {
     if (item.bookingId && item.kind === "checkout") {
-      const [booking] = await db.select({ status: bookings.status, paymentIntentId: bookings.stripePaymentIntentId })
+      const [booking] = await db.select({ status: bookings.status, paymentIntentId: bookings.stripePaymentIntentId, scheduledStart: bookings.scheduledStart })
         .from(bookings).where(eq(bookings.id, item.bookingId)).limit(1);
       if (booking?.paymentIntentId) {
         await db.update(crmAbandonments).set({ status: "recovered", recoveredAt: new Date(), nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
         recovered += 1;
         continue;
       }
-      if (booking && ["cancelled", "refunded"].includes(booking.status)) {
+      if (booking && (["cancelled", "refunded"].includes(booking.status) || booking.scheduledStart <= new Date())) {
         await db.update(crmAbandonments).set({ status: "cancelled", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
         continue;
       }
@@ -217,26 +248,48 @@ async function sendDueRecovery(limit: number) {
   let sent = 0;
   let cancelled = 0;
   for (const item of due) {
+    if (item.expiresAt && item.expiresAt <= new Date()) {
+      await db.update(crmAbandonments).set({ status: "expired", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
+      continue;
+    }
+    // Re-check conversion immediately before every message, including concurrent cron runs.
+    if (item.providerCheckoutSessionId) {
+      const state = await planRecoveryState(item);
+      if (state !== "active") {
+        await db.update(crmAbandonments).set({ status: state, recoveredAt: state === "recovered" ? new Date() : null, nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
+        continue;
+      }
+    }
+    if (item.bookingId) {
+      const [booking] = await db.select().from(bookings).where(eq(bookings.id, item.bookingId)).limit(1);
+      if (!booking || booking.stripePaymentIntentId || !["accepted", "payment_authorized"].includes(booking.status) || booking.scheduledStart <= new Date()) {
+        await db.update(crmAbandonments).set({ status: booking?.stripePaymentIntentId ? "recovered" : "cancelled", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
+        continue;
+      }
+    }
     const step = item.stepSent + 1;
     if (step > 5) {
       await db.update(crmAbandonments).set({ status: "expired", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
       continue;
     }
-    const templateKey = `${item.kind === "checkout" ? "abandoned-checkout" : "abandoned-cart"}-${step}`;
-    const result = await sendCrmEmail({
+    const templateKey = `${item.providerCheckoutSessionId ? "abandoned-plan" : item.kind === "checkout" ? "abandoned-checkout" : "abandoned-cart"}-${step}`;
+    let result;
+    try { result = await sendCrmEmail({
       contactId: item.contactId,
       templateKey,
       idempotencyKey: `recovery:${item.id}:${step}`,
       bookingId: item.bookingId,
-      sequenceIndex: step
-    });
+      sequenceIndex: step,
+      actionUrl: item.providerCheckoutSessionId ? `${process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com"}/dashboard/providers/${item.context.businessId}/billing?plan=${item.context.plan}` : item.bookingId ? `${process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com"}/bookings/${item.bookingId}` : undefined
+    }); } catch { continue; }
     if (result.skipped && result.reason === "not_marketable") {
       await db.update(crmAbandonments).set({ status: "cancelled", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
       cancelled += 1;
       continue;
     }
+    if (result.skipped && result.reason !== "already_processed") continue;
     const finished = step >= 5;
-    const next = finished ? null : addHours(item.createdAt, FOLLOW_UP_HOURS[step]);
+    const next = finished ? null : new Date(Math.max(addHours(item.createdAt, FOLLOW_UP_HOURS[step]).getTime(), Date.now() + 6 * 3_600_000));
     await db.update(crmAbandonments).set({
       stepSent: step,
       lastSentAt: new Date(),
@@ -265,24 +318,36 @@ async function runScheduledCampaigns(limitCampaigns = 5) {
   let campaignsSent = 0;
   let emailsSent = 0;
   for (const campaign of campaigns) {
-    await db.update(crmCampaigns).set({ status: "sending", updatedAt: new Date() }).where(eq(crmCampaigns.id, campaign.id));
-    const contacts = await db.select().from(crmContacts).where(and(eq(crmContacts.marketingConsent, true), sql`${crmContacts.unsubscribedAt} is null`, sql`${crmContacts.suppressionReason} is null`)).limit(1000);
-    for (const contact of contacts.filter((value) => matchesSegment(value, campaign.segment))) {
-      const result = await sendCrmEmail({ contactId: contact.id, templateKey: campaign.templateKey, campaignId: campaign.id, idempotencyKey: `campaign:${campaign.id}:${contact.id}` });
-      if (!result.skipped) emailsSent += 1;
+    const [claimed] = await db.update(crmCampaigns).set({ status: "sending", updatedAt: new Date() }).where(and(eq(crmCampaigns.id, campaign.id), eq(crmCampaigns.status, "scheduled"))).returning();
+    if (!claimed) continue;
+    let failed = false;
+    let cursor: string | undefined;
+    while (true) {
+      const contacts = await db.select().from(crmContacts).where(and(eq(crmContacts.marketingConsent, true), sql`${crmContacts.unsubscribedAt} is null`, sql`${crmContacts.suppressionReason} is null`, lte(crmContacts.createdAt, campaign.scheduledAt || new Date()), cursor ? gt(crmContacts.id, cursor) : undefined)).orderBy(asc(crmContacts.id)).limit(100);
+      if (!contacts.length) break;
+      for (const contact of contacts.filter((value) => matchesSegment(value, campaign.segment))) {
+        try {
+          const result = await sendCrmEmail({ contactId: contact.id, templateKey: campaign.templateKey, campaignId: campaign.id, idempotencyKey: `campaign:${campaign.id}:${contact.id}` });
+          if (!result.skipped) emailsSent += 1;
+          else if (result.reason === "in_progress") failed = true;
+        } catch { failed = true; }
+      }
+      cursor = contacts[contacts.length - 1].id;
     }
-    await db.update(crmCampaigns).set({ status: "sent", sentAt: new Date(), updatedAt: new Date() }).where(eq(crmCampaigns.id, campaign.id));
+    await db.update(crmCampaigns).set({ status: failed ? "failed" : "sent", sentAt: failed ? null : new Date(), updatedAt: new Date() }).where(eq(crmCampaigns.id, campaign.id));
     campaignsSent += 1;
   }
   return { campaignsSent, emailsSent };
 }
 
 export async function runCrmAutomations(limit = 100) {
-  const [checkoutCreated, cartCreated, recovered] = await Promise.all([
-    discoverAbandonedCheckouts(limit),
-    discoverAbandonedCarts(limit),
-    recoverConvertedAbandonments(limit * 2)
-  ]);
+  const [checkoutCreated, cartCreated, planCreated] = await Promise.all([discoverAbandonedCheckouts(limit), discoverAbandonedCarts(limit), discoverAbandonedPlans(limit)]);
+  const recovered = await recoverConvertedAbandonments(limit * 2);
+  // Signup sends that failed remain retryable independently of a new sign-in.
+  const welcomes = await getDb().select().from(crmEmailSends).where(and(eq(crmEmailSends.templateKey, "account-welcome"), eq(crmEmailSends.status, "failed"))).limit(25);
+  for (const welcome of welcomes) {
+    try { await sendCrmEmail({ contactId: welcome.contactId, templateKey: welcome.templateKey, idempotencyKey: welcome.idempotencyKey, transactional: true }); } catch { /* Retry next run. */ }
+  }
   const [recovery, campaigns] = await Promise.all([sendDueRecovery(limit), runScheduledCampaigns(5)]);
-  return { checkoutCreated, cartCreated, recovered, recovery, campaigns };
+  return { checkoutCreated, cartCreated, planCreated, recovered, recovery, campaigns };
 }

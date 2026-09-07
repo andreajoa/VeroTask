@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 
 export function ProviderPlanCheckout({ businessId, plan, publishableKey }: { businessId: string; plan: "pro" | "elite"; publishableKey: string }) {
-  const stripePromise = loadStripe(publishableKey);
+  const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
 
   const fetchClientSecret = useCallback(async () => {
     const response = await fetch("/api/stripe/subscriptions/checkout", {

@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         verotask_business_id: business.id,
         verotask_user_id: user.id
       }
-    });
+    }, { idempotencyKey: `verotask-connect-${business.id}` });
     accountId = account.id;
     await db.update(businesses).set({ stripeConnectAccountId: accountId, updatedAt: new Date() }).where(eq(businesses.id, business.id));
   }

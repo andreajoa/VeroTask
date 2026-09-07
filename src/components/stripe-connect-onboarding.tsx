@@ -7,6 +7,12 @@ import { ConnectAccountOnboarding, ConnectComponentsProvider } from "@stripe/rea
 import { useRouter } from "next/navigation";
 
 export function StripeConnectOnboarding({ businessId, publishableKey, nextHref, nextLabel }: { businessId: string; publishableKey: string; nextHref?: string; nextLabel?: string }) {
+  const [started, setStarted] = useState(false);
+  if (!started) return <div className="p-4 text-center"><h2 className="text-xl font-black">Connect your payout account</h2><p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-600">Have your business and bank details ready. You can save your progress with Stripe and return to finish later.</p><div className="mt-5 flex flex-wrap justify-center gap-3"><button className="btn-primary" onClick={() => setStarted(true)}>Start Stripe verification</button>{nextHref && <Link href={nextHref} className="btn-secondary">{nextLabel || "Continue setup"}</Link>}</div></div>;
+  return <ActiveOnboarding businessId={businessId} publishableKey={publishableKey} nextHref={nextHref} nextLabel={nextLabel} />;
+}
+
+function ActiveOnboarding({ businessId, publishableKey, nextHref, nextLabel }: { businessId: string; publishableKey: string; nextHref?: string; nextLabel?: string }) {
   const router = useRouter();
   const [exited, setExited] = useState(false);
 
@@ -35,7 +41,7 @@ export function StripeConnectOnboarding({ businessId, publishableKey, nextHref, 
   if (exited) {
     return (
       <div className="rounded-[18px] border border-slate-200 bg-white p-7 text-center">
-        <h2 className="text-xl font-black text-slate-950">Stripe onboarding submitted</h2>
+        <h2 className="text-xl font-black text-slate-950">Continue your provider setup</h2>
         <p className="mt-2 text-sm leading-6 text-slate-600">VeroTask enables marketplace bookings only after Stripe confirms the required account capabilities. You can refresh the status or continue setting up the rest of your provider account.</p>
         <div className="mt-5 flex flex-wrap justify-center gap-3">
           <button className="btn-secondary" onClick={() => { setExited(false); router.refresh(); }}>Refresh Stripe status</button>

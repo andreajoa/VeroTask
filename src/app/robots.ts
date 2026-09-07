@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
   const publicRule = {
     userAgent: ["Googlebot", "Bingbot", "OAI-SearchBot", "PerplexityBot", "ClaudeBot"],
     allow: "/",
-    disallow: ["/api/", "/dashboard/", "/bookings/", "/signin/"]
+    disallow: ["/api/", "/dashboard/", "/bookings/", "/signin", "/admin", "/dashboard", "/unsubscribe"]
   };
 
   return {
@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/dashboard/", "/bookings/", "/signin/"]
+        disallow: ["/api/", "/dashboard/", "/bookings/", "/signin", "/admin", "/dashboard", "/unsubscribe"]
       }
     ],
     sitemap: `${base.replace(/\/$/, "")}/sitemap.xml`,
