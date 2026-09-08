@@ -20,7 +20,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Enter your email. We&apos;ll send a one-time link that expires in 15 minutes. No password required.</p>
 
           {params.sent === "1" && <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">Check your inbox. Your secure VeroTask sign-in link is on the way.</div>}
-          {params.error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">We could not process that sign-in request. Please check your email and try again.</div>}
+          {params.error === "email-unavailable" && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">O serviço de email está temporariamente indisponível. Tente novamente em alguns minutos.</div>}
+          {params.error && params.error !== "email-unavailable" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">Não foi possível processar o login. Verifique seu email e tente novamente.</div>}
 
           <form action={requestMagicLink} className="mt-6 space-y-4">
             <input type="hidden" name="next" value={params.next ?? "/dashboard"} />

@@ -18,7 +18,12 @@ export async function requestMagicLink(formData: FormData) {
 
   if (!parsed.success) redirect("/signin?error=invalid-email");
 
-  const link = await createMagicLink(parsed.data.email, parsed.data.next);
-  await sendMagicLinkEmail(parsed.data.email, link);
+  try {
+    const link = await createMagicLink(parsed.data.email, parsed.data.next);
+    await sendMagicLinkEmail(parsed.data.email, link);
+  } catch (error) {
+    console.error("[VeroTask] Sign-in email failed:", error instanceof Error ? error.message : error);
+    redirect("/signin?error=email-unavailable");
+  }
   redirect("/signin?sent=1");
 }
