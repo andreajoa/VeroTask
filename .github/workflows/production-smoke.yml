@@ -46,6 +46,8 @@ jobs:
             .checks.database == true and
             .checks.databaseError == false and
             .checks.productionUrlValid == true and
+            .checks.configuredAppUrlValid == true and
+            .checks.staleConfiguredAppUrl == false and
             .checks.requiredEnvironmentConfigured == true and
             .checks.missingEnvironmentCount == 0
           ' /tmp/ready.json >/dev/null
