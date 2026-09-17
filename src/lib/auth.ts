@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, gte, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { getDb } from "@/db";
 import { authTokens, sessions } from "@/db/auth-schema";
@@ -12,6 +12,8 @@ import { claimAnonymousPersonalizationForUser } from "@/lib/personalization";
 
 const SESSION_COOKIE = "verotask_session";
 const SESSION_DAYS = 30;
+const MAGIC_LINK_WINDOW_MS = 15 * 60 * 1000;
+const MAGIC_LINK_MAX_PER_WINDOW = 5;
 
 function hashToken(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -25,16 +27,18 @@ function safeRedirectPath(value?: string | null) {
 export async function createMagicLink(emailInput: string, redirectPath?: string | null) {
   const email = emailInput.trim().toLowerCase();
   const db = getDb();
+  const since = new Date(Date.now() - MAGIC_LINK_WINDOW_MS);
+  const [recent] = await db.select({ value: count() }).from(authTokens).where(and(
+    eq(authTokens.email, email),
+    gte(authTokens.createdAt, since)
+  ));
+  if (Number(recent?.value ?? 0) >= MAGIC_LINK_MAX_PER_WINDOW) throw new Error("auth_rate_limited");
+
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_WINDOW_MS);
 
-  await db.insert(authTokens).values({
-    email,
-    tokenHash,
-    expiresAt,
-    redirectPath: safeRedirectPath(redirectPath)
-  });
+  await db.insert(authTokens).values({ email, tokenHash, expiresAt, redirectPath: safeRedirectPath(redirectPath) });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   return `${baseUrl}/api/auth/verify?token=${encodeURIComponent(rawToken)}`;
@@ -59,7 +63,6 @@ export async function consumeMagicLink(rawToken: string) {
   const rawSession = randomBytes(32).toString("hex");
   const sessionHash = hashToken(rawSession);
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-
   await db.insert(sessions).values({ userId: user.id, tokenHash: sessionHash, expiresAt });
 
   const cookieStore = await cookies();
@@ -81,7 +84,9 @@ export async function consumeMagicLink(rawToken: string) {
         await db.update(visitorSessions).set({ userId: user.id }).where(eq(visitorSessions.id, visit.id));
         await db.update(analyticsEvents).set({ userId: user.id }).where(and(eq(analyticsEvents.sessionId, visit.id), isNull(analyticsEvents.userId)));
         await db.update(crmContacts).set({
-          countryCode: visit.countryCode, region: visit.region, city: visit.city,
+          countryCode: visit.countryCode,
+          region: visit.region,
+          city: visit.city,
           ...(visit.marketingConsent && !contact.unsubscribedAt && !contact.suppressionReason ? { marketingConsent: true, consentCapturedAt: visit.startedAt, consentSource: "platform_consent" } : {})
         }).where(eq(crmContacts.id, contact.id));
       }
@@ -100,13 +105,11 @@ export async function getCurrentUser() {
   const db = getDb();
   const sessionHash = hashToken(rawSession);
   const now = new Date();
-
   const [row] = await db.select({ user: users })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.tokenHash, sessionHash), gt(sessions.expiresAt, now)))
     .limit(1);
-
   return row?.user ?? null;
 }
 
