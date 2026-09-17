@@ -66,7 +66,7 @@ The professional's service amount is not processed or transferred by VeroTask on
 
 ## Local launch area
 
-Orlando, Kissimmee, Davenport, Celebration, Clermont, Winter Garden, Lake Buena Vista, Windermere and St. Cloud, Florida.
+Orlando, Winter Park, Kissimmee, Davenport, Celebration, Clermont, Winter Garden, Lake Buena Vista, Windermere and St. Cloud, Florida.
 
 ## Local development
 
@@ -93,6 +93,7 @@ npm run build
 Before live promotion, also verify:
 
 - `/api/ready` returns HTTP 200.
+- `NEXT_PUBLIC_APP_URL` points to the intended public HTTPS production origin and is not a retired alias.
 - Resend uses a verified VeroTask sender domain and magic-link delivery succeeds.
 - Cloudflare R2/private S3 credentials can create signed evidence upload and download URLs.
 - Stripe live credentials belong to the VeroTask account and the booking checkout charges only `marketplaceFeeCents` in USD.
@@ -108,6 +109,6 @@ The application is designed to stay stateless at the web tier so Vercel can scal
 ## Production health
 
 - `GET /api/health` — process liveness; does not expose secrets.
-- `GET /api/ready` — checks required production environment, HTTPS application URL and database connectivity. Returns HTTP 503 when the deployment is incomplete.
+- `GET /api/ready` — checks required production environment, configured public HTTPS application URL and database connectivity. Returns HTTP 503 when the deployment is incomplete or still points to a retired production alias.
 
 A green repository build does not mean third-party production configuration is automatically correct. Stripe, Resend, Neon, R2, domain/DNS and Vercel settings must match the live deployment before advertising to real customers.
