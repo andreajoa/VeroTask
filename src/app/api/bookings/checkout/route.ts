@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     eq(services.businessId, business.id),
     eq(services.active, true)
   )).limit(1);
-  if (!service || service.pricingType !== "fixed" || !service.basePriceCents || service.basePriceCents <= 0) {
+  if (!service || service.pricingType !== "fixed" || !service.basePriceCents || service.basePriceCents < 1000) {
     return NextResponse.json({ error: "service_not_bookable" }, { status: 409 });
   }
 

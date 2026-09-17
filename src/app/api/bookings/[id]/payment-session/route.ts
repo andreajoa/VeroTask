@@ -26,24 +26,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (access.booking.stripePaymentIntentId) return NextResponse.json({ error: "booking_already_paid" }, { status: 409 });
   if (access.booking.currency !== "usd") return NextResponse.json({ error: "unsupported_currency" }, { status: 409 });
+  if (access.booking.marketplaceFeeCents < 50) return NextResponse.json({ error: "booking_fee_below_payment_minimum" }, { status: 409 });
 
   const db = getDb();
   const stripe = getStripe();
-  const [existing] = await db.select().from(bookingCheckoutSessions)
-    .where(eq(bookingCheckoutSessions.bookingId, id)).limit(1);
+  const [existing] = await db.select().from(bookingCheckoutSessions).where(eq(bookingCheckoutSessions.bookingId, id)).limit(1);
 
   if (existing && existing.status === "open" && existing.expiresAt.getTime() > Date.now()) {
     try {
       const session = await stripe.checkout.sessions.retrieve(existing.stripeSessionId);
-      if (session.status === "open" && session.client_secret) {
-        return NextResponse.json({ bookingId: id, clientSecret: session.client_secret, resumed: true });
-      }
+      if (session.status === "open" && session.client_secret) return NextResponse.json({ bookingId: id, clientSecret: session.client_secret, resumed: true });
       if (session.status === "complete") return NextResponse.json({ error: "payment_confirmation_pending" }, { status: 409 });
     } catch {
       return NextResponse.json({ error: "payment_service_unavailable" }, { status: 502 });
     }
-    await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() })
-      .where(eq(bookingCheckoutSessions.id, existing.id));
+    await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() }).where(eq(bookingCheckoutSessions.id, existing.id));
   }
 
   if (!access.booking.serviceId) return NextResponse.json({ error: "service_not_found" }, { status: 409 });
@@ -52,11 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   let customerId = user.stripeCustomerId;
   if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      name: user.name ?? undefined,
-      metadata: { verotask_user_id: user.id }
-    }, { idempotencyKey: `verotask-customer-${user.id}` });
+    const customer = await stripe.customers.create({ email: user.email, name: user.name ?? undefined, metadata: { verotask_user_id: user.id } }, { idempotencyKey: `verotask-customer-${user.id}` });
     customerId = customer.id;
     await db.update(users).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(users.id, user.id));
   }
@@ -66,71 +59,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     ui_mode: "embedded_page",
     mode: "payment",
     customer: customerId,
-    line_items: [{
-      quantity: 1,
-      price_data: {
-        currency: "usd",
-        unit_amount: access.booking.marketplaceFeeCents,
-        product_data: {
-          name: `VeroTask booking fee · ${service.name}`,
-          description: `${access.business.name} · ${access.business.city}, FL`
-        }
-      }
-    }],
-    payment_intent_data: {
-      metadata: {
-        verotask_booking_id: id,
-        verotask_business_id: access.business.id,
-        verotask_policy_version: POLICY_VERSION,
-        payment_model: "booking_fee_only"
-      }
-    },
-    metadata: {
-      verotask_booking_id: id,
-      verotask_business_id: access.business.id,
-      verotask_service_id: service.id,
-      verotask_policy_version: POLICY_VERSION,
-      payment_model: "booking_fee_only",
-      provider_paid_directly: "true"
-    },
+    line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: access.booking.marketplaceFeeCents, product_data: { name: `VeroTask booking fee · ${service.name}`, description: `${access.business.name} · ${access.business.city}, FL` } } }],
+    payment_intent_data: { metadata: { verotask_booking_id: id, verotask_business_id: access.business.id, verotask_policy_version: POLICY_VERSION, payment_model: "booking_fee_only" } },
+    metadata: { verotask_booking_id: id, verotask_business_id: access.business.id, verotask_service_id: service.id, verotask_policy_version: POLICY_VERSION, payment_model: "booking_fee_only", provider_paid_directly: "true" },
     return_url: `${baseUrl}/bookings/${id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
   }, { idempotencyKey: `verotask-checkout-${id}-${existing?.stripeSessionId ?? "initial"}` });
 
   if (!session.client_secret) return NextResponse.json({ error: "checkout_unavailable" }, { status: 500 });
   const expiresAt = new Date(session.expires_at * 1000);
-
-  await db.insert(bookingCheckoutSessions).values({
-    bookingId: id,
-    stripeSessionId: session.id,
-    status: "open",
-    expiresAt,
-    updatedAt: new Date()
-  }).onConflictDoUpdate({
-    target: bookingCheckoutSessions.bookingId,
-    set: { stripeSessionId: session.id, status: "open", expiresAt, updatedAt: new Date() }
-  });
+  await db.insert(bookingCheckoutSessions).values({ bookingId: id, stripeSessionId: session.id, status: "open", expiresAt, updatedAt: new Date() }).onConflictDoUpdate({ target: bookingCheckoutSessions.bookingId, set: { stripeSessionId: session.id, status: "open", expiresAt, updatedAt: new Date() } });
 
   if (access.booking.status === "accepted") {
-    const [claimed] = await db.update(bookings).set({ status: "payment_authorized", updatedAt: new Date() })
-      .where(and(eq(bookings.id, id), inArray(bookings.status, ["accepted", "payment_authorized"]), isNull(bookings.stripePaymentIntentId))).returning();
+    const [claimed] = await db.update(bookings).set({ status: "payment_authorized", updatedAt: new Date() }).where(and(eq(bookings.id, id), inArray(bookings.status, ["accepted", "payment_authorized"]), isNull(bookings.stripePaymentIntentId))).returning();
     if (!claimed) {
       await stripe.checkout.sessions.expire(session.id);
       return NextResponse.json({ error: "booking_changed" }, { status: 409 });
     }
-    await db.insert(bookingEvents).values({
-      bookingId: id,
-      actorUserId: user.id,
-      eventType: "checkout_started",
-      previousStatus: "accepted",
-      nextStatus: "payment_authorized",
-      metadata: {
-        stripeCheckoutSessionId: session.id,
-        expiresAt: expiresAt.toISOString(),
-        amountCents: access.booking.marketplaceFeeCents,
-        currency: "usd",
-        paymentModel: "booking_fee_only"
-      }
-    });
+    await db.insert(bookingEvents).values({ bookingId: id, actorUserId: user.id, eventType: "checkout_started", previousStatus: "accepted", nextStatus: "payment_authorized", metadata: { stripeCheckoutSessionId: session.id, expiresAt: expiresAt.toISOString(), amountCents: access.booking.marketplaceFeeCents, currency: "usd", paymentModel: "booking_fee_only" } });
   }
 
   return NextResponse.json({ bookingId: id, clientSecret: session.client_secret, resumed: false });

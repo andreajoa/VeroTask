@@ -13,7 +13,7 @@ const createSchema = z.object({
   categoryId: z.string().uuid(),
   name: z.string().trim().min(3).max(180),
   description: z.string().trim().max(2000).optional(),
-  price: z.coerce.number().positive().max(100000),
+  price: z.coerce.number().min(10).max(100000),
   durationMinutes: z.coerce.number().int().min(15).max(1440)
 });
 
@@ -31,33 +31,13 @@ async function requireOwner(businessId: string) {
 }
 
 export async function createService(formData: FormData) {
-  const parsed = createSchema.safeParse({
-    businessId: formData.get("businessId"),
-    categoryId: formData.get("categoryId"),
-    name: formData.get("name"),
-    description: formData.get("description") || undefined,
-    price: formData.get("price"),
-    durationMinutes: formData.get("durationMinutes")
-  });
+  const parsed = createSchema.safeParse({ businessId: formData.get("businessId"), categoryId: formData.get("categoryId"), name: formData.get("name"), description: formData.get("description") || undefined, price: formData.get("price"), durationMinutes: formData.get("durationMinutes") });
   if (!parsed.success) redirect(`/dashboard/providers/${String(formData.get("businessId"))}/services?error=invalid-service`);
-
   const { db, business } = await requireOwner(parsed.data.businessId);
   if (business.status === "unclaimed" || business.status === "suspended") redirect("/dashboard");
-
   const base = slugify(parsed.data.name) || "service";
   const slug = `${base}-${Date.now().toString(36)}`;
-  await db.insert(services).values({
-    businessId: business.id,
-    categoryId: parsed.data.categoryId,
-    slug,
-    name: parsed.data.name,
-    description: parsed.data.description,
-    pricingType: "fixed",
-    basePriceCents: Math.round(parsed.data.price * 100),
-    durationMinutes: parsed.data.durationMinutes,
-    active: true
-  });
-
+  await db.insert(services).values({ businessId: business.id, categoryId: parsed.data.categoryId, slug, name: parsed.data.name, description: parsed.data.description, pricingType: "fixed", basePriceCents: Math.round(parsed.data.price * 100), durationMinutes: parsed.data.durationMinutes, active: true });
   revalidatePath(`/dashboard/providers/${business.id}/services`);
   revalidatePath(`/providers/${business.slug}`);
   redirect(`/dashboard/providers/${business.id}/services?notice=created`);
