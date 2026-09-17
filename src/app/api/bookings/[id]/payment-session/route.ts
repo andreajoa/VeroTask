@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
   const session = await stripe.checkout.sessions.create({
-    ui_mode: "embedded",
+    ui_mode: "embedded_page",
     mode: "payment",
     customer: customerId,
     line_items: [{
