@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 const REQUIRED_ENV = [
   "NEXT_PUBLIC_APP_URL",
+  "NEXT_PUBLIC_SUPPORT_EMAIL",
   "DATABASE_URL",
   "AUTH_SECRET",
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
@@ -48,11 +49,13 @@ export async function GET() {
     configuredAppUrl.startsWith("https://") && configuredAppUrl !== "https://vero-task.vercel.app"
   );
   const staleConfiguredAppUrl = configuredAppUrl === "https://vero-task.vercel.app";
+  const supportEmailConfigured = Boolean(process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim());
   const ready = missing.length === 0
     && database
     && productionUrlValid
     && configuredAppUrlValid
-    && !staleConfiguredAppUrl;
+    && !staleConfiguredAppUrl
+    && supportEmailConfigured;
 
   return NextResponse.json({
     ok: ready,
@@ -67,6 +70,7 @@ export async function GET() {
       configuredAppUrlValid,
       canonicalUrlResolved: Boolean(appUrl),
       staleConfiguredAppUrl,
+      supportEmailConfigured,
       requiredEnvironmentConfigured: missing.length === 0,
       missingEnvironmentCount: missing.length
     },
