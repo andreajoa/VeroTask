@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
+import { canonicalAppUrl } from "@/lib/app-url";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -8,7 +9,6 @@ export const runtime = "nodejs";
 const REQUIRED_ENV = [
   "DATABASE_URL",
   "AUTH_SECRET",
-  "NEXT_PUBLIC_APP_URL",
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
@@ -40,8 +40,9 @@ export async function GET() {
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const appUrl = canonicalAppUrl();
   const productionUrlValid = process.env.NODE_ENV !== "production" || appUrl.startsWith("https://");
+  const staleConfiguredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") === "https://vero-task.vercel.app";
   const ready = missing.length === 0 && database && productionUrlValid;
 
   return NextResponse.json({
@@ -54,6 +55,8 @@ export async function GET() {
       database,
       databaseError,
       productionUrlValid,
+      canonicalUrlResolved: Boolean(appUrl),
+      staleConfiguredAppUrl,
       requiredEnvironmentConfigured: missing.length === 0,
       missingEnvironmentCount: missing.length
     },
