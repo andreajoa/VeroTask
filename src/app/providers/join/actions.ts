@@ -7,12 +7,15 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { LAUNCH_LOCATIONS } from "@/lib/locations";
+
+const launchCities = new Set(LAUNCH_LOCATIONS.map((location) => location.city.toLowerCase()));
 
 const providerSchema = z.object({
   name: z.string().trim().min(2).max(220),
   phone: z.string().trim().min(7).max(32),
   city: z.string().trim().min(2).max(120),
-  postalCode: z.string().trim().min(5).max(16),
+  postalCode: z.string().trim().regex(/^\d{5}(?:-\d{4})?$/),
   categorySlug: z.string().trim().min(2).max(120),
   description: z.string().trim().min(20).max(1200),
   plan: z.enum(["free", "pro", "elite"]).default("free")
@@ -41,8 +44,8 @@ export async function createProviderProfile(formData: FormData) {
     description: formData.get("description"),
     plan: formData.get("plan") || "free"
   });
-
   if (!parsed.success) redirect("/providers/join?error=invalid-details");
+  if (!launchCities.has(parsed.data.city.toLowerCase())) redirect("/providers/join?error=outside-launch-area");
 
   const db = getDb();
   const [category] = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, parsed.data.categorySlug)).limit(1);
@@ -62,7 +65,7 @@ export async function createProviderProfile(formData: FormData) {
     state: "FL",
     postalCode: parsed.data.postalCode,
     country: "US",
-    status: "pending",
+    status: "active",
     plan: "free",
     importedFromPublicSource: false,
     active: true
