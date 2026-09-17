@@ -42,7 +42,7 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
       <section className="border-y border-slate-200 bg-white py-16 lg:py-24">
         <div className="container-shell grid gap-12 lg:grid-cols-[.82fr_1.18fr] lg:items-start">
           <div className="lg:sticky lg:top-28">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-black uppercase tracking-[0.13em] text-[var(--brand)]"><ShieldCheck size={15} /> Payment protection</div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-black uppercase tracking-[0.13em] text-[var(--brand)]"><ShieldCheck size={15} /> Booking protection</div>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] sm:text-5xl">{c.trustTitle}</h2>
             <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">{c.trustBody}</p>
             <Link href={localePath(locale, "/protection")} className="mt-7 inline-flex items-center font-black text-[var(--brand)]">Read the full protection rules <ArrowRight size={17} className="ml-2" /></Link>
@@ -68,7 +68,7 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
           <div className="py-16 pr-0 lg:py-24 lg:pr-16">
             <div className="inline-flex items-center gap-2 text-sm font-black text-sky-200"><UserRoundCheck size={17} /> Built for independent local professionals</div>
             <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-[-0.045em] sm:text-5xl">{c.providerTitle}</h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">Join free, choose the work you want, review the customer before accepting and get paid online through Stripe Connect.</p>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">Join free, choose the work you want, review the customer before accepting and receive the full service price directly from your customer. VeroTask charges its booking fee separately.</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href={localePath(locale, "/providers")} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-5 font-black text-[var(--brand-strong)]">Explore VeroTask for providers <ArrowRight size={18} className="ml-2" /></Link>
               <Link href={localePath(locale, "/providers/join")} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/25 px-5 font-black text-white hover:bg-white/10">Join free</Link>
@@ -76,7 +76,7 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
             <div className="mt-9 grid gap-3 text-sm text-slate-200 sm:grid-cols-3">
               <div><strong className="block text-white">No monthly fee required</strong><span>Start on the Free plan.</span></div>
               <div><strong className="block text-white">Choose your work</strong><span>Control services and availability.</span></div>
-              <div><strong className="block text-white">Get paid online</strong><span>Track balance and payout status.</span></div>
+              <div><strong className="block text-white">Direct service payment</strong><span>The customer pays your service price directly to you.</span></div>
             </div>
           </div>
           <div className="relative min-h-[360px] lg:min-h-full">
