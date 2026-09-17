@@ -1,0 +1,35 @@
+name: Final fee-only residue audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repo-audit-once.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Scan production source for legacy/payment residues
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== verotask.com ==='
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules --exclude='package-lock.json' 'verotask\.com' . || true
+          echo '=== retired vero-task.vercel.app ==='
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules 'vero-task\.vercel\.app' . || true
+          echo '=== Stripe Connect ==='
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules -Ei 'stripe connect|connect onboarding|stripeaccountid|stripe_account|accountLinks\.create|transfers\.create' src tests scripts README.md .github || true
+          echo '=== payout/provider transfer wording ==='
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules -Ei 'payout|provider transfer|releaseProviderTransfer|reverseProviderTransfer' src tests scripts README.md .github || true
+          echo '=== subtotal + payment intent proximity ==='
+          grep -RIn --exclude-dir=.git --exclude-dir=node_modules -E 'stripePaymentIntentId|subtotalCents' src | head -n 300 || true
