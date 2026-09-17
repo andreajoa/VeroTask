@@ -4,6 +4,13 @@ import { requestMagicLink } from "./actions";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string; next?: string }> }) {
   const params = await searchParams;
+  const errorMessage = params.error === "rate-limited"
+    ? "Too many sign-in links were requested for this email. Please wait a few minutes and try again."
+    : params.error === "email-unavailable"
+      ? "Email delivery is temporarily unavailable. Please try again shortly."
+      : params.error
+        ? "We could not process that sign-in request. Please check your email and try again."
+        : null;
 
   return (
     <main className="min-h-screen bg-white">
@@ -20,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Enter your email. We&apos;ll send a one-time link that expires in 15 minutes. No password required.</p>
 
           {params.sent === "1" && <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">Check your inbox. Your secure VeroTask sign-in link is on the way.</div>}
-          {params.error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">We could not process that sign-in request. Please check your email and try again.</div>}
+          {errorMessage && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">{errorMessage}</div>}
 
           <form action={requestMagicLink} className="mt-6 space-y-4">
             <input type="hidden" name="next" value={params.next ?? "/dashboard"} />
@@ -30,7 +37,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
             </label>
             <button className="btn-primary w-full" type="submit">Email me a secure link</button>
           </form>
-          <p className="mt-5 text-xs leading-5 text-[var(--muted)]">By continuing, you agree to VeroTask&apos;s Terms and acknowledge the Privacy Policy. Provider verification and Stripe onboarding are separate steps.</p>
+          <p className="mt-5 text-xs leading-5 text-[var(--muted)]">By continuing, you agree to VeroTask&apos;s Terms and acknowledge the Privacy Policy. Provider profile verification is handled separately from sign-in.</p>
         </div>
       </section>
     </main>
