@@ -36,9 +36,31 @@ jobs:
         with:
           node-version: 22
 
+      - name: Resolve live Vercel alias
+        id: production
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidates=(
+            "https://vero-task.vercel.app"
+            "https://vero-task-andres-projects-bbfd1881.vercel.app"
+            "https://vero-task-git-main-andres-projects-bbfd1881.vercel.app"
+          )
+          for base in "${candidates[@]}"; do
+            code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$base/api/health" || true)"
+            echo "$base -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "base_url=$base" >> "$GITHUB_OUTPUT"
+              echo "Resolved production candidate: $base"
+              exit 0
+            fi
+          done
+          echo "No known Vercel alias returned HTTP 200 from /api/health"
+          exit 1
+
       - name: Verify production at 1,000 concurrent requests
         env:
-          BASE_URL: https://vero-task.vercel.app
+          BASE_URL: ${{ steps.production.outputs.base_url }}
           CONCURRENCY: ${{ github.event.inputs.concurrency || '1000' }}
           REQUESTS: ${{ github.event.inputs.requests || '3000' }}
           LOAD_PATHS: /api/health,/api/ready,/
