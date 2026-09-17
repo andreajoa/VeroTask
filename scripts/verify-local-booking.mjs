@@ -11,7 +11,7 @@ const db = new Pool({ connectionString: process.env.DATABASE_URL, connectionTime
 const original = (await db.query("select b.* from businesses b join users u on u.id=b.owner_user_id where b.id=$1 and u.email='provider@verotask-qa.test'", [businessId])).rows[0];
 assert(original && original.name.startsWith("VeroTask QA"));
 const browser = await chromium.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true });
-const report = { checks: [], fixture: "Temporarily eligible local QA profile; no real Stripe verification or payment", failure: null };
+const report = { checks: [], fixture: "Temporarily active local QA profile; no real payment", failure: null };
 const check = name => { report.checks.push(name); console.log(`PASS ${name}`); };
 let changed = false;
 async function account(role) {
@@ -57,10 +57,10 @@ try {
   const pending = await customer.request.post(`${base}/api/bookings/checkout`, { data: { businessId, serviceId: service.id, scheduledLocal: date, serviceAddress: "400 South Orange Avenue, Orlando FL 32801", acceptsPolicy: true } });
   assert.equal(pending.status(),409);
   assert.equal((await pending.json()).error,"provider_not_bookable");
-  check("Pending Stripe verification blocks real booking eligibility");
+  check("Inactive provider profile blocks booking eligibility");
 
   // Eligibility fixture for exercising the application workflow only. Always restored below.
-  await db.query("update businesses set status='active', stripe_payouts_enabled=true, stripe_connect_account_id='acct_local_simulation' where id=$1", [businessId]);
+  await db.query("update businesses set status='active' where id=$1", [businessId]);
   changed = true;
   await visit(customer, `/book/${original.slug}?service=${service.id}`);
   await customer.locator('[name="scheduledLocal"]').fill(date);
@@ -100,7 +100,7 @@ try {
   console.error(error.message);
   process.exitCode=1;
 } finally {
-  if(changed) await db.query("update businesses set status=$2, stripe_payouts_enabled=$3, stripe_connect_account_id=$4 where id=$1", [businessId, original.status, original.stripe_payouts_enabled, original.stripe_connect_account_id]);
+  if(changed) await db.query("update businesses set status=$2 where id=$1", [businessId, original.status]);
   await browser.close();
   await db.end();
   await fs.writeFile(`${directory}/booking-report.json`, JSON.stringify(report,null,2), {mode:0o600});

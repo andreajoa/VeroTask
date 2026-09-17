@@ -1,6 +1,7 @@
 import { addDays, addHours, addMinutes } from "date-fns";
 import { and, asc, desc, eq, gt, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, crmEmailSends, visitorSessions } from "@/db/analytics-schema";
 import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
 import { bookings, businesses, providerSubscriptions, users } from "@/db/schema";
@@ -69,7 +70,7 @@ export async function sendBookingThankYou(bookingId: string) {
   if (!booking?.stripePaymentIntentId || !["scheduled", "in_progress", "provider_completed", "customer_confirmed", "auto_completed", "paid_out"].includes(booking.status)) return;
   const contact = await syncCustomerStats(booking.customerId);
   if (!contact) return;
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
+  const appUrl = canonicalAppUrl();
   await sendCrmEmail({
     contactId: contact.id,
     templateKey: "booking-thank-you",
@@ -88,7 +89,7 @@ export async function sendProviderPlanThankYou(businessId: string, subscriptionI
   if (!business?.ownerUserId) return;
   const contact = await ensureCrmContactForUser(business.ownerUserId, "subscriber");
   if (!contact) return;
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
+  const appUrl = canonicalAppUrl();
   await sendCrmEmail({
     contactId: contact.id,
     templateKey: "provider-plan-thank-you",
@@ -280,7 +281,7 @@ async function sendDueRecovery(limit: number) {
       idempotencyKey: `recovery:${item.id}:${step}`,
       bookingId: item.bookingId,
       sequenceIndex: step,
-      actionUrl: item.providerCheckoutSessionId ? `${process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com"}/dashboard/providers/${item.context.businessId}/billing?plan=${item.context.plan}` : item.bookingId ? `${process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com"}/bookings/${item.bookingId}` : undefined
+      actionUrl: item.providerCheckoutSessionId ? `${canonicalAppUrl()}/dashboard/providers/${item.context.businessId}/billing?plan=${item.context.plan}` : item.bookingId ? `${canonicalAppUrl()}/bookings/${item.bookingId}` : undefined
     }); } catch { continue; }
     if (result.skipped && result.reason === "not_marketable") {
       await db.update(crmAbandonments).set({ status: "cancelled", nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
