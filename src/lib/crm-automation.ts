@@ -49,7 +49,7 @@ export async function syncCustomerStats(userId: string) {
   if (!contact) return null;
   const [stats] = await db.select({
     totalBookings: sql<number>`count(*)::int`,
-    totalSpendCents: sql<number>`coalesce(sum(case when ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded' then ${bookings.subtotalCents} else 0 end), 0)::int`,
+    totalSpendCents: sql<number>`coalesce(sum(case when ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded' then ${bookings.marketplaceFeeCents} else 0 end), 0)::int`,
     lastBookingAt: sql<Date | null>`max(${bookings.createdAt})`
   }).from(bookings).where(eq(bookings.customerId, userId));
   [contact] = await db.update(crmContacts).set({
