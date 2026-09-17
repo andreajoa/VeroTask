@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
   const session = await stripe.checkout.sessions.create({
-    ui_mode: "embedded",
+    ui_mode: "embedded_page",
     mode: "subscription",
     customer: customerId,
     line_items: [{ quantity: 1, ...(priceId ? { price: priceId } : { price_data: {
