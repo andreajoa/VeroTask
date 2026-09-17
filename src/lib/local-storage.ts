@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import path from "node:path";
 
 export function localStorageEnabled() {
-  const hostname = new URL(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").hostname;
+  const hostname = new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").hostname;
   return process.env.STORAGE_DRIVER === "local" && !process.env.VERCEL && ["localhost", "127.0.0.1", "[::1]"].includes(hostname);
 }
 
@@ -19,9 +19,10 @@ export function localObjectPath(key: string) {
 
 export function signedLocalStorageUrl(method: "GET" | "PUT", key: string, contentType = "") {
   localObjectPath(key);
+  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const expires = String(Date.now() + (method === "GET" ? 5 : 10) * 60_000);
   const query = new URLSearchParams({ key, expires, contentType, signature: signature(method, key, expires, contentType) });
-  return `${process.env.NEXT_PUBLIC_APP_URL}/api/local-storage?${query}`;
+  return `${base.replace(/\/$/, "")}/api/local-storage?${query}`;
 }
 
 export function validateLocalStorageRequest(request: Request) {
