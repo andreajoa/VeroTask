@@ -82,3 +82,24 @@ export async function sendCustomerDeclinedNotification(bookingId: string) {
     )
   });
 }
+
+export async function sendCustomerProviderCompletedNotification(bookingId: string) {
+  const ctx = await bookingContext(bookingId);
+  if (!ctx?.customer || !ctx.business || !ctx.booking.protectionDeadline) return false;
+  const deadline = ctx.booking.protectionDeadline.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+  const url = `${appUrl()}/bookings/${ctx.booking.id}`;
+  return sendTransactionalEmail({
+    to: ctx.customer.email,
+    subject: `Please review your completed VeroTask service · ${ctx.business.name}`,
+    html: emailShell(
+      "Your provider marked the service complete",
+      `<p><strong>${esc(ctx.business.name)}</strong> marked ${esc(ctx.service?.name ?? "your service")} as completed.</p><p>Please review the booking now. You can confirm completion or report a problem before the protection window closes at <strong>${esc(deadline)} ET</strong>.</p><p>The service price was paid directly to the professional. Any VeroTask refund action applies only to the VeroTask booking fee collected by the platform.</p>`,
+      url,
+      "Review completed service"
+    )
+  });
+}

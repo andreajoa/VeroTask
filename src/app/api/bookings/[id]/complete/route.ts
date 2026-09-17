@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { requireProviderBooking } from "@/lib/booking-access";
+import { sendCustomerProviderCompletedNotification } from "@/lib/booking-notifications";
 import { protectionDeadlineFrom } from "@/lib/booking";
 import { bookingEvidenceSummary, POLICY_VERSION } from "@/lib/booking-workflow";
 
@@ -47,6 +48,15 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
       policyVersion: POLICY_VERSION
     }
   });
+
+  try {
+    await sendCustomerProviderCompletedNotification(id);
+  } catch (error) {
+    console.error("booking_completion_notification_failed", {
+      bookingId: id,
+      message: error instanceof Error ? error.message : "unknown_error"
+    });
+  }
 
   return NextResponse.json({
     ok: true,

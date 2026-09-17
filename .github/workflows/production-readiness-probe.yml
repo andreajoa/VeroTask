@@ -1,0 +1,40 @@
+name: VeroTask Production Readiness Probe
+
+on:
+  push:
+    branches:
+      - chatgpt/final-launch-readiness
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe live production
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_URL="https://vero-task.vercel.app"
+
+          echo "Checking health..."
+          curl --fail --silent --show-error --max-time 20 "$BASE_URL/api/health"
+          echo
+
+          echo "Checking sign-in page..."
+          curl --fail --silent --show-error --location --max-time 20 --output /dev/null "$BASE_URL/signin"
+
+          echo "Checking readiness..."
+          body="$(mktemp)"
+          code="$(curl --location --silent --show-error --output "$body" --write-out '%{http_code}' --max-time 20 "$BASE_URL/api/ready")"
+          cat "$body"
+          echo
+          if [ "$code" != "200" ]; then
+            echo "Production readiness returned HTTP $code"
+            exit 1
+          fi
+          grep -q '"ok":true' "$body"
+          grep -q '"paymentModel":"booking_fee_only"' "$body"
+          echo "Production readiness is healthy."
