@@ -35,14 +35,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     actorUserId: user.id,
     eventType: "customer_confirmed_service",
     previousStatus: "provider_completed",
-    nextStatus: "customer_confirmed"
+    nextStatus: "customer_confirmed",
+    metadata: { paymentModel: "booking_fee_only", providerPaidDirectlyByCustomer: true }
   });
 
-  try {
-    const transfer = await releaseProviderTransfer(id);
-    return NextResponse.json({ ok: true, status: transfer.status === "paid" ? "paid_out" : "customer_confirmed", payoutPending: transfer.status !== "paid" });
-  } catch {
-    // Confirmation is durable. A cron retry handles transient payout failures.
-    return NextResponse.json({ ok: true, status: "customer_confirmed", payoutPending: true });
-  }
+  await releaseProviderTransfer(id);
+  return NextResponse.json({ ok: true, status: "paid_out", payoutPending: false });
 }
