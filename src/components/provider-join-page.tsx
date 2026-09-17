@@ -27,14 +27,14 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
         <div className="lg:sticky lg:top-24">
           <div className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] text-[var(--brand)]"><BriefcaseBusiness size={15} /> Work on your terms</div>
           <h1 className="mt-5 max-w-xl text-4xl font-black tracking-[-0.05em] text-slate-950 sm:text-5xl">Turn your skills into local jobs.</h1>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">Create a provider profile, choose the work you want, set your availability and get paid online through Stripe Connect.</p>
+          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">Create your provider profile, choose the work you want, set your availability and receive service payments directly from customers.</p>
 
           <div className="mt-8 space-y-4">
             {[
-              ["Start without a monthly plan", "The Free plan lets you join first and only pay the marketplace fee when you earn."],
+              ["Start without a monthly plan", "The Free plan lets you join with no monthly subscription. Customers pay VeroTask the booking fee."],
               ["Choose your categories", "Offer home services, assembly, errands, moving help, organization, personal assistance and more."],
               ["Clear job details", "Customers answer guided questions before matching so you can evaluate the work before accepting."],
-              ["Protected payout flow", "Payments, proof of service and disputes stay attached to the booking record."]
+              ["Simple payment model", "VeroTask collects only the booking fee. The customer pays the service amount directly to you."]
             ].map(([title, body]) => <div className="flex gap-3" key={title}><CheckCircle2 size={20} className="mt-0.5 shrink-0 text-[var(--accent)]" /><div><div className="font-black text-slate-950">{title}</div><p className="mt-1 text-sm leading-6 text-slate-600">{body}</p></div></div>)}
           </div>
 
@@ -54,7 +54,7 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
               <div className="mb-7">
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--accent)]">Provider profile</p>
                 <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-950">Tell customers what you can help with.</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600">Signed in as <strong>{user.email}</strong>. Your profile starts in pending status while required verification is completed.</p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">Signed in as <strong>{user.email}</strong>. Complete your Orlando-area profile, then add services and availability.</p>
               </div>
 
               {error && <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-800">Please review the information and try again.</div>}
@@ -68,7 +68,7 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div><label className="text-sm font-black text-slate-800" htmlFor="phone">Phone</label><input id="phone" name="phone" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="(407) 555-0123" /></div>
-                  <div><label className="text-sm font-black text-slate-800" htmlFor="postalCode">ZIP code</label><input id="postalCode" name="postalCode" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="32801" /></div>
+                  <div><label className="text-sm font-black text-slate-800" htmlFor="postalCode">ZIP code</label><input id="postalCode" name="postalCode" required pattern="[0-9]{5}(-[0-9]{4})?" className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="32801" /></div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
