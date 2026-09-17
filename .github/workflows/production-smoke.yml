@@ -1,0 +1,67 @@
+name: Production Smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for production deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="https://vero-task.vercel.app/api/ready"
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/ready.json -w "%{http_code}" --connect-timeout 10 --max-time 20 "$URL" || true)
+            if [ "$code" = "200" ]; then
+              break
+            fi
+            echo "Attempt $i: readiness returned HTTP $code"
+            sleep 10
+          done
+          test "${code:-}" = "200"
+          cat /tmp/ready.json
+
+      - name: Validate readiness contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          jq -e '
+            .ok == true and
+            .status == "ready" and
+            .service == "verotask" and
+            .market == "Orlando / Central Florida" and
+            .paymentModel == "booking_fee_only" and
+            .checks.database == true and
+            .checks.databaseError == false and
+            .checks.productionUrlValid == true and
+            .checks.requiredEnvironmentConfigured == true and
+            .checks.missingEnvironmentCount == 0
+          ' /tmp/ready.json >/dev/null
+
+      - name: Verify public customer pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in / /signin /services /protection /terms; do
+            code=$(curl -LsS -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 25 "https://vero-task.vercel.app${path}")
+            echo "$path -> $code"
+            test "$code" = "200"
+          done
+
+      - name: Verify security and cache headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -LsSI --connect-timeout 10 --max-time 25 https://vero-task.vercel.app/ > /tmp/headers.txt
+          cat /tmp/headers.txt
+          grep -qi '^x-content-type-options: nosniff' /tmp/headers.txt
+          grep -qi '^referrer-policy:' /tmp/headers.txt
