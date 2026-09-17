@@ -1,0 +1,46 @@
+name: Production Route Diagnostic
+
+on:
+  push:
+    paths:
+      - '.github/workflows/production-debug-once.yml'
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe live VeroTask routes
+        shell: bash
+        run: |
+          set -u
+          BASE='https://www.verotask.online'
+          URL="$BASE/services?q=plumber&location=32801&size=small&timeline=asap&details=ok"
+
+          echo '===== ROOT ====='
+          curl -sS -L -D /tmp/root.headers -o /tmp/root.body -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\n' --connect-timeout 10 --max-time 30 "$BASE/" || true
+          cat /tmp/root.headers || true
+          echo 'BODY_HEAD:'
+          head -c 1000 /tmp/root.body || true
+          echo
+
+          echo '===== READY ====='
+          curl -sS -L -D /tmp/ready.headers -o /tmp/ready.body -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\n' --connect-timeout 10 --max-time 30 "$BASE/api/ready" || true
+          cat /tmp/ready.headers || true
+          echo 'BODY:'
+          cat /tmp/ready.body || true
+          echo
+
+          echo '===== SERVICES DOCUMENT ====='
+          curl -sS -L -D /tmp/services.headers -o /tmp/services.body -w 'HTTP=%{http_code}\nFINAL=%{url_effective}\n' --connect-timeout 10 --max-time 30 "$URL" || true
+          cat /tmp/services.headers || true
+          echo 'BODY_HEAD:'
+          head -c 5000 /tmp/services.body || true
+          echo
+          echo 'ERROR_MARKERS:'
+          grep -Eo 'digest[^<]{0,250}|Internal Server Error|Application error|NEXT_[A-Z_]+' /tmp/services.body | head -50 || true
+
+          echo '===== FAVICON ====='
+          curl -sS -L -D /tmp/favicon.headers -o /dev/null -w 'HTTP=%{http_code}\n' --connect-timeout 10 --max-time 20 "$BASE/favicon.ico" || true
+          cat /tmp/favicon.headers || true
