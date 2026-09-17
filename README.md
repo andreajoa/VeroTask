@@ -2,73 +2,71 @@
 
 **Trusted local services. Verified work.**
 
-VeroTask is a production-oriented local-services marketplace for Orlando and Central Florida. It combines provider discovery, bilateral reputation, provider-controlled job acceptance, protected payments, proof-of-service, private booking messages, disputes, provider payouts, subscriptions, CRM automation, analytics, and local SEO in one auditable workflow.
+VeroTask is a production-oriented local-services marketplace for Orlando and Central Florida. Customers discover independent professionals, request a time, pay VeroTask a booking fee only after the professional accepts, complete the service directly with the professional, and build bilateral reputation through an auditable workflow.
+
+## Official market and payment model
+
+- Launch market: Orlando and Central Florida, United States.
+- Marketplace currency: USD.
+- Service timezone: America/New_York (Eastern Time).
+- VeroTask does **not** use Stripe Connect and does not pay providers through Stripe.
+- VeroTask charges the customer only the booking fee: 15% on Free providers, 10% on Pro, and 7% on Elite.
+- The service price is paid directly by the customer to the independent professional outside the VeroTask Stripe transaction.
+- Optional professional subscriptions are Free ($0/month), Pro ($39/month), and Elite ($99/month).
 
 ## Marketplace lifecycle
 
-The core transaction flow is intentionally bilateral:
-
-1. A customer chooses a service, address and requested time.
-2. VeroTask checks provider hours and schedule conflicts.
+1. A customer selects a service, Orlando-area address and requested time.
+2. VeroTask validates the professional's availability and schedule conflicts.
 3. The request is created without charging the customer.
-4. The provider sees the customer's VeroTask reputation and job history before deciding.
-5. The provider accepts or declines the request.
-6. Only after acceptance is the customer invited to complete secure Stripe payment.
-7. A successful payment changes the booking to scheduled.
-8. The provider performs check-in, PIN verification, optional before/after photos, checklist and check-out as required by the service.
-9. The provider marks the service complete.
-10. The customer can confirm completion or open a dispute during the protection window.
-11. Eligible bookings settle to the provider through Stripe Connect.
-12. Customer and provider can rate one another after a completed booking.
-
-A new customer or provider displays `5.00 ★ · New`; the ranking system separately tracks confidence, completed jobs and verified rating history so a new 5.0 is not treated as more proven than an established high-rated account.
+4. The professional reviews the request and the customer's VeroTask reputation.
+5. The professional accepts or declines.
+6. After acceptance, VeroTask charges only the applicable booking fee through Stripe Checkout.
+7. A successful booking-fee payment changes the booking to scheduled.
+8. The professional performs the service and the customer pays the service amount directly to the professional.
+9. Check-in, PIN verification, evidence, checklist and check-out remain attached to the booking when required.
+10. The professional marks the service complete; the customer can confirm completion or open a dispute during the protection window.
+11. VeroTask records completion without any provider payout or Stripe transfer.
+12. Customer and professional can rate one another after completion.
 
 ## Core stack
 
 - Next.js 16 App Router + React 19 + TypeScript
 - PostgreSQL / Neon
 - Drizzle ORM + committed SQL migrations
-- Stripe Payments + Stripe Connect
+- Stripe Payments + Stripe Billing (no Connect)
 - Resend transactional email and CRM email
-- S3-compatible object storage / Cloudflare R2
+- S3-compatible private object storage / Cloudflare R2
 - Tailwind CSS
-- Vercel-compatible deployment and scheduled settlement cron
-- English, Brazilian Portuguese and Spanish public experience
+- Vercel deployment and scheduled jobs
+- English, Portuguese and Spanish public experience
 
-## Trust and marketplace controls
+## Production controls
 
-- Provider ownership / claim workflow
-- Stripe Connect payout readiness before bookable status
-- Customer ↔ provider bilateral reputation
-- Customer reputation visible to the provider before acceptance
-- Weekly provider availability in Orlando / Eastern Time
-- Accepted jobs reserve the provider schedule before payment
-- Private customer/provider messages tied to the booking
-- Geo check-in and check-out
-- Customer service PIN
-- Before/after evidence and checklist support
-- 24-hour customer protection workflow after provider completion
-- Dispute workflow that pauses normal settlement
-- Refund and cancellation rules recorded as booking events
-- Provider payout settlement and retry flow
-- Operational trust metrics beyond star rating
+- Passwordless magic-link authentication with single-use hashed tokens and request throttling
+- Idempotent Stripe customer/session creation
+- Stripe webhook-driven booking and subscription state
+- Atomic booking-state transitions and overlap re-checks to reduce double-booking races
+- Provider onboarding constrained to the Orlando/Central Florida launch area
+- Private customer/provider messages tied to bookings
+- Geo check-in/check-out, service PIN, evidence and checklist support
+- Booking-fee refunds capped to the amount actually charged by VeroTask
+- Bilateral reputation and operational trust metrics
+- CRM automation and consent tracking
 - Admin audit, evidence review, disputes and legal export surfaces
+- `/api/health` for liveness and `/api/ready` for production readiness
 
-## Provider monetization
+## Provider plans
 
-- Free: $0/month, 15% marketplace fee on completed bookings
-- Pro: $39/month, 10% marketplace fee
-- Elite: $99/month, 7% marketplace fee
+- Free: $0/month — customer booking fee 15%
+- Pro: $39/month — customer booking fee 10%
+- Elite: $99/month — customer booking fee 7%
 
-Subscription state and fee snapshots are stored with the relevant marketplace records so historical economics remain auditable.
+The professional's service amount is not processed or transferred by VeroTask on any plan.
 
 ## Local launch area
 
-Orlando, Kissimmee, Davenport, Celebration, Clermont, Winter Garden, Lake Buena Vista, Windermere and St. Cloud.
-
-## Initial service categories
-
-Vacation-rental cleaning, pool service, HVAC, plumbing, electrical, handyman, pest control, lawn care, pressure washing, locksmith, appliance repair, furniture assembly, moving and junk removal.
+Orlando, Kissimmee, Davenport, Celebration, Clermont, Winter Garden, Lake Buena Vista, Windermere and St. Cloud, Florida.
 
 ## Local development
 
@@ -80,11 +78,9 @@ npm run db:seed
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+## Validation gate
 
-## Validation
-
-The repository CI runs the same deterministic dependency graph from `package-lock.json` and requires all of the following to pass:
+Every release must pass:
 
 ```bash
 npm ci
@@ -94,29 +90,24 @@ npm test
 npm run build
 ```
 
-The committed Drizzle migration is under `drizzle/` and can be applied with:
+Before live promotion, also verify:
 
-```bash
-npm run db:migrate
-```
+- `/api/ready` returns HTTP 200.
+- Resend uses a verified VeroTask sender domain and magic-link delivery succeeds.
+- Cloudflare R2/private S3 credentials can create signed evidence upload and download URLs.
+- Stripe live credentials belong to the VeroTask account and the booking checkout charges only `marketplaceFeeCents` in USD.
+- Pro/Elite subscription checkout uses USD recurring pricing.
+- Stripe webhook delivery succeeds and duplicate events remain idempotent.
+- A complete test booking succeeds: request → provider accept → booking-fee payment → scheduled → service evidence → completion → confirmation → ratings.
+- Load tests are run against the production-equivalent deployment before high-volume promotion.
+
+## Infrastructure scaling
+
+The application is designed to stay stateless at the web tier so Vercel can scale horizontally. Neon is accessed through the serverless driver. Capacity claims must be validated against the actual production plan and deployment with load tests; repository correctness alone is not a substitute for runtime capacity validation.
 
 ## Production health
 
-- `GET /api/health` — process liveness, no secret disclosure.
-- `GET /api/ready` — verifies required production configuration and database connectivity; returns HTTP 503 when the deployment is not ready.
+- `GET /api/health` — process liveness; does not expose secrets.
+- `GET /api/ready` — checks required production environment, HTTPS application URL and database connectivity. Returns HTTP 503 when the deployment is incomplete.
 
-## Production deployment
-
-1. Provision PostgreSQL and set `DATABASE_URL`.
-2. Run `npm run db:migrate`, then `npm run db:seed` when seeding a new environment.
-3. Configure all required environment variables from `.env.example`.
-4. Configure Stripe, Stripe Connect and both webhook secrets.
-5. Configure the transactional email domain/API key.
-6. Configure private evidence storage when evidence uploads are enabled.
-7. Deploy the repository and verify `/api/health` and `/api/ready`.
-8. Perform a test-mode end-to-end booking: request → provider accept → payment → scheduled → evidence → completion → confirmation → bilateral ratings.
-9. Enable live payment credentials only after the test-mode transaction succeeds.
-
-## Project status
-
-The application code is intended to be deployable as a complete production marketplace milestone. A repository being production-ready does **not** mean an external production environment is automatically live: database, Stripe/Connect, email, object storage, domain and hosting credentials must exist in the target environment, and `/api/ready` must return HTTP 200 before real traffic or live payments are enabled.
+A green repository build does not mean third-party production configuration is automatically correct. Stripe, Resend, Neon, R2, domain/DNS and Vercel settings must match the live deployment before advertising to real customers.
