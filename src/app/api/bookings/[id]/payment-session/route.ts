@@ -24,9 +24,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "booking_time_expired" }, { status: 409 });
   }
   if (access.booking.stripePaymentIntentId) return NextResponse.json({ error: "booking_already_paid" }, { status: 409 });
-  if (!access.business.stripeConnectAccountId || !access.business.stripePayoutsEnabled) {
-    return NextResponse.json({ error: "provider_payout_not_ready" }, { status: 409 });
-  }
+  if (access.booking.currency !== "usd") return NextResponse.json({ error: "unsupported_currency" }, { status: 409 });
 
   const db = getDb();
   const stripe = getStripe();
@@ -64,33 +62,35 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
   const session = await stripe.checkout.sessions.create({
-    ui_mode: "embedded",
+    ui_mode: "embedded_page",
     mode: "payment",
     customer: customerId,
     line_items: [{
       quantity: 1,
       price_data: {
-        currency: access.booking.currency,
-        unit_amount: access.booking.subtotalCents,
+        currency: "usd",
+        unit_amount: access.booking.marketplaceFeeCents,
         product_data: {
-          name: service.name,
-          description: `${access.business.name} · ${access.business.city}, ${access.business.state}`
+          name: `VeroTask booking fee · ${service.name}`,
+          description: `${access.business.name} · ${access.business.city}, FL`
         }
       }
     }],
     payment_intent_data: {
-      transfer_group: `verotask_booking_${id}`,
       metadata: {
         verotask_booking_id: id,
         verotask_business_id: access.business.id,
-        verotask_policy_version: POLICY_VERSION
+        verotask_policy_version: POLICY_VERSION,
+        payment_model: "booking_fee_only"
       }
     },
     metadata: {
       verotask_booking_id: id,
       verotask_business_id: access.business.id,
       verotask_service_id: service.id,
-      verotask_policy_version: POLICY_VERSION
+      verotask_policy_version: POLICY_VERSION,
+      payment_model: "booking_fee_only",
+      provider_paid_directly: "true"
     },
     return_url: `${baseUrl}/bookings/${id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
   }, { idempotencyKey: `verotask-checkout-${id}-${existing?.stripeSessionId ?? "initial"}` });
@@ -122,7 +122,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       eventType: "checkout_started",
       previousStatus: "accepted",
       nextStatus: "payment_authorized",
-      metadata: { stripeCheckoutSessionId: session.id, expiresAt: expiresAt.toISOString() }
+      metadata: {
+        stripeCheckoutSessionId: session.id,
+        expiresAt: expiresAt.toISOString(),
+        amountCents: access.booking.marketplaceFeeCents,
+        currency: "usd",
+        paymentModel: "booking_fee_only"
+      }
     });
   }
 
