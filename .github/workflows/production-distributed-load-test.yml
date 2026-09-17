@@ -2,9 +2,6 @@ name: VeroTask Distributed Production Load Test
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/production-distributed-load-test.yml"
 
 permissions:
   contents: read
@@ -12,30 +9,25 @@ permissions:
 jobs:
   prepare:
     runs-on: ubuntu-latest
+    env:
+      PROD_URL: ${{ vars.VEROTASK_PRODUCTION_URL || 'https://vero-task-andres-projects-bbfd1881.vercel.app' }}
     outputs:
       base_url: ${{ steps.production.outputs.base_url }}
       target_epoch: ${{ steps.clock.outputs.target_epoch }}
     steps:
-      - name: Resolve live Vercel alias
+      - name: Verify public production target
         id: production
         shell: bash
         run: |
           set -euo pipefail
-          candidates=(
-            "https://vero-task-andres-projects-bbfd1881.vercel.app"
-            "https://vero-task.vercel.app"
-            "https://vero-task-git-main-andres-projects-bbfd1881.vercel.app"
-          )
-          for base in "${candidates[@]}"; do
-            code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$base/api/health" || true)"
-            echo "$base -> HTTP $code"
-            if [ "$code" = "200" ]; then
-              echo "base_url=$base" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-          done
-          echo "No public production alias returned HTTP 200"
-          exit 1
+          code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$PROD_URL/api/health" || true)"
+          echo "$PROD_URL -> HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Production must be publicly reachable and healthy before the 1,000-user test."
+            cat /tmp/verotask-health || true
+            exit 1
+          fi
+          echo "base_url=$PROD_URL" >> "$GITHUB_OUTPUT"
 
       - name: Set synchronized start
         id: clock
