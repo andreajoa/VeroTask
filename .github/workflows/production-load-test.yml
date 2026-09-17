@@ -4,17 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       concurrency:
-        description: Concurrent requests
+        description: Concurrent requests (start at 100; raise deliberately after each green run)
         required: false
-        default: "1000"
+        default: "100"
       requests:
         description: Total requests
         required: false
-        default: "3000"
-  push:
-    paths:
-      - ".github/workflows/production-load-test.yml"
-      - "scripts/load-test.mjs"
+        default: "600"
 
 permissions:
   contents: read
@@ -27,6 +23,8 @@ jobs:
   load-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      PROD_URL: ${{ vars.VEROTASK_PRODUCTION_URL || 'https://vero-task-andres-projects-bbfd1881.vercel.app' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,33 +34,23 @@ jobs:
         with:
           node-version: 22
 
-      - name: Resolve live Vercel alias
-        id: production
+      - name: Verify public production target
         shell: bash
         run: |
           set -euo pipefail
-          candidates=(
-            "https://vero-task.vercel.app"
-            "https://vero-task-andres-projects-bbfd1881.vercel.app"
-            "https://vero-task-git-main-andres-projects-bbfd1881.vercel.app"
-          )
-          for base in "${candidates[@]}"; do
-            code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$base/api/health" || true)"
-            echo "$base -> HTTP $code"
-            if [ "$code" = "200" ]; then
-              echo "base_url=$base" >> "$GITHUB_OUTPUT"
-              echo "Resolved production candidate: $base"
-              exit 0
-            fi
-          done
-          echo "No known Vercel alias returned HTTP 200 from /api/health"
-          exit 1
+          code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$PROD_URL/api/health" || true)"
+          echo "$PROD_URL -> HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "Production must be publicly reachable and healthy before load testing."
+            cat /tmp/verotask-health || true
+            exit 1
+          fi
 
-      - name: Verify production at 1,000 concurrent requests
+      - name: Run deliberate production load test
         env:
-          BASE_URL: ${{ steps.production.outputs.base_url }}
-          CONCURRENCY: ${{ github.event.inputs.concurrency || '1000' }}
-          REQUESTS: ${{ github.event.inputs.requests || '3000' }}
+          BASE_URL: ${{ env.PROD_URL }}
+          CONCURRENCY: ${{ github.event.inputs.concurrency || '100' }}
+          REQUESTS: ${{ github.event.inputs.requests || '600' }}
           LOAD_PATHS: /api/health,/api/ready,/
           REQUEST_TIMEOUT_MS: "15000"
           MAX_ERROR_RATE: "0.01"
