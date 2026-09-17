@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { bookingCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, services, users } from "@/db/schema";
+import { requestAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/auth";
 import { requireCustomerBooking } from "@/lib/booking-access";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await db.update(users).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(users.id, user.id));
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
+  const baseUrl = requestAppUrl(request.nextUrl.origin);
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded_page",
     mode: "payment",
