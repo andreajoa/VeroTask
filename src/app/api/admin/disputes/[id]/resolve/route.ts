@@ -2,14 +2,13 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { bookingEvents, bookings, disputes, providerTransfers } from "@/db/schema";
+import { bookingEvents, bookings, disputes } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
-import { refundBookingPayment, releaseProviderTransfer, reverseProviderTransfer } from "@/lib/booking-workflow";
+import { refundBookingPayment } from "@/lib/booking-workflow";
 
 const schema = z.object({
   outcome: z.enum(["customer", "provider", "split"]),
   refundCents: z.number().int().nonnegative(),
-  providerCents: z.number().int().nonnegative(),
   note: z.string().trim().min(10).max(5000)
 });
 
@@ -26,18 +25,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const [booking] = await db.select().from(bookings).where(eq(bookings.id, dispute.bookingId)).limit(1);
   if (!booking) return NextResponse.json({ error: "booking_not_found" }, { status: 404 });
 
-  if (parsed.data.refundCents > booking.subtotalCents || parsed.data.providerCents > booking.providerAmountCents) {
-    return NextResponse.json({ error: "resolution_exceeds_booking_amounts" }, { status: 400 });
-  }
-  if (parsed.data.refundCents + parsed.data.providerCents > booking.subtotalCents) {
-    return NextResponse.json({ error: "resolution_total_invalid" }, { status: 400 });
+  const maxRefund = booking.marketplaceFeeCents;
+  if (parsed.data.refundCents > maxRefund) {
+    return NextResponse.json({ error: "refund_exceeds_verotask_booking_fee" }, { status: 400 });
   }
   if (parsed.data.outcome === "customer" && parsed.data.refundCents === 0) return NextResponse.json({ error: "customer_outcome_requires_refund" }, { status: 400 });
-  if (parsed.data.outcome === "provider" && parsed.data.providerCents === 0) return NextResponse.json({ error: "provider_outcome_requires_payment" }, { status: 400 });
-
-  const [paidTransfer] = await db.select().from(providerTransfers).where(eq(providerTransfers.bookingId, booking.id)).limit(1);
-  if (paidTransfer?.status === "paid" && paidTransfer.amountCents > parsed.data.providerCents) {
-    await reverseProviderTransfer(booking.id, paidTransfer.amountCents - parsed.data.providerCents);
+  if (parsed.data.outcome === "provider" && parsed.data.refundCents !== 0) return NextResponse.json({ error: "provider_outcome_requires_zero_refund" }, { status: 400 });
+  if (parsed.data.outcome === "split" && (parsed.data.refundCents <= 0 || parsed.data.refundCents >= maxRefund)) {
+    return NextResponse.json({ error: "split_outcome_requires_partial_booking_fee_refund" }, { status: 400 });
   }
 
   if (parsed.data.refundCents > 0) {
@@ -56,15 +51,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   await db.update(disputes).set({
     status: disputeStatus,
     resolutionRefundCents: parsed.data.refundCents,
-    resolutionProviderCents: parsed.data.providerCents,
+    resolutionProviderCents: 0,
     resolutionNote: parsed.data.note,
     resolvedAt: now
   }).where(eq(disputes.id, dispute.id));
 
-  const fullRefund = parsed.data.refundCents === booking.subtotalCents;
+  const fullBookingFeeRefund = maxRefund > 0 && parsed.data.refundCents === maxRefund;
+  const nextStatus = fullBookingFeeRefund ? "refunded" : "customer_confirmed";
   await db.update(bookings).set({
-    status: fullRefund ? "refunded" : "customer_confirmed",
-    payoutEligibleAt: parsed.data.providerCents > 0 ? now : null,
+    status: nextStatus,
+    payoutEligibleAt: null,
     updatedAt: now
   }).where(eq(bookings.id, booking.id));
   await db.insert(bookingEvents).values({
@@ -72,21 +68,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     actorUserId: user.id,
     eventType: "dispute_resolved",
     previousStatus: "disputed",
-    nextStatus: fullRefund ? "refunded" : "customer_confirmed",
+    nextStatus,
     metadata: {
       disputeId: dispute.id,
       outcome: parsed.data.outcome,
-      refundCents: parsed.data.refundCents,
-      providerCents: parsed.data.providerCents,
+      bookingFeeRefundCents: parsed.data.refundCents,
+      providerCents: 0,
+      servicePaymentHandledDirectly: true,
       note: parsed.data.note
     }
   });
 
-  let payoutPending = false;
-  if (parsed.data.providerCents > 0) {
-    try { await releaseProviderTransfer(booking.id, parsed.data.providerCents); }
-    catch { payoutPending = true; }
-  }
-
-  return NextResponse.json({ ok: true, disputeStatus, refundCents: parsed.data.refundCents, providerCents: parsed.data.providerCents, payoutPending });
+  return NextResponse.json({ ok: true, disputeStatus, refundCents: parsed.data.refundCents, providerCents: 0, payoutPending: false });
 }

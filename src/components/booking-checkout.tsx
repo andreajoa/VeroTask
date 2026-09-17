@@ -5,12 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarClock, MapPin, ShieldCheck } from "lucide-react";
 
+function money(cents: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+}
+
 export function BookingCheckout({
   businessId,
   businessName,
   serviceId,
   serviceName,
   servicePriceCents,
+  bookingFeeCents,
   durationMinutes
 }: {
   businessId: string;
@@ -18,6 +23,7 @@ export function BookingCheckout({
   serviceId: string;
   serviceName: string;
   servicePriceCents: number;
+  bookingFeeCents: number;
   durationMinutes: number;
 }) {
   const router = useRouter();
@@ -72,7 +78,7 @@ export function BookingCheckout({
 
           <label className="flex items-start gap-3 rounded-2xl border border-[var(--line)] bg-[var(--background)] p-4 text-sm leading-6">
             <input name="acceptsPolicy" type="checkbox" required className="mt-1" />
-            <span>I understand the <Link href="/protection" target="_blank" className="font-black text-[var(--brand)]">VeroTask Payment Protection and Cancellation Rules</Link>. The provider reviews the request first; secure payment is requested only after acceptance.</span>
+            <span>I understand the <Link href="/protection" target="_blank" className="font-black text-[var(--brand)]">VeroTask Payment Protection and Cancellation Rules</Link>. The provider reviews the request first. If accepted, Stripe charges only the VeroTask booking fee; the service price is paid directly to the professional.</span>
           </label>
 
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">We could not send the request: {error.replaceAll("_", " ")}.</div>}
@@ -85,10 +91,12 @@ export function BookingCheckout({
         <h2 className="mt-5 text-xl font-black">{serviceName}</h2>
         <p className="mt-2 text-sm text-[var(--muted)]">{businessName}</p>
         <div className="my-5 border-t border-[var(--line)]" />
-        <div className="flex items-center justify-between"><span className="text-sm text-[var(--muted)]">Service price</span><span className="text-xl font-black">${(servicePriceCents / 100).toFixed(2)}</span></div>
-        <div className="mt-2 flex items-center justify-between text-sm"><span className="text-[var(--muted)]">Marketplace fee to customer</span><span className="font-bold">$0.00</span></div>
-        <div className="mt-2 flex items-center justify-between text-sm"><span className="text-[var(--muted)]">Estimated duration</span><span className="font-bold">{durationMinutes} min</span></div>
-        <div className="mt-5 rounded-xl bg-[var(--background)] p-4 text-xs leading-5 text-[var(--muted)]"><strong className="text-[var(--foreground)]">How it works:</strong> send the request → provider reviews your reputation and schedule → provider accepts → you complete secure payment → the service is confirmed.</div>
+        <div className="flex items-center justify-between"><span className="text-sm text-[var(--muted)]">Service price</span><span className="text-xl font-black">{money(servicePriceCents)}</span></div>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Paid directly to the professional for the service.</p>
+        <div className="mt-4 flex items-center justify-between text-sm"><span className="text-[var(--muted)]">VeroTask booking fee</span><span className="font-bold">{money(bookingFeeCents)}</span></div>
+        <p className="mt-1 text-xs leading-5 text-[var(--muted)]">Charged by Stripe only after the professional accepts your request.</p>
+        <div className="mt-4 flex items-center justify-between text-sm"><span className="text-[var(--muted)]">Estimated duration</span><span className="font-bold">{durationMinutes} min</span></div>
+        <div className="mt-5 rounded-xl bg-[var(--background)] p-4 text-xs leading-5 text-[var(--muted)]"><strong className="text-[var(--foreground)]">How it works:</strong> send the request → provider reviews it → provider accepts → pay only the VeroTask booking fee → pay the service price directly to the provider → complete the verified service workflow.</div>
       </aside>
     </div>
   );

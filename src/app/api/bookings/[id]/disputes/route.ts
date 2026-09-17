@@ -32,8 +32,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (access.booking.status === "scheduled" && now < serviceEnd && parsed.data.reason === "provider_no_show") {
     return NextResponse.json({ error: "service_window_not_finished" }, { status: 409 });
   }
-  // Internal resolution remains available for 72 hours after the scheduled end.
-  // Card-network chargeback rights are separate and are not limited by this value.
   if (now > serviceEnd + 72 * 60 * 60 * 1000) return NextResponse.json({ error: "internal_dispute_window_closed" }, { status: 409 });
 
   const db = getDb();
@@ -41,7 +39,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     .where(and(eq(disputes.bookingId, id), isNull(disputes.resolvedAt))).limit(1);
   if (open) return NextResponse.json({ error: "dispute_already_open", disputeId: open.id }, { status: 409 });
 
-  const requested = Math.min(parsed.data.requestedRefundCents ?? access.booking.subtotalCents, access.booking.subtotalCents);
+  // VeroTask can review/refund only the booking fee collected by Stripe. Any
+  // service-price dispute remains between the customer and the professional.
+  const requested = Math.min(parsed.data.requestedRefundCents ?? access.booking.marketplaceFeeCents, access.booking.marketplaceFeeCents);
   const [dispute] = await db.insert(disputes).values({
     bookingId: id,
     openedByUserId: user.id,
@@ -58,7 +58,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     eventType: "dispute_opened",
     previousStatus: access.booking.status,
     nextStatus: "disputed",
-    metadata: { disputeId: dispute.id, reason: dispute.reason, policyVersion: POLICY_VERSION }
+    metadata: {
+      disputeId: dispute.id,
+      reason: dispute.reason,
+      policyVersion: POLICY_VERSION,
+      requestedBookingFeeRefundCents: requested,
+      servicePaymentHandledDirectly: true
+    }
   });
 
   return NextResponse.json({ ok: true, disputeId: dispute.id, status: "disputed" });

@@ -5,7 +5,7 @@ import { getDb } from "@/db";
 import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
-import { POLICY_VERSION, refundBookingPayment, releaseProviderTransfer } from "@/lib/booking-workflow";
+import { POLICY_VERSION, refundBookingPayment } from "@/lib/booking-workflow";
 
 const schema = z.object({ reason: z.string().trim().min(3).max(1000) });
 
@@ -25,25 +25,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const db = getDb();
   const paymentCaptured = Boolean(access.booking.stripePaymentIntentId);
   let refundCents = 0;
-  let providerCompensationCents = 0;
   let rule = "unpaid_cancellation";
 
+  // VeroTask can refund only the booking fee it actually collected. The service
+  // price is paid directly between customer and professional.
   if (access.isProvider) {
-    refundCents = paymentCaptured ? access.booking.subtotalCents : 0;
-    rule = paymentCaptured ? "provider_cancelled_full_refund" : "provider_cancelled_before_payment";
+    refundCents = paymentCaptured ? access.booking.marketplaceFeeCents : 0;
+    rule = paymentCaptured ? "provider_cancelled_booking_fee_refund" : "provider_cancelled_before_payment";
   } else if (paymentCaptured) {
     const hoursUntilStart = (access.booking.scheduledStart.getTime() - Date.now()) / 3_600_000;
     if (hoursUntilStart > 24) {
-      refundCents = access.booking.subtotalCents;
-      rule = "customer_cancelled_over_24h_full_refund";
+      refundCents = access.booking.marketplaceFeeCents;
+      rule = "customer_cancelled_over_24h_booking_fee_refund";
     } else if (hoursUntilStart >= 6) {
-      refundCents = Math.round(access.booking.subtotalCents * 0.5);
-      const retainedGross = access.booking.subtotalCents - refundCents;
-      providerCompensationCents = Math.round(retainedGross * (10_000 - access.booking.commissionBpsSnapshot) / 10_000);
-      rule = "customer_cancelled_6_to_24h_half_charge";
+      refundCents = Math.round(access.booking.marketplaceFeeCents * 0.5);
+      rule = "customer_cancelled_6_to_24h_half_booking_fee_refund";
     } else {
-      providerCompensationCents = access.booking.providerAmountCents;
-      rule = "customer_cancelled_under_6h_nonrefundable";
+      rule = "customer_cancelled_under_6h_booking_fee_nonrefundable";
     }
   } else if (access.booking.status === "accepted" || access.booking.status === "payment_authorized") {
     rule = "customer_cancelled_before_payment";
@@ -53,8 +51,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await refundBookingPayment({ bookingId: id, amountCents: refundCents, reason: rule });
   }
 
-  const nextStatus = refundCents === access.booking.subtotalCents ? "refunded" : "cancelled";
-  await db.update(bookings).set({ status: nextStatus, updatedAt: new Date() }).where(eq(bookings.id, id));
+  const nextStatus = paymentCaptured && refundCents === access.booking.marketplaceFeeCents ? "refunded" : "cancelled";
+  await db.update(bookings).set({ status: nextStatus, payoutEligibleAt: null, updatedAt: new Date() }).where(eq(bookings.id, id));
   await db.insert(bookingEvents).values({
     bookingId: id,
     actorUserId: user.id,
@@ -67,14 +65,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       policyRule: rule,
       policyVersion: POLICY_VERSION,
       refundCents,
-      providerCompensationCents
+      refundableAsset: "verotask_booking_fee",
+      servicePaymentHandledDirectly: true
     }
   });
 
-  if (providerCompensationCents > 0 && access.isCustomer) {
-    try { await releaseProviderTransfer(id, providerCompensationCents); }
-    catch { /* payout retry is handled by scheduled settlement */ }
-  }
-
-  return NextResponse.json({ ok: true, status: nextStatus, refundCents, providerCompensationCents, policyRule: rule });
+  return NextResponse.json({ ok: true, status: nextStatus, refundCents, providerCompensationCents: 0, policyRule: rule });
 }

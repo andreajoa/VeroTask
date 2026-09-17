@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { requireCustomerBooking } from "@/lib/booking-access";
-import { hasOpenDispute, releaseProviderTransfer } from "@/lib/booking-workflow";
+import { hasOpenDispute } from "@/lib/booking-workflow";
 
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -25,7 +25,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const [claimed] = await db.update(bookings).set({
     status: "customer_confirmed",
     customerConfirmedAt: now,
-    payoutEligibleAt: now,
+    payoutEligibleAt: null,
     updatedAt: now
   }).where(and(eq(bookings.id, id), eq(bookings.status, "provider_completed"))).returning();
 
@@ -39,6 +39,5 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
     metadata: { paymentModel: "booking_fee_only", providerPaidDirectlyByCustomer: true }
   });
 
-  await releaseProviderTransfer(id);
-  return NextResponse.json({ ok: true, status: "paid_out", payoutPending: false });
+  return NextResponse.json({ ok: true, status: "customer_confirmed", payoutPending: false });
 }

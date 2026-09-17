@@ -91,9 +91,9 @@ export default async function BookingPage({
           customerCompletedJobs={access.isProvider ? counterpartReputation.completedJobs : 0}
           customerLabel={access.isProvider ? counterpartReputation.label : "New"}
         />
-        {showPayment && <AcceptedBookingPayment bookingId={id} publishableKey={publishableKey} />}
+        {showPayment && <AcceptedBookingPayment bookingId={id} publishableKey={publishableKey} bookingFeeCents={access.booking.marketplaceFeeCents} servicePriceCents={access.booking.subtotalCents} />}
         {access.isProvider && ["accepted", "payment_authorized"].includes(access.booking.status) && (
-          <div className="card p-6"><div className="font-black">Request accepted</div><p className="mt-2 text-sm leading-6 text-[var(--muted)]">The customer has been invited to complete secure payment. Do not start the service until this booking changes to scheduled.</p></div>
+          <div className="card p-6"><div className="font-black">Request accepted</div><p className="mt-2 text-sm leading-6 text-[var(--muted)]">The customer has been invited to pay the VeroTask booking fee. Do not start the service until this booking changes to scheduled. The service price is paid directly to you by the customer.</p></div>
         )}
         <MutualReputationPanel
           bookingId={id}

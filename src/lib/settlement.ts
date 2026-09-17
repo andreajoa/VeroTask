@@ -1,7 +1,7 @@
 import { and, eq, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings } from "@/db/schema";
-import { hasOpenDispute, recordBookingEvent, releaseProviderTransfer } from "@/lib/booking-workflow";
+import { hasOpenDispute, recordBookingEvent } from "@/lib/booking-workflow";
 import { evaluateBookingEvidence } from "@/lib/evidence-policy";
 import { canAutoComplete } from "@/lib/trust";
 
@@ -33,7 +33,7 @@ export async function autoSettleExpiredBookings(limit = 50) {
     const [claimed] = await db.update(bookings).set({
       status: "auto_completed",
       autoCompletedAt: now,
-      payoutEligibleAt: now,
+      payoutEligibleAt: null,
       updatedAt: now
     }).where(and(eq(bookings.id, booking.id), eq(bookings.status, "provider_completed"))).returning();
     if (!claimed) continue;
@@ -46,16 +46,12 @@ export async function autoSettleExpiredBookings(limit = 50) {
       metadata: {
         score: evidence.score,
         confidence: evidence.confidence,
-        requiredEvidenceSatisfied: true
+        requiredEvidenceSatisfied: true,
+        paymentModel: "booking_fee_only",
+        providerPaidDirectlyByCustomer: true
       }
     });
-
-    try {
-      await releaseProviderTransfer(booking.id);
-      results.push({ bookingId: booking.id, action: "paid", score: evidence.score });
-    } catch {
-      results.push({ bookingId: booking.id, action: "payout_retry_needed", score: evidence.score });
-    }
+    results.push({ bookingId: booking.id, action: "completed", score: evidence.score });
   }
   return results;
 }

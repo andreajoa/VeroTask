@@ -70,7 +70,10 @@ export function calculateBookingAmounts(totalCents: number, plan: PlanKey) {
 
   const commissionBps = PROVIDER_PLANS[plan].commissionBps;
   const marketplaceFeeCents = Math.round((totalCents * commissionBps) / 10_000);
-  const providerAmountCents = totalCents - marketplaceFeeCents;
+
+  // Fee-only model: VeroTask charges the booking fee separately. The complete
+  // service price remains payable directly by the customer to the professional.
+  const providerAmountCents = totalCents;
 
   return {
     totalCents,

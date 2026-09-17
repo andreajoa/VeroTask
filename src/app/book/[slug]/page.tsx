@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import { businesses, services } from "@/db/schema";
 import { BookingCheckout } from "@/components/booking-checkout";
 import { getCurrentUser } from "@/lib/auth";
+import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
 import { publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 
 export const dynamic = "force-dynamic";
@@ -35,13 +36,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   const displayName = publicProviderName(business.id, "en");
   const serviceName = publicServiceText(service.name, business.name);
+  const amounts = calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey);
 
   return (
     <main className="min-h-screen">
       <header className="border-b border-[var(--line)] bg-white"><div className="container-shell flex min-h-16 items-center justify-between"><Link href="/" className="flex items-center gap-2 text-xl font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand)] text-white"><BadgeCheck size={20} /></span>VeroTask</Link><Link href="/protection" target="_blank" className="inline-flex items-center gap-2 text-sm font-black text-[var(--muted)]"><ShieldCheck size={16} /> Booking Protection</Link></div></header>
       <section className="container-shell py-10">
-        <div className="mb-7 max-w-3xl"><p className="text-sm font-black text-[var(--brand)]">SERVICE REQUEST</p><h1 className="mt-2 text-3xl font-black tracking-tight">Request {serviceName}</h1><p className="mt-3 text-sm leading-6 text-[var(--muted)]">You are requesting service from {displayName}. The professional reviews your request before accepting. After acceptance, VeroTask charges only the booking fee; you pay the service amount directly to the professional.</p></div>
-        <BookingCheckout businessId={business.id} businessName={displayName} serviceId={service.id} serviceName={serviceName} servicePriceCents={service.basePriceCents} durationMinutes={service.durationMinutes ?? 60} />
+        <div className="mb-7 max-w-3xl"><p className="text-sm font-black text-[var(--brand)]">SERVICE REQUEST</p><h1 className="mt-2 text-3xl font-black tracking-tight">Request {serviceName}</h1><p className="mt-3 text-sm leading-6 text-[var(--muted)]">You are requesting service from {displayName}. The professional reviews your request before accepting. After acceptance, VeroTask charges only the booking fee; you pay the service price directly to the professional.</p></div>
+        <BookingCheckout businessId={business.id} businessName={displayName} serviceId={service.id} serviceName={serviceName} servicePriceCents={service.basePriceCents} bookingFeeCents={amounts.marketplaceFeeCents} durationMinutes={service.durationMinutes ?? 60} />
       </section>
     </main>
   );

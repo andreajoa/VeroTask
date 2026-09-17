@@ -12,7 +12,7 @@ import { scoreEvidence } from "@/lib/booking";
 import { getStripe } from "@/lib/stripe";
 import { evidenceConfidence } from "@/lib/trust";
 
-export const POLICY_VERSION = "2026-09-16";
+export const POLICY_VERSION = "2026-09-17-fee-only";
 
 export async function getBookingContext(bookingId: string) {
   const db = getDb();
@@ -58,26 +58,21 @@ export async function hasOpenDispute(bookingId: string) {
   return Boolean(row);
 }
 
-// VeroTask collects only the marketplace booking fee. The professional receives
-// the service amount directly from the customer, outside Stripe Connect.
-// This function remains for compatibility with the existing booking state machine.
+// Compatibility shim for historical imports. VeroTask does not transfer the
+// service price to a provider and this function intentionally moves no money.
 export async function releaseProviderTransfer(bookingId: string, _amountCents?: number) {
-  const db = getDb();
   const context = await getBookingContext(bookingId);
   if (!context) throw new Error("booking_not_found");
   if (await hasOpenDispute(bookingId)) throw new Error("booking_has_open_dispute");
-
-  const nextStatus = context.booking.status === "cancelled" ? "cancelled" : "paid_out";
-  await db.update(bookings).set({ status: nextStatus, updatedAt: new Date() })
-    .where(eq(bookings.id, bookingId));
   await recordBookingEvent({
     bookingId,
-    eventType: "booking_completed",
+    eventType: "legacy_provider_transfer_skipped",
     previousStatus: context.booking.status,
-    nextStatus,
+    nextStatus: context.booking.status,
     metadata: {
       paymentModel: "booking_fee_only",
-      providerPaidDirectlyByCustomer: true
+      providerPaidDirectlyByCustomer: true,
+      moneyMovedByVeroTask: false
     }
   });
   return null;
@@ -123,7 +118,7 @@ export async function refundBookingPayment(input: {
   await recordBookingEvent({
     bookingId: input.bookingId,
     eventType: "refund_created",
-    metadata: { amountCents: input.amountCents, stripeRefundId: stripeRefund.id, reason: input.reason }
+    metadata: { amountCents: input.amountCents, stripeRefundId: stripeRefund.id, reason: input.reason, refundableAsset: "verotask_booking_fee" }
   });
   return stripeRefund;
 }

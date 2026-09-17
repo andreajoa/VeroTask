@@ -5,7 +5,21 @@ import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe
 import { loadStripe } from "@stripe/stripe-js";
 import { CreditCard, ShieldCheck } from "lucide-react";
 
-export function AcceptedBookingPayment({ bookingId, publishableKey }: { bookingId: string; publishableKey: string | null }) {
+function money(cents: number) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
+}
+
+export function AcceptedBookingPayment({
+  bookingId,
+  publishableKey,
+  bookingFeeCents,
+  servicePriceCents
+}: {
+  bookingId: string;
+  publishableKey: string | null;
+  bookingFeeCents: number;
+  servicePriceCents: number;
+}) {
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +67,8 @@ export function AcceptedBookingPayment({ bookingId, publishableKey }: { bookingI
   if (clientSecret && stripePromise) {
     return (
       <div className="card p-5 sm:p-6">
-        <div className="mb-5 flex items-center gap-2 font-black text-[var(--brand)]"><ShieldCheck size={19} /> Secure VeroTask payment</div>
+        <div className="mb-3 flex items-center gap-2 font-black text-[var(--brand)]"><ShieldCheck size={19} /> Pay VeroTask booking fee securely</div>
+        <p className="mb-5 text-sm leading-6 text-[var(--muted)]">Stripe will charge <strong>{money(bookingFeeCents)}</strong> to VeroTask. The <strong>{money(servicePriceCents)}</strong> service price is paid directly to the professional and is not collected by VeroTask.</p>
         <EmbeddedCheckoutProvider stripe={stripePromise} options={{ clientSecret }}>
           <EmbeddedCheckout />
         </EmbeddedCheckoutProvider>
@@ -64,11 +79,11 @@ export function AcceptedBookingPayment({ bookingId, publishableKey }: { bookingI
   return (
     <div className="card p-6">
       <div className="flex items-center gap-2 font-black"><CreditCard size={19} /> Provider accepted your request</div>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">Complete the secure payment to confirm the booking. Until payment succeeds, the provider is not asked to start the service and no provider payout is released.</p>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">To confirm the booking, pay the VeroTask booking fee of <strong>{money(bookingFeeCents)}</strong>. The service price of <strong>{money(servicePriceCents)}</strong> is paid directly to the professional; VeroTask does not collect or transfer that service payment.</p>
       {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</div>}
       <div className="mt-5 flex flex-wrap gap-3">
         <button className="btn-primary" disabled={busy || !publishableKey} onClick={startPayment}>
-          {busy ? "Processing…" : publishableKey ? "Continue to secure payment" : "Payment temporarily unavailable"}
+          {busy ? "Processing…" : publishableKey ? `Pay ${money(bookingFeeCents)} booking fee` : "Payment temporarily unavailable"}
         </button>
         <button className="btn-secondary" disabled={busy} onClick={cancelBeforePayment}>Cancel request</button>
       </div>
