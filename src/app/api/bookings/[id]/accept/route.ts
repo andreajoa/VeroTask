@@ -26,28 +26,31 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     return NextResponse.json({ error: "booking_time_expired" }, { status: 409 });
   }
 
+  const db = getDb();
+  const [claimed] = await db.update(bookings).set({
+    status: "accepted",
+    updatedAt: new Date()
+  }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
+  if (!claimed) return NextResponse.json({ error: "booking_state_changed" }, { status: 409 });
+
   const availability = await checkProviderAvailability(
     access.business.id,
-    access.booking.scheduledStart,
-    access.booking.scheduledEnd ?? access.booking.scheduledStart
+    claimed.scheduledStart,
+    claimed.scheduledEnd ?? claimed.scheduledStart,
+    id
   );
   if (!availability.available) {
+    await db.update(bookings).set({ status: "requested", updatedAt: new Date() })
+      .where(and(eq(bookings.id, id), eq(bookings.status, "accepted")));
     return NextResponse.json({ error: availability.reason ?? "schedule_conflict" }, { status: 409 });
   }
 
-  const reputation = await getCustomerReputationSummary(access.booking.customerId);
+  const reputation = await getCustomerReputationSummary(claimed.customerId);
   const reputationScore = algorithmReputationScore({
     rating: reputation.rating,
     ratingCount: reputation.ratingCount,
     completedJobs: reputation.completedJobs
   });
-
-  const db = getDb();
-  const [updated] = await db.update(bookings).set({
-    status: "accepted",
-    updatedAt: new Date()
-  }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
-  if (!updated) return NextResponse.json({ error: "booking_state_changed" }, { status: 409 });
 
   await db.insert(bookingEvents).values({
     bookingId: id,
