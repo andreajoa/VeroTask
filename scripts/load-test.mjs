@@ -12,6 +12,7 @@ let ok = 0;
 let failed = 0;
 const statuses = new Map();
 const networkErrors = new Map();
+const responseSamples = new Map();
 const byPath = new Map(paths.map((path) => [path, { ok: 0, failed: 0, latencies: [], statuses: new Map(), networkErrors: new Map() }]));
 
 function percentile(values, p) {
@@ -33,6 +34,19 @@ function networkErrorKey(error) {
     .replace(/https?:\/\/[^\s)]+/g, "<url>")
     .slice(0, 180);
   return [name, code, message].filter(Boolean).join(":");
+}
+
+function safeResponseHeaders(response) {
+  const names = [
+    "server",
+    "x-vercel-id",
+    "x-vercel-mitigated",
+    "x-vercel-cache",
+    "cf-ray",
+    "retry-after",
+    "content-type"
+  ];
+  return Object.fromEntries(names.map((name) => [name, response.headers.get(name)]).filter(([, value]) => value));
 }
 
 function summarizePath(path, data) {
@@ -64,7 +78,7 @@ async function hit(index) {
       redirect: "follow",
       signal: controller.signal,
       headers: {
-        "user-agent": "VeroTask-load-verifier/2.0",
+        "user-agent": "VeroTask-load-verifier/2.1",
         "accept": "application/json,text/html;q=0.9,*/*;q=0.8"
       }
     });
@@ -73,6 +87,9 @@ async function hit(index) {
     pathStats.latencies.push(elapsed);
     increment(statuses, response.status);
     increment(pathStats.statuses, response.status);
+    if (!response.ok && !responseSamples.has(response.status)) {
+      responseSamples.set(response.status, { path, headers: safeResponseHeaders(response) });
+    }
     if (response.ok) {
       ok += 1;
       pathStats.ok += 1;
@@ -128,6 +145,7 @@ const result = {
   },
   statuses: Object.fromEntries(statuses),
   networkErrors: Object.fromEntries(networkErrors),
+  responseSamples: Object.fromEntries(responseSamples),
   paths: [...byPath.entries()].map(([path, data]) => summarizePath(path, data))
 };
 
