@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { authTokens, sessions } from "@/db/auth-schema";
 import { users } from "@/db/schema";
 import { analyticsEvents, crmContacts, visitorSessions } from "@/db/analytics-schema";
+import { requestAppUrl } from "@/lib/app-url";
 import { sessionKeyHash } from "@/lib/visitor-privacy";
 import { ensureCrmContactForUser } from "@/lib/crm-automation";
 import { sendCrmEmail } from "@/lib/crm-email";
@@ -24,7 +25,7 @@ function safeRedirectPath(value?: string | null) {
   return value.slice(0, 500);
 }
 
-export async function createMagicLink(emailInput: string, redirectPath?: string | null) {
+export async function createMagicLink(emailInput: string, redirectPath?: string | null, requestOrigin?: string | null) {
   const email = emailInput.trim().toLowerCase();
   const db = getDb();
   const since = new Date(Date.now() - MAGIC_LINK_WINDOW_MS);
@@ -40,7 +41,7 @@ export async function createMagicLink(emailInput: string, redirectPath?: string 
 
   await db.insert(authTokens).values({ email, tokenHash, expiresAt, redirectPath: safeRedirectPath(redirectPath) });
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const baseUrl = requestAppUrl(requestOrigin);
   return `${baseUrl}/api/auth/verify?token=${encodeURIComponent(rawToken)}`;
 }
 
