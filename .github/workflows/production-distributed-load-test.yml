@@ -1,0 +1,81 @@
+name: VeroTask Distributed Production Load Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/production-distributed-load-test.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      base_url: ${{ steps.production.outputs.base_url }}
+      target_epoch: ${{ steps.clock.outputs.target_epoch }}
+    steps:
+      - name: Resolve live Vercel alias
+        id: production
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidates=(
+            "https://vero-task-andres-projects-bbfd1881.vercel.app"
+            "https://vero-task.vercel.app"
+            "https://vero-task-git-main-andres-projects-bbfd1881.vercel.app"
+          )
+          for base in "${candidates[@]}"; do
+            code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$base/api/health" || true)"
+            echo "$base -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "base_url=$base" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "No public production alias returned HTTP 200"
+          exit 1
+
+      - name: Set synchronized start
+        id: clock
+        shell: bash
+        run: echo "target_epoch=$(( $(date +%s) + 30 ))" >> "$GITHUB_OUTPUT"
+
+  load:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Synchronize runners
+        env:
+          TARGET_EPOCH: ${{ needs.prepare.outputs.target_epoch }}
+        shell: bash
+        run: |
+          now=$(date +%s)
+          if [ "$now" -lt "$TARGET_EPOCH" ]; then
+            sleep $(( TARGET_EPOCH - now ))
+          fi
+
+      - name: Run shard ${{ matrix.shard }} at 100 concurrent users
+        env:
+          BASE_URL: ${{ needs.prepare.outputs.base_url }}
+          CONCURRENCY: "100"
+          REQUESTS: "300"
+          LOAD_PATHS: /api/health,/api/ready,/
+          REQUEST_TIMEOUT_MS: "15000"
+          MAX_ERROR_RATE: "0.01"
+        run: node scripts/load-test.mjs
