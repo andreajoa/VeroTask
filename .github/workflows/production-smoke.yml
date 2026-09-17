@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      PROD_URL: https://vero-task.vercel.app
+      PROD_URL: ${{ vars.VEROTASK_PRODUCTION_URL || 'https://vero-task-andres-projects-bbfd1881.vercel.app' }}
     steps:
       - name: Wait for production deployment
         shell: bash
