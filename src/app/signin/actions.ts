@@ -1,7 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { appUrlFromHeaders } from "@/lib/app-url";
 import { createMagicLink } from "@/lib/auth";
 import { sendMagicLinkEmail } from "@/lib/email";
 
@@ -15,7 +17,9 @@ export async function requestMagicLink(formData: FormData) {
   if (!parsed.success) redirect("/signin?error=invalid-email");
 
   try {
-    const link = await createMagicLink(parsed.data.email, parsed.data.next);
+    const requestHeaders = await headers();
+    const origin = appUrlFromHeaders(requestHeaders);
+    const link = await createMagicLink(parsed.data.email, parsed.data.next, origin);
     await sendMagicLinkEmail(parsed.data.email, link);
   } catch (error) {
     if (error instanceof Error && error.message === "auth_rate_limited") redirect("/signin?error=rate-limited");
