@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     if (previous.status === "open" && existing.plan === parsed.data.plan && previous.client_secret) return NextResponse.json({ client_secret: previous.client_secret, resumed: true });
     if (previous.status === "open") await stripe.checkout.sessions.expire(previous.id);
   }
+
   let customerId = user.stripeCustomerId;
   if (!customerId) {
     const customer = await stripe.customers.create({
@@ -49,12 +50,14 @@ export async function POST(request: NextRequest) {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
   const session = await stripe.checkout.sessions.create({
-    ui_mode: "embedded",
+    ui_mode: "embedded_page",
     mode: "subscription",
     customer: customerId,
     line_items: [{ quantity: 1, ...(priceId ? { price: priceId } : { price_data: {
-      currency: "usd", unit_amount: PROVIDER_PLANS[parsed.data.plan].monthlyPriceCents,
-      recurring: { interval: "month" as const }, product_data: { name: `VeroTask ${PROVIDER_PLANS[parsed.data.plan].name}` }
+      currency: "usd",
+      unit_amount: PROVIDER_PLANS[parsed.data.plan].monthlyPriceCents,
+      recurring: { interval: "month" as const },
+      product_data: { name: `VeroTask ${PROVIDER_PLANS[parsed.data.plan].name}` }
     } }) }],
     return_url: `${baseUrl}/dashboard/providers/${business.id}/billing/return?session_id={CHECKOUT_SESSION_ID}`,
     subscription_data: {
