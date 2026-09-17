@@ -1,4 +1,4 @@
-const VERIFIED_VERCEL_FALLBACK = "https://vero-task-andres-projects-bbfd1881.vercel.app";
+const VERIFIED_VERCEL_FALLBACK = "https://www.verotask.online";
 const KNOWN_INVALID_ORIGINS = new Set([
   "https://vero-task.vercel.app"
 ]);
