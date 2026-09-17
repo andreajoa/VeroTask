@@ -8,8 +8,10 @@ test("guided descriptions classify into existing service categories", () => {
   assert.ok(classifyServiceRequest("limpieza profunda de la casa").includes("deep-cleaning"));
   assert.deepEqual(classifyServiceRequest("unlisted specialty"), []);
 });
-test("city and ZIP search normalize the inputs shown in the wizard", () => {
-  assert.deepEqual(parseSearchLocation("Orlando, FL"), { city: "Orlando", state: "FL", postalCode: "" });
-  assert.deepEqual(parseSearchLocation("Winter Garden Florida"), { city: "Winter Garden", state: "FL", postalCode: "" });
-  assert.deepEqual(parseSearchLocation("32801-1234"), { city: "", state: "", postalCode: "32801" });
+
+test("Brazilian city, UF and CEP searches normalize the inputs shown in the wizard", () => {
+  assert.deepEqual(parseSearchLocation("São Paulo, SP"), { city: "São Paulo", state: "SP", postalCode: "" });
+  assert.deepEqual(parseSearchLocation("Santos SP"), { city: "Santos", state: "SP", postalCode: "" });
+  assert.deepEqual(parseSearchLocation("01310-100"), { city: "", state: "", postalCode: "01310-100" });
+  assert.deepEqual(parseSearchLocation("01310100"), { city: "", state: "", postalCode: "01310100" });
 });
