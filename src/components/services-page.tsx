@@ -22,11 +22,8 @@ function humanize(value?: string) {
   return value.replaceAll("-", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export async function ServicesPage({ locale, searchParams }: { locale: PublicLocale; searchParams: ServiceSearchParams }) {
+async function findBusinesses(q: string, location: string) {
   const db = getDb();
-  const q = searchParams.q?.trim() ?? "";
-  const location = searchParams.location?.trim() ?? "";
-
   const conditions = [eq(businesses.active, true), notInArray(businesses.status, ["suspended", "paused"])];
   const matchedCategories = classifyServiceRequest(q);
 
@@ -48,7 +45,7 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
     if (place.state) conditions.push(eq(businesses.state, place.state));
   }
 
-  const rows = await db.selectDistinct({
+  return db.selectDistinct({
     id: businesses.id,
     name: businesses.name,
     slug: businesses.slug,
@@ -68,6 +65,20 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
     .leftJoin(categories, eq(categories.id, businessCategories.categoryId))
     .where(and(...conditions))
     .limit(80);
+}
+
+export async function ServicesPage({ locale, searchParams }: { locale: PublicLocale; searchParams: ServiceSearchParams }) {
+  const q = searchParams.q?.trim() ?? "";
+  const location = searchParams.location?.trim() ?? "";
+  let rows: Awaited<ReturnType<typeof findBusinesses>> = [];
+  let searchUnavailable = false;
+
+  try {
+    rows = await findBusinesses(q, location);
+  } catch (error) {
+    searchUnavailable = true;
+    console.error("[services-page] Failed to load provider matches", error);
+  }
 
   const hasBrief = Boolean(searchParams.size || searchParams.timeline || searchParams.details || searchParams.date);
 
@@ -106,11 +117,13 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
 
           <div>
             <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-              <div><p className="text-xs font-black uppercase tracking-[0.15em] text-[var(--accent)]">Local matches</p><h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Professionals for {q || "your task"}</h1><p className="mt-2 text-sm text-slate-600">{rows.length} result{rows.length === 1 ? "" : "s"}{location ? ` near ${location}` : ""}</p></div>
+              <div><p className="text-xs font-black uppercase tracking-[0.15em] text-[var(--accent)]">Local matches</p><h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Professionals for {q || "your task"}</h1><p className="mt-2 text-sm text-slate-600">{searchUnavailable ? "Search is temporarily unavailable" : `${rows.length} result${rows.length === 1 ? "" : "s"}${location ? ` near ${location}` : ""}`}</p></div>
               <div className="text-sm font-bold text-slate-500">Compare profiles, experience and verification status.</div>
             </div>
 
-            {rows.length === 0 ? (
+            {searchUnavailable ? (
+              <div className="rounded-[20px] border border-amber-200 bg-amber-50 p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">We could not load local matches right now</h2><p className="mx-auto mt-2 max-w-lg text-slate-700">Your request is intact. Please try the search again in a moment.</p><Link href={localePath(locale, "/services")} className="btn-secondary mt-6">Try again</Link></div>
+            ) : rows.length === 0 ? (
               <div className="rounded-[20px] border border-slate-200 bg-white p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">No exact match yet</h2><p className="mx-auto mt-2 max-w-lg text-slate-600">Try a broader service name or a nearby Central Florida city. New providers can also join VeroTask for these task categories.</p><Link href={localePath(locale, "/providers/join")} className="btn-secondary mt-6">Offer this service</Link></div>
             ) : (
               <div className="space-y-4">
