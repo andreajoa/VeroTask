@@ -5,53 +5,53 @@ import { localePath, type PublicLocale } from "@/lib/site-copy";
 const terms = {
   en: {
     title: "Terms of Service",
-    intro: "These terms explain how VeroTask works as a marketplace connecting customers with independent local service providers.",
+    intro: "These terms explain how VeroTask operates as a marketplace connecting customers with independent local service professionals in Orlando and Central Florida.",
     sections: [
-      ["Marketplace role", "VeroTask provides discovery, booking, payment, service-evidence, review and dispute tools. Unless expressly stated otherwise, providers are independent businesses or professionals and are not VeroTask employees."],
-      ["Public and claimed listings", "Some business profiles are created from publicly available commercial information and are clearly labeled as unclaimed. Protected VeroTask booking and payment are enabled only after the business is claimed, verified and eligible for Stripe Connect payouts."],
-      ["Pricing and provider plans", "Customers see the service price before payment. Providers may use the Free plan with a 15% marketplace fee, Pro at $39/month with a 10% marketplace fee, or Elite at $99/month with a 7% marketplace fee. The applicable marketplace fee is recorded when the booking is created."],
-      ["Payment and payout", "Eligible customer payments are processed through Stripe. VeroTask may separate the customer charge from the later provider transfer. This is a marketplace payment flow and is not represented as a bank escrow service."],
-      ["Proof of service", "A provider marking a job complete does not by itself prove performance. Depending on the service, evidence may include geofenced check-in/check-out, customer PIN, before/after photos, checklist, timestamps and booking communications."],
-      ["24-hour protection window", "After the provider marks the service complete, the customer has 24 hours to confirm completion or report a problem. If the customer takes no action, no dispute is open, and required proof is sufficient, an eligible booking may be completed automatically and the provider may become eligible for payout."],
-      ["Cancellations", "Provider cancellations before service result in a full refund when payment has been captured. Customer cancellations more than 24 hours before the scheduled start are fully refundable; cancellations from 6 to 24 hours before may receive a 50% refund; cancellations less than 6 hours before may be non-refundable. The exact rule applied is recorded on the booking."],
-      ["Disputes and refunds", "Opening an eligible dispute pauses the normal pending payout flow. VeroTask may review booking records and submitted evidence and may issue full or partial refunds, provider compensation, or split resolutions. Card-network dispute rights are separate from VeroTask's internal resolution process."],
-      ["Reviews and conduct", "Reviews must relate to a completed VeroTask booking. Fraud, impersonation, fabricated evidence, threats, discriminatory conduct, payment circumvention, abusive refund claims or manipulation of reviews may lead to removal or suspension."],
-      ["Safety and licensed work", "Providers are responsible for maintaining licenses, permits, insurance and qualifications required for the work they offer. Customers should not use the platform for emergencies requiring police, fire, medical or other emergency services."],
-      ["Changes", "VeroTask may update operational rules as the marketplace evolves. Material rules that affect a booking are versioned or disclosed before the relevant transaction whenever practical."]
+      ["Marketplace role", "VeroTask provides discovery, booking, service-evidence, review and dispute-management technology. Providers are independent businesses or professionals and are not VeroTask employees."],
+      ["Public and claimed listings", "Some profiles may be created from public commercial information and marked as unclaimed. A professional must claim and configure an eligible profile before receiving protected VeroTask booking requests."],
+      ["Pricing and provider plans", "The service price and VeroTask booking fee are separate. Free providers correspond to a 15% customer booking fee, Pro at $39/month to 10%, and Elite at $99/month to 7%."],
+      ["Payments", "After provider acceptance, Stripe processes only the VeroTask booking fee. The service price is paid directly by the customer to the professional. VeroTask does not collect, hold, transfer or escrow the service price."],
+      ["Proof of service", "Evidence may include booking timestamps, service address, GPS check-in/check-out, customer PIN, before/after photos, checklist and booking communications."],
+      ["Protection window", "After a provider marks a service complete, the customer has 24 hours to confirm completion or report a problem. Eligible bookings may auto-complete when the window expires and required evidence is sufficient."],
+      ["Cancellations", "Unless another rule is disclosed before payment, the VeroTask booking fee is fully refundable more than 24 hours before service, 50% refundable from 6 to 24 hours before service, and normally non-refundable less than 6 hours before service. A provider cancellation after fee collection results in a refund of the VeroTask booking fee."],
+      ["Disputes and refunds", "VeroTask may review booking records and evidence. Any monetary refund VeroTask issues is limited to the VeroTask booking fee actually collected. The service price is paid directly to the professional, so service-price refunds or compensation are not paid from VeroTask funds."],
+      ["Reviews and conduct", "Reviews must relate to a real VeroTask booking. Fraud, impersonation, fabricated evidence, threats, discriminatory conduct, abuse of disputes or review manipulation may lead to removal or suspension."],
+      ["Safety and licensed work", "Providers are responsible for licenses, permits, insurance and qualifications required for their work. VeroTask is not an emergency service."],
+      ["Changes", "VeroTask may update operational rules as the marketplace evolves. Material rules affecting a booking are disclosed or versioned when practical."]
     ]
   },
   "pt-br": {
     title: "Termos de Uso",
-    intro: "Estes termos explicam como a VeroTask funciona como marketplace que conecta clientes a prestadores locais independentes.",
+    intro: "Estes termos explicam como a VeroTask opera como marketplace que conecta clientes a profissionais independentes de serviços locais em Orlando e Flórida Central.",
     sections: [
-      ["Papel do marketplace", "A VeroTask oferece busca, reserva, pagamento, comprovação do serviço, avaliações e ferramentas de disputa. Salvo indicação expressa, os prestadores são empresas ou profissionais independentes e não funcionários da VeroTask."],
-      ["Perfis públicos e reivindicados", "Alguns perfis são criados a partir de informações comerciais públicas e aparecem claramente como não reivindicados. Reserva e pagamento protegidos pela VeroTask só são habilitados após reivindicação, verificação e habilitação do prestador no Stripe Connect."],
-      ["Preços e planos", "O cliente vê o preço do serviço antes do pagamento. Prestadores podem usar o plano Free com comissão de 15%, Pro por US$39/mês com comissão de 10% ou Elite por US$99/mês com comissão de 7%. A comissão aplicável fica registrada quando a reserva é criada."],
-      ["Pagamento e repasse", "Pagamentos elegíveis são processados pelo Stripe. A cobrança do cliente e o repasse posterior ao prestador podem ser operações separadas. Esse fluxo é de marketplace e não é apresentado como serviço bancário de escrow."],
-      ["Comprovação do serviço", "O prestador marcar o serviço como concluído, sozinho, não comprova a execução. Conforme a categoria, podem ser usados check-in/check-out com geolocalização, PIN do cliente, fotos antes/depois, checklist, horários e mensagens da reserva."],
-      ["Janela de proteção de 24 horas", "Depois que o prestador marca o serviço como concluído, o cliente tem 24 horas para confirmar ou informar um problema. Sem ação do cliente, sem disputa aberta e com as evidências exigidas suficientes, uma reserva elegível pode ser concluída automaticamente e o prestador pode se tornar elegível ao repasse."],
-      ["Cancelamentos", "Cancelamento pelo prestador antes do serviço gera reembolso integral quando houve cobrança. Cancelamento pelo cliente com mais de 24 horas gera reembolso integral; entre 6 e 24 horas pode gerar reembolso de 50%; com menos de 6 horas pode não ser reembolsável. A regra efetivamente aplicada fica registrada na reserva."],
-      ["Disputas e reembolsos", "Uma disputa elegível pausa o fluxo normal de repasse pendente. A VeroTask pode analisar os registros e evidências e decidir por reembolso total, parcial, compensação ao prestador ou divisão. Direitos de chargeback da bandeira/banco são separados do processo interno da VeroTask."],
-      ["Avaliações e conduta", "Avaliações devem se referir a reservas concluídas. Fraude, falsidade de identidade, evidência fabricada, ameaça, discriminação, tentativa de contornar pagamento, pedido abusivo de reembolso ou manipulação de avaliações pode gerar remoção ou suspensão."],
-      ["Segurança e serviços licenciados", "O prestador é responsável por licenças, autorizações, seguros e qualificações necessárias ao serviço oferecido. A plataforma não deve ser usada para emergências policiais, médicas, incêndios ou outras situações emergenciais."],
-      ["Alterações", "A VeroTask pode atualizar regras operacionais conforme o marketplace evolui. Regras materiais que afetem uma reserva serão versionadas ou apresentadas antes da transação sempre que possível."]
+      ["Papel do marketplace", "A VeroTask oferece busca, reserva, comprovação do serviço, avaliações e gestão de disputas. Os prestadores são empresas ou profissionais independentes e não funcionários da VeroTask."],
+      ["Perfis públicos e reivindicados", "Alguns perfis podem ser criados com informações comerciais públicas e marcados como não reivindicados. O profissional precisa reivindicar e configurar um perfil elegível antes de receber pedidos protegidos pela VeroTask."],
+      ["Preços e planos", "O preço do serviço e a taxa de reserva da VeroTask são valores separados. O plano Free corresponde a taxa de 15% paga pelo cliente, Pro por US$39/mês a 10% e Elite por US$99/mês a 7%."],
+      ["Pagamentos", "Após o aceite do profissional, o Stripe processa somente a taxa de reserva da VeroTask. O preço do serviço é pago diretamente pelo cliente ao profissional. A VeroTask não recebe, retém, repassa nem mantém em escrow o preço do serviço."],
+      ["Comprovação do serviço", "As evidências podem incluir horários, endereço, GPS de check-in/check-out, PIN do cliente, fotos antes/depois, checklist e mensagens."],
+      ["Janela de proteção", "Depois que o profissional marca a conclusão, o cliente tem 24 horas para confirmar ou informar um problema. Reservas elegíveis podem ser concluídas automaticamente ao fim da janela quando as evidências forem suficientes."],
+      ["Cancelamentos", "Salvo regra diferente apresentada antes do pagamento, a taxa de reserva da VeroTask é 100% reembolsável com mais de 24 horas de antecedência, 50% reembolsável entre 6 e 24 horas e normalmente não reembolsável com menos de 6 horas. Se o profissional cancelar após a cobrança, a taxa da VeroTask é reembolsada."],
+      ["Disputas e reembolsos", "A VeroTask pode analisar o registro e as evidências. Qualquer reembolso monetário feito pela VeroTask é limitado à taxa de reserva efetivamente recebida. Como o preço do serviço é pago diretamente ao profissional, a VeroTask não paga reembolso ou compensação desse valor com recursos próprios."],
+      ["Avaliações e conduta", "Avaliações devem corresponder a uma reserva real. Fraude, falsidade de identidade, evidência fabricada, ameaça, discriminação, abuso de disputas ou manipulação de avaliações pode gerar remoção ou suspensão."],
+      ["Segurança e serviços licenciados", "O profissional é responsável por licenças, autorizações, seguros e qualificações exigidas. A VeroTask não é um serviço de emergência."],
+      ["Alterações", "A VeroTask pode atualizar regras operacionais conforme o marketplace evolui. Regras materiais que afetem uma reserva serão divulgadas ou versionadas quando possível."]
     ]
   },
   es: {
     title: "Términos de Servicio",
-    intro: "Estos términos explican cómo funciona VeroTask como marketplace que conecta clientes con proveedores locales independientes.",
+    intro: "Estos términos explican cómo VeroTask opera como marketplace que conecta clientes con profesionales independientes de servicios locales en Orlando y Florida Central.",
     sections: [
-      ["Rol del marketplace", "VeroTask ofrece búsqueda, reservas, pagos, evidencia del servicio, reseñas y herramientas de disputa. Salvo indicación expresa, los proveedores son negocios o profesionales independientes y no empleados de VeroTask."],
-      ["Perfiles públicos y reclamados", "Algunos perfiles se crean con información comercial pública y se identifican claramente como no reclamados. Las reservas y pagos protegidos se habilitan solo después de la reclamación, verificación y habilitación de pagos mediante Stripe Connect."],
-      ["Precios y planes", "El cliente ve el precio antes del pago. Los proveedores pueden usar Free con 15% de comisión, Pro por US$39/mes con 10% o Elite por US$99/mes con 7%. La comisión aplicable queda registrada al crear la reserva."],
-      ["Pago y transferencia", "Los pagos elegibles son procesados por Stripe. El cobro al cliente y la posterior transferencia al proveedor pueden ser operaciones separadas. Este flujo es de marketplace y no se presenta como un servicio bancario de escrow."],
-      ["Prueba de servicio", "Que el proveedor marque el trabajo como completado no prueba por sí solo la ejecución. Según el servicio, la evidencia puede incluir ubicación, PIN del cliente, fotos antes/después, checklist, horarios y mensajes de la reserva."],
-      ["Ventana de protección de 24 horas", "Después de que el proveedor marque el servicio completado, el cliente tiene 24 horas para confirmar o reportar un problema. Sin acción del cliente, sin disputa abierta y con evidencia requerida suficiente, una reserva elegible puede completarse automáticamente y habilitar el pago al proveedor."],
-      ["Cancelaciones", "La cancelación del proveedor antes del servicio genera reembolso total cuando hubo cobro. Si el cliente cancela con más de 24 horas recibe reembolso total; entre 6 y 24 horas puede recibir 50%; con menos de 6 horas puede no ser reembolsable. La regla aplicada queda registrada."],
-      ["Disputas y reembolsos", "Una disputa elegible pausa el pago pendiente. VeroTask puede revisar registros y evidencia y resolver con reembolso total, parcial, compensación al proveedor o división. Los derechos de contracargo del banco o red de tarjetas son independientes."],
-      ["Reseñas y conducta", "Las reseñas deben corresponder a reservas completadas. Fraude, suplantación, evidencia falsa, amenazas, discriminación, evasión del pago, solicitudes abusivas de reembolso o manipulación de reseñas pueden causar suspensión."],
-      ["Seguridad y trabajos con licencia", "Los proveedores son responsables de las licencias, permisos, seguros y cualificaciones exigidas para sus servicios. La plataforma no debe utilizarse para emergencias policiales, médicas, de incendio u otras emergencias."],
-      ["Cambios", "VeroTask puede actualizar reglas operativas a medida que evoluciona el marketplace. Las reglas materiales que afecten una reserva se versionarán o mostrarán antes de la transacción cuando sea práctico."]
+      ["Rol del marketplace", "VeroTask ofrece búsqueda, reservas, evidencia del servicio, reseñas y gestión de disputas. Los proveedores son negocios o profesionales independientes y no empleados de VeroTask."],
+      ["Perfiles públicos y reclamados", "Algunos perfiles pueden crearse con información comercial pública y marcarse como no reclamados. El profesional debe reclamar y configurar un perfil elegible antes de recibir solicitudes protegidas."],
+      ["Precios y planes", "El precio del servicio y la tarifa de reserva de VeroTask son valores separados. Free corresponde a 15%, Pro por US$39/mes a 10% y Elite por US$99/mes a 7% de tarifa pagada por el cliente."],
+      ["Pagos", "Después de la aceptación, Stripe procesa únicamente la tarifa de reserva de VeroTask. El precio del servicio se paga directamente al profesional. VeroTask no cobra, retiene, transfiere ni mantiene en escrow el precio del servicio."],
+      ["Prueba del servicio", "La evidencia puede incluir horarios, dirección, GPS, PIN, fotos, checklist y mensajes de la reserva."],
+      ["Ventana de protección", "Después de que el profesional marca la finalización, el cliente tiene 24 horas para confirmar o reportar un problema. Las reservas elegibles pueden cerrarse automáticamente si la evidencia es suficiente."],
+      ["Cancelaciones", "Salvo una regla distinta mostrada antes del pago, la tarifa de VeroTask es 100% reembolsable con más de 24 horas de anticipación, 50% entre 6 y 24 horas y normalmente no reembolsable con menos de 6 horas. Si el profesional cancela después del cobro, se reembolsa la tarifa de VeroTask."],
+      ["Disputas y reembolsos", "VeroTask puede revisar el registro y la evidencia. Cualquier reembolso monetario emitido por VeroTask se limita a la tarifa de reserva realmente cobrada. El precio del servicio se paga directamente al profesional."],
+      ["Reseñas y conducta", "Las reseñas deben corresponder a una reserva real. Fraude, suplantación, evidencia falsa, amenazas, discriminación, abuso de disputas o manipulación de reseñas puede causar suspensión."],
+      ["Seguridad y trabajos con licencia", "Los profesionales son responsables de licencias, permisos, seguros y cualificaciones exigidas. VeroTask no es un servicio de emergencia."],
+      ["Cambios", "VeroTask puede actualizar reglas operativas a medida que evoluciona el marketplace. Las reglas materiales se divulgarán o versionarán cuando sea práctico."]
     ]
   }
 } as const;
@@ -59,53 +59,53 @@ const terms = {
 const privacy = {
   en: {
     title: "Privacy Policy",
-    intro: "VeroTask collects only the information reasonably needed to operate a trusted local-services marketplace.",
+    intro: "VeroTask collects the information reasonably needed to operate a trusted local-services marketplace.",
     sections: [
-      ["Account data", "We process information such as name, email, role, account security data and business information you submit or claim."],
-      ["Booking data", "Bookings may contain service address, date/time, selected service, price, customer notes, messages, status history and dispute records."],
-      ["Location and service evidence", "Provider location is requested for booking-specific check-in/check-out and is not designed as continuous background tracking. Evidence may include timestamps, PIN verification, private photos and checklists. Evidence photos are stored privately and viewed through short-lived authorized links."],
-      ["Payments", "Payments and provider onboarding are processed by Stripe. VeroTask stores payment identifiers and transaction status needed to reconcile bookings but does not need to store full card numbers."],
-      ["Public listings", "Unclaimed business profiles may contain public commercial information such as business name, public phone, website, service category, service area and public address. A business can use the claim process to verify and manage its profile."],
-      ["How information is used", "We use information to authenticate users, operate bookings and payouts, prevent fraud, rank providers, resolve disputes, provide support, send transactional notices, improve the service and meet legal or compliance obligations."],
-      ["Sharing", "Information may be shared with the other party to a booking as needed to perform the service and with processors such as Stripe, email infrastructure, hosting, database and private object-storage providers. We do not publish private service evidence as public listing content."],
-      ["Retention", "We retain records for as long as reasonably necessary for bookings, disputes, fraud prevention, accounting, safety and legal obligations. Access to sensitive evidence is restricted even while the underlying record must be retained."],
-      ["Choices and rights", "Users can request correction of account or business-profile information and may request access or deletion where applicable, subject to records that VeroTask must retain for transactions, disputes, fraud prevention or law."],
-      ["Security", "VeroTask uses authenticated access, restricted server credentials, private evidence storage, signed temporary links, audit records and payment processing through Stripe. No online system can promise absolute security."],
-      ["Contact", "Privacy and account requests should be sent through the support contact published by VeroTask on the production site."]
+      ["Account data", "We process name, email, role, account-security data and business information you submit or claim."],
+      ["Booking data", "Bookings may contain service address, date/time, selected service, service price, VeroTask booking fee, notes, messages, status history and dispute records."],
+      ["Location and service evidence", "Provider location is requested for booking-specific check-in/check-out, not continuous background tracking. Evidence may include timestamps, PIN verification, private photos and checklists."],
+      ["Payments", "Stripe processes VeroTask booking fees and optional provider subscriptions. VeroTask stores transaction identifiers and status needed to reconcile those charges. The service price is paid directly to the professional and is not processed by VeroTask."],
+      ["Public listings", "Unclaimed business profiles may contain public commercial information. A business can use the claim process to verify and manage its profile."],
+      ["How information is used", "We use information to authenticate users, operate bookings, prevent fraud, rank providers, resolve disputes, provide support, send transactional notices and meet legal obligations."],
+      ["Sharing", "Information may be shared with the other booking party as needed to perform the service and with processors such as Stripe, email, hosting, database and private object-storage providers."],
+      ["Retention", "We retain records as reasonably necessary for bookings, disputes, fraud prevention, accounting, safety and legal obligations."],
+      ["Choices and rights", "Users may request correction, access or deletion where applicable, subject to records VeroTask must retain for transactions, disputes, fraud prevention or law."],
+      ["Security", "VeroTask uses authenticated access, restricted server credentials, private evidence storage, signed temporary links, audit records and Stripe for platform charges. No online system can promise absolute security."],
+      ["Contact", "Privacy and account requests should be sent through the support contact published by VeroTask."]
     ]
   },
   "pt-br": {
     title: "Política de Privacidade",
-    intro: "A VeroTask coleta apenas as informações razoavelmente necessárias para operar um marketplace confiável de serviços locais.",
+    intro: "A VeroTask coleta as informações razoavelmente necessárias para operar um marketplace confiável de serviços locais.",
     sections: [
-      ["Dados da conta", "Processamos informações como nome, e-mail, função, dados de segurança da conta e informações comerciais enviadas ou reivindicadas por você."],
-      ["Dados da reserva", "Reservas podem conter endereço do serviço, data/horário, serviço escolhido, preço, observações do cliente, mensagens, histórico de status e registros de disputa."],
-      ["Localização e evidências", "A localização do prestador é solicitada para check-in/check-out de uma reserva específica e não foi projetada para rastreamento contínuo em segundo plano. Evidências podem incluir horários, validação de PIN, fotos privadas e checklist. Fotos ficam privadas e são visualizadas por links temporários autorizados."],
-      ["Pagamentos", "Pagamentos e onboarding de prestadores são processados pelo Stripe. A VeroTask registra identificadores e status das transações necessários para conciliar reservas, sem precisar armazenar o número completo do cartão."],
-      ["Perfis públicos", "Perfis não reivindicados podem conter informações comerciais públicas como nome da empresa, telefone comercial, site, categoria, área de atendimento e endereço comercial público. A empresa pode usar o processo de reivindicação para verificar e administrar o perfil."],
-      ["Como usamos informações", "Usamos dados para autenticação, reservas, repasses, prevenção de fraude, ranking de prestadores, resolução de disputas, suporte, avisos transacionais, melhoria do serviço e cumprimento de obrigações legais ou de compliance."],
-      ["Compartilhamento", "Informações podem ser compartilhadas com a outra parte da reserva quando necessário para executar o serviço e com processadores como Stripe, e-mail, hospedagem, banco de dados e armazenamento privado. Evidências privadas não são publicadas como conteúdo do perfil."],
-      ["Retenção", "Mantemos registros pelo período razoavelmente necessário para reservas, disputas, prevenção de fraude, contabilidade, segurança e obrigações legais. O acesso a evidências sensíveis permanece restrito."],
-      ["Escolhas e direitos", "Usuários podem solicitar correção de dados da conta ou perfil e, quando aplicável, acesso ou exclusão, respeitando registros que precisem ser mantidos para transações, disputas, prevenção de fraude ou cumprimento legal."],
-      ["Segurança", "A VeroTask usa acesso autenticado, credenciais restritas no servidor, armazenamento privado de evidências, links temporários assinados, auditoria e processamento de pagamentos pelo Stripe. Nenhum sistema online pode prometer segurança absoluta."],
-      ["Contato", "Solicitações de privacidade e conta devem ser enviadas pelo canal de suporte publicado pela VeroTask no site de produção."]
+      ["Dados da conta", "Processamos nome, e-mail, função, dados de segurança e informações comerciais enviadas ou reivindicadas."],
+      ["Dados da reserva", "Reservas podem conter endereço, data/horário, serviço, preço do serviço, taxa de reserva da VeroTask, observações, mensagens, histórico e disputas."],
+      ["Localização e evidências", "A localização do profissional é solicitada para check-in/check-out daquela reserva, não para rastreamento contínuo. Evidências podem incluir horários, PIN, fotos privadas e checklist."],
+      ["Pagamentos", "O Stripe processa as taxas de reserva da VeroTask e assinaturas opcionais dos profissionais. A plataforma registra identificadores e status dessas cobranças. O preço do serviço é pago diretamente ao profissional e não é processado pela VeroTask."],
+      ["Perfis públicos", "Perfis não reivindicados podem conter informações comerciais públicas. A empresa pode usar o processo de reivindicação para verificar e administrar o perfil."],
+      ["Como usamos informações", "Usamos dados para autenticação, reservas, prevenção de fraude, ranking, disputas, suporte, avisos transacionais e obrigações legais."],
+      ["Compartilhamento", "Informações podem ser compartilhadas com a outra parte da reserva quando necessário e com processadores como Stripe, e-mail, hospedagem, banco de dados e armazenamento privado."],
+      ["Retenção", "Mantemos registros pelo período razoavelmente necessário para reservas, disputas, prevenção de fraude, contabilidade, segurança e obrigações legais."],
+      ["Escolhas e direitos", "Usuários podem solicitar correção, acesso ou exclusão quando aplicável, respeitando registros que precisem ser mantidos por transações, disputas, fraude ou lei."],
+      ["Segurança", "A VeroTask usa acesso autenticado, credenciais restritas, armazenamento privado, links temporários assinados, auditoria e Stripe para cobranças da plataforma. Nenhum sistema online pode prometer segurança absoluta."],
+      ["Contato", "Solicitações de privacidade e conta devem ser enviadas pelo canal de suporte publicado pela VeroTask."]
     ]
   },
   es: {
     title: "Política de Privacidad",
-    intro: "VeroTask recopila únicamente la información razonablemente necesaria para operar un marketplace confiable de servicios locales.",
+    intro: "VeroTask recopila la información razonablemente necesaria para operar un marketplace confiable de servicios locales.",
     sections: [
-      ["Datos de cuenta", "Procesamos datos como nombre, correo electrónico, rol, información de seguridad y datos comerciales enviados o reclamados."],
-      ["Datos de reserva", "Las reservas pueden contener dirección, fecha/hora, servicio, precio, notas, mensajes, historial de estados y registros de disputa."],
-      ["Ubicación y evidencia", "La ubicación del proveedor se solicita para el check-in/check-out de una reserva específica y no está diseñada como rastreo continuo. La evidencia puede incluir horarios, PIN, fotos privadas y checklist. Las fotos se almacenan de forma privada y se consultan mediante enlaces temporales autorizados."],
-      ["Pagos", "Stripe procesa los pagos y el onboarding de proveedores. VeroTask conserva identificadores y estados de transacción necesarios para conciliar reservas sin necesidad de almacenar números completos de tarjeta."],
-      ["Perfiles públicos", "Los perfiles no reclamados pueden contener información comercial pública como nombre, teléfono, web, categoría, zona de servicio y dirección comercial. El negocio puede reclamar y verificar el perfil."],
-      ["Uso de la información", "Usamos los datos para autenticación, reservas, pagos, prevención de fraude, ranking, resolución de disputas, soporte, avisos transaccionales, mejora del servicio y obligaciones legales o de cumplimiento."],
-      ["Compartir información", "La información puede compartirse con la otra parte de la reserva cuando sea necesaria para realizar el servicio y con procesadores como Stripe, correo, hosting, base de datos y almacenamiento privado. La evidencia privada no se publica como contenido del perfil."],
-      ["Retención", "Conservamos registros durante el tiempo razonablemente necesario para reservas, disputas, fraude, contabilidad, seguridad y obligaciones legales. El acceso a evidencia sensible permanece restringido."],
-      ["Opciones y derechos", "Los usuarios pueden solicitar corrección y, cuando corresponda, acceso o eliminación, sujeto a registros que deban conservarse por transacciones, disputas, fraude o ley."],
-      ["Seguridad", "VeroTask utiliza acceso autenticado, credenciales restringidas, almacenamiento privado, enlaces temporales firmados, auditoría y Stripe para pagos. Ningún sistema online puede prometer seguridad absoluta."],
-      ["Contacto", "Las solicitudes de privacidad y cuenta deben enviarse por el canal de soporte publicado por VeroTask en el sitio de producción."]
+      ["Datos de cuenta", "Procesamos nombre, correo electrónico, rol, seguridad de la cuenta e información comercial enviada o reclamada."],
+      ["Datos de reserva", "Las reservas pueden contener dirección, fecha/hora, servicio, precio del servicio, tarifa de VeroTask, notas, mensajes, historial y disputas."],
+      ["Ubicación y evidencia", "La ubicación del profesional se solicita para el check-in/check-out de una reserva específica, no para rastreo continuo. La evidencia puede incluir horarios, PIN, fotos privadas y checklist."],
+      ["Pagos", "Stripe procesa las tarifas de reserva de VeroTask y suscripciones opcionales de proveedores. VeroTask conserva identificadores y estados de esas transacciones. El precio del servicio se paga directamente al profesional y no es procesado por VeroTask."],
+      ["Perfiles públicos", "Los perfiles no reclamados pueden contener información comercial pública y pueden reclamarse y verificarse."],
+      ["Uso de la información", "Usamos datos para autenticación, reservas, prevención de fraude, ranking, disputas, soporte, avisos transaccionales y obligaciones legales."],
+      ["Compartir información", "La información puede compartirse con la otra parte cuando sea necesaria y con procesadores como Stripe, correo, hosting, base de datos y almacenamiento privado."],
+      ["Retención", "Conservamos registros durante el tiempo razonablemente necesario para reservas, disputas, fraude, contabilidad, seguridad y obligaciones legales."],
+      ["Opciones y derechos", "Los usuarios pueden solicitar corrección, acceso o eliminación cuando corresponda, sujeto a registros que deban conservarse por transacciones, disputas, fraude o ley."],
+      ["Seguridad", "VeroTask utiliza acceso autenticado, credenciales restringidas, almacenamiento privado, enlaces temporales firmados, auditoría y Stripe para cargos de la plataforma. Ningún sistema online puede prometer seguridad absoluta."],
+      ["Contacto", "Las solicitudes de privacidad y cuenta deben enviarse por el canal de soporte publicado por VeroTask."]
     ]
   }
 } as const;
@@ -113,5 +113,5 @@ const privacy = {
 export function LegalPage({ locale, kind }: { locale: PublicLocale; kind: "terms" | "privacy" }) {
   const content = kind === "terms" ? terms[locale] : privacy[locale];
   const path = kind === "terms" ? "/terms" : "/privacy";
-  return <main className="min-h-screen"><header className="border-b border-[var(--line)] bg-white"><div className="container-shell flex min-h-16 flex-wrap items-center justify-between gap-3"><Link href={localePath(locale, "/")} className="flex items-center gap-2 text-xl font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand)] text-white"><BadgeCheck size={20} /></span>VeroTask</Link><div className="flex gap-3 text-sm"><Link href={path} className={locale === "en" ? "font-black" : "text-[var(--muted)]"}>EN</Link><Link href={`/pt-br${path}`} className={locale === "pt-br" ? "font-black" : "text-[var(--muted)]"}>PT-BR</Link><Link href={`/es${path}`} className={locale === "es" ? "font-black" : "text-[var(--muted)]"}>ES</Link></div></div></header><section className="container-shell py-12 sm:py-16"><div className="mx-auto max-w-3xl"><p className="text-sm font-black uppercase tracking-[0.15em] text-[var(--brand)]">VeroTask</p><h1 className="mt-3 text-4xl font-black tracking-tight">{content.title}</h1><p className="mt-5 text-lg leading-8 text-[var(--muted)]">{content.intro}</p><p className="mt-3 text-xs text-[var(--muted)]">Effective: September 5, 2026</p><div className="mt-10 space-y-8">{content.sections.map(([title, body]) => <section key={title}><h2 className="text-xl font-black">{title}</h2><p className="mt-3 text-sm leading-7 text-[var(--muted)]">{body}</p></section>)}</div><div className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-5 text-sm leading-6 text-[var(--muted)]">Operational policies are implemented in the product, but final U.S./Florida legal review should be completed before commercial launch.</div></div></section></main>;
+  return <main className="min-h-screen"><header className="border-b border-[var(--line)] bg-white"><div className="container-shell flex min-h-16 flex-wrap items-center justify-between gap-3"><Link href={localePath(locale, "/")} className="flex items-center gap-2 text-xl font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand)] text-white"><BadgeCheck size={20} /></span>VeroTask</Link><div className="flex gap-3 text-sm"><Link href={path} className={locale === "en" ? "font-black" : "text-[var(--muted)]"}>EN</Link><Link href={`/pt-br${path}`} className={locale === "pt-br" ? "font-black" : "text-[var(--muted)]"}>PT-BR</Link><Link href={`/es${path}`} className={locale === "es" ? "font-black" : "text-[var(--muted)]"}>ES</Link></div></div></header><section className="container-shell py-12 sm:py-16"><div className="mx-auto max-w-3xl"><p className="text-sm font-black uppercase tracking-[0.15em] text-[var(--brand)]">VeroTask</p><h1 className="mt-3 text-4xl font-black tracking-tight">{content.title}</h1><p className="mt-5 text-lg leading-8 text-[var(--muted)]">{content.intro}</p><p className="mt-3 text-xs text-[var(--muted)]">Effective: September 17, 2026</p><div className="mt-10 space-y-8">{content.sections.map(([title, body]) => <section key={title}><h2 className="text-xl font-black">{title}</h2><p className="mt-3 text-sm leading-7 text-[var(--muted)]">{body}</p></section>)}</div><div className="mt-12 rounded-2xl border border-[var(--line)] bg-white p-5 text-sm leading-6 text-[var(--muted)]">These terms describe the current VeroTask product behavior. Qualified U.S./Florida counsel should review marketplace terms as the business and service categories evolve.</div></div></section></main>;
 }

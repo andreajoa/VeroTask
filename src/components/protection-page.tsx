@@ -33,7 +33,7 @@ export function ProtectionPage({ locale }: { locale: PublicLocale }) {
           ))}
         </div>
         <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-950">
-          These marketplace rules are product policy. Before public launch, final Terms of Service, Privacy Policy and any state-specific legal requirements should be reviewed for the operating entity and exact Stripe Connect configuration.
+          VeroTask processes only its booking fee and optional provider subscriptions through Stripe. The service price is paid directly between customer and professional. Product policies should be reviewed by qualified U.S./Florida counsel as the marketplace evolves.
         </div>
       </section>
       <SiteFooter locale={locale} />
