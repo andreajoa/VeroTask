@@ -22,13 +22,7 @@ const providerSchema = z.object({
 });
 
 function slugify(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 170) || "provider";
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 170) || "provider";
 }
 
 export async function createProviderProfile(formData: FormData) {
@@ -36,24 +30,23 @@ export async function createProviderProfile(formData: FormData) {
   if (!user) redirect("/signin?next=/providers/join");
 
   const parsed = providerSchema.safeParse({
-    name: formData.get("name"),
-    phone: formData.get("phone"),
-    city: formData.get("city"),
-    postalCode: formData.get("postalCode"),
-    categorySlug: formData.get("categorySlug"),
-    description: formData.get("description"),
-    plan: formData.get("plan") || "free"
+    name: formData.get("name"), phone: formData.get("phone"), city: formData.get("city"), postalCode: formData.get("postalCode"),
+    categorySlug: formData.get("categorySlug"), description: formData.get("description"), plan: formData.get("plan") || "free"
   });
   if (!parsed.success) redirect("/providers/join?error=invalid-details");
   if (!launchCities.has(parsed.data.city.toLowerCase())) redirect("/providers/join?error=outside-launch-area");
 
   const db = getDb();
+  const [existingBusiness] = await db.select({ id: businesses.id }).from(businesses).where(eq(businesses.ownerUserId, user.id)).limit(1);
+  if (existingBusiness) {
+    const planQuery = parsed.data.plan === "free" ? "" : `?plan=${parsed.data.plan}`;
+    redirect(`/dashboard/providers/${existingBusiness.id}/onboarding${planQuery}`);
+  }
+
   const [category] = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, parsed.data.categorySlug)).limit(1);
   if (!category) redirect("/providers/join?error=invalid-category");
 
-  const uniqueSuffix = randomBytes(3).toString("hex");
-  const slug = `${slugify(parsed.data.name)}-${uniqueSuffix}`;
-
+  const slug = `${slugify(parsed.data.name)}-${randomBytes(3).toString("hex")}`;
   const [business] = await db.insert(businesses).values({
     ownerUserId: user.id,
     name: parsed.data.name,
@@ -71,17 +64,8 @@ export async function createProviderProfile(formData: FormData) {
     active: true
   }).returning();
 
-  await db.insert(businessCategories).values({
-    businessId: business.id,
-    categoryId: category.id,
-    featured: true
-  }).onConflictDoNothing();
-
-  await db.update(users).set({
-    role: "provider",
-    phone: parsed.data.phone,
-    updatedAt: new Date()
-  }).where(eq(users.id, user.id));
+  await db.insert(businessCategories).values({ businessId: business.id, categoryId: category.id, featured: true }).onConflictDoNothing();
+  await db.update(users).set({ role: "provider", phone: parsed.data.phone, updatedAt: new Date() }).where(eq(users.id, user.id));
 
   const planQuery = parsed.data.plan === "free" ? "" : `?plan=${parsed.data.plan}`;
   redirect(`/dashboard/providers/${business.id}/onboarding${planQuery}`);
