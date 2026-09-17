@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, ne } from "drizzle-orm";
 import { formatInTimeZone } from "date-fns-tz";
 import { getDb } from "@/db";
 import { providerAvailability } from "@/db/operations-schema";
@@ -22,7 +22,12 @@ function minutes(value: string) {
   return h * 60 + m;
 }
 
-export async function checkProviderAvailability(businessId: string, start: Date, end: Date) {
+export async function checkProviderAvailability(
+  businessId: string,
+  start: Date,
+  end: Date,
+  excludeBookingId?: string
+) {
   const db = getDb();
   const weekday = Number(formatInTimeZone(start, SERVICE_TIMEZONE, "i")) % 7;
   const startMinutes = Number(formatInTimeZone(start, SERVICE_TIMEZONE, "H")) * 60 + Number(formatInTimeZone(start, SERVICE_TIMEZONE, "m"));
@@ -33,20 +38,26 @@ export async function checkProviderAvailability(businessId: string, start: Date,
     eq(providerAvailability.active, true)
   ));
 
-  if (formatInTimeZone(start, SERVICE_TIMEZONE, "yyyy-MM-dd") !== formatInTimeZone(end, SERVICE_TIMEZONE, "yyyy-MM-dd")) return { available: false, reason: "outside_provider_hours" as const };
+  if (formatInTimeZone(start, SERVICE_TIMEZONE, "yyyy-MM-dd") !== formatInTimeZone(end, SERVICE_TIMEZONE, "yyyy-MM-dd")) {
+    return { available: false, reason: "outside_provider_hours" as const };
+  }
 
   if (rules.length > 0) {
-    const insidePublishedHours = rules.filter((rule) => rule.dayOfWeek === weekday).some((rule) => startMinutes >= minutes(rule.startTime) && endMinutes <= minutes(rule.endTime));
+    const insidePublishedHours = rules
+      .filter((rule) => rule.dayOfWeek === weekday)
+      .some((rule) => startMinutes >= minutes(rule.startTime) && endMinutes <= minutes(rule.endTime));
     if (!insidePublishedHours) return { available: false, reason: "outside_provider_hours" as const };
   }
 
-  const [conflict] = await db.select({ id: bookings.id }).from(bookings).where(and(
+  const predicates = [
     eq(bookings.businessId, businessId),
     inArray(bookings.status, [...BLOCKING_BOOKING_STATUSES]),
     lt(bookings.scheduledStart, end),
     gt(bookings.scheduledEnd, start)
-  )).limit(1);
+  ];
+  if (excludeBookingId) predicates.push(ne(bookings.id, excludeBookingId));
 
+  const [conflict] = await db.select({ id: bookings.id }).from(bookings).where(and(...predicates)).limit(1);
   if (conflict) return { available: false, reason: "schedule_conflict" as const };
   return { available: true, reason: null };
 }
