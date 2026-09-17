@@ -13,7 +13,7 @@ function normalizeOrigin(value?: string | null) {
     const candidate = raw.includes("://") ? raw : `https://${raw}`;
     const url = new URL(candidate);
     if (process.env.NODE_ENV === "production" && url.protocol !== "https:") return null;
-    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    if (!["http:", "https:"].includes(url.protocol)) return null;
     return url.origin;
   } catch {
     return null;
@@ -40,7 +40,10 @@ export function canonicalAppUrl() {
 }
 
 export function requestAppUrl(requestOrigin?: string | null) {
-  return usableOrigin(requestOrigin) ?? canonicalAppUrl();
+  const canonical = canonicalAppUrl();
+  // Never let a request Host/Origin control absolute auth or payment redirects in production.
+  if (process.env.NODE_ENV === "production") return canonical;
+  return usableOrigin(requestOrigin) ?? canonical;
 }
 
 export function appUrlFromHeaders(headers: HeaderReader) {
