@@ -21,15 +21,29 @@ jobs:
         run: |
           set -euo pipefail
           URL="$PROD_URL/api/ready"
+          code=""
           for i in $(seq 1 30); do
-            code=$(curl -sS -o /tmp/ready.json -w "%{http_code}" --connect-timeout 10 --max-time 20 "$URL" || true)
+            : > /tmp/ready.headers
+            code=$(curl -sS -D /tmp/ready.headers -o /tmp/ready.json -w "%{http_code}" --connect-timeout 10 --max-time 20 "$URL" || true)
+            echo "Attempt $i: readiness returned HTTP $code"
             if [ "$code" = "200" ]; then
               break
             fi
-            echo "Attempt $i: readiness returned HTTP $code"
+            if [[ "$code" =~ ^30[12378]$ ]]; then
+              echo "Redirect response headers:"
+              cat /tmp/ready.headers
+              echo "Redirect target: $(awk 'BEGIN{IGNORECASE=1} /^location:/ {$1=""; sub(/^ /, ""); gsub(/\r/, ""); print; exit}' /tmp/ready.headers)"
+              break
+            fi
             sleep 10
           done
-          test "${code:-}" = "200"
+          if [ "${code:-}" != "200" ]; then
+            echo "Final response headers:"
+            cat /tmp/ready.headers || true
+            echo "Final response body:"
+            cat /tmp/ready.json || true
+            exit 1
+          fi
           cat /tmp/ready.json
 
       - name: Validate readiness contract
