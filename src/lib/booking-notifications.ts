@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookings, businesses, services, users } from "@/db/schema";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { sendTransactionalEmail } from "@/lib/email";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 
@@ -9,7 +10,7 @@ function esc(value: string) {
 }
 
 function appUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
+  return canonicalAppUrl();
 }
 
 function money(cents: number) {
