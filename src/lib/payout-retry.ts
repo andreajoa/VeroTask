@@ -1,24 +1,7 @@
-import { eq, or } from "drizzle-orm";
-import { getDb } from "@/db";
-import { providerTransfers } from "@/db/schema";
-import { releaseProviderTransfer } from "@/lib/booking-workflow";
-
-export async function retryEligibleProviderTransfers(limit = 50) {
-  const db = getDb();
-  const rows = await db.select({ bookingId: providerTransfers.bookingId, amountCents: providerTransfers.amountCents })
-    .from(providerTransfers)
-    .where(or(eq(providerTransfers.status, "eligible"), eq(providerTransfers.status, "failed")))
-    .limit(Math.max(1, Math.min(limit, 100)));
-
-  const results: Array<{ bookingId: string; ok: boolean }> = [];
-  for (const row of rows) {
-    try {
-      const transfer = await releaseProviderTransfer(row.bookingId, row.amountCents);
-      if (transfer.status !== "paid") throw new Error("transfer_not_completed");
-      results.push({ bookingId: row.bookingId, ok: true });
-    } catch {
-      results.push({ bookingId: row.bookingId, ok: false });
-    }
-  }
-  return results;
+// Retained as a compatibility shim for older imports and historical tooling.
+// VeroTask does not transfer service payments to providers. Customers pay the
+// service amount directly to the professional, while VeroTask collects only
+// the marketplace booking fee.
+export async function retryEligibleProviderTransfers(_limit = 50) {
+  return [] as Array<{ bookingId: string; ok: boolean }>;
 }
