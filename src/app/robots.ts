@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
+import { canonicalAppUrl } from "@/lib/app-url";
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://verotask.com";
+  const base = canonicalAppUrl();
   const publicRule = {
     userAgent: ["Googlebot", "Bingbot", "OAI-SearchBot", "PerplexityBot", "ClaudeBot"],
     allow: "/",
@@ -17,7 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/api/", "/dashboard/", "/bookings/", "/signin", "/admin", "/dashboard", "/unsubscribe"]
       }
     ],
-    sitemap: `${base.replace(/\/$/, "")}/sitemap.xml`,
+    sitemap: `${base}/sitemap.xml`,
     host: base
   };
 }
