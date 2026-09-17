@@ -12,8 +12,18 @@ const REQUIRED_ENV = [
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
   "STRIPE_SECRET_KEY",
   "STRIPE_WEBHOOK_SECRET",
-  "STRIPE_CONNECT_WEBHOOK_SECRET",
-  "CRON_SECRET"
+  "CRON_SECRET",
+  "RESEND_API_KEY",
+  "EMAIL_FROM",
+  "STORAGE_ENDPOINT",
+  "STORAGE_BUCKET",
+  "STORAGE_ACCESS_KEY_ID",
+  "STORAGE_SECRET_ACCESS_KEY",
+  "ADMIN_PASSWORD_HASH",
+  "ADMIN_SESSION_SECRET",
+  "AUDIT_ENCRYPTION_KEY",
+  "AUDIT_HASH_SECRET",
+  "UNSUBSCRIBE_SECRET"
 ] as const;
 
 export async function GET() {
@@ -30,14 +40,20 @@ export async function GET() {
     }
   }
 
-  const ready = missing.length === 0 && database;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const productionUrlValid = process.env.NODE_ENV !== "production" || appUrl.startsWith("https://");
+  const ready = missing.length === 0 && database && productionUrlValid;
+
   return NextResponse.json({
     ok: ready,
     service: "verotask",
+    market: "Orlando / Central Florida",
+    paymentModel: "booking_fee_only",
     status: ready ? "ready" : "not_ready",
     checks: {
       database,
       databaseError,
+      productionUrlValid,
       requiredEnvironmentConfigured: missing.length === 0,
       missingEnvironmentCount: missing.length
     },
