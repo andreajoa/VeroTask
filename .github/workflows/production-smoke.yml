@@ -13,12 +13,14 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+    env:
+      PROD_URL: https://vero-task-andres-projects-bbfd1881.vercel.app
     steps:
       - name: Wait for production deployment
         shell: bash
         run: |
           set -euo pipefail
-          URL="https://vero-task.vercel.app/api/ready"
+          URL="$PROD_URL/api/ready"
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/ready.json -w "%{http_code}" --connect-timeout 10 --max-time 20 "$URL" || true)
             if [ "$code" = "200" ]; then
@@ -52,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           for path in / /signin /services /protection /terms; do
-            code=$(curl -LsS -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 25 "https://vero-task.vercel.app${path}")
+            code=$(curl -LsS -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 25 "$PROD_URL${path}")
             echo "$path -> $code"
             test "$code" = "200"
           done
@@ -61,7 +63,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -LsSI --connect-timeout 10 --max-time 25 https://vero-task.vercel.app/ > /tmp/headers.txt
+          curl -LsSI --connect-timeout 10 --max-time 25 "$PROD_URL/" > /tmp/headers.txt
           cat /tmp/headers.txt
           grep -qi '^x-content-type-options: nosniff' /tmp/headers.txt
           grep -qi '^referrer-policy:' /tmp/headers.txt
