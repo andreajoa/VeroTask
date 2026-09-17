@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { deliverEmail, localEmailEnabled } from "@/lib/email-delivery";
 import { getDb } from "@/db";
 import { crmContacts, crmEmailSends } from "@/db/analytics-schema";
@@ -64,7 +65,7 @@ export async function sendCrmEmail(input: {
   if (existing?.status === "sending") return { skipped: true, reason: "in_progress" as const };
   if (existing && !["failed", "development_skipped", "queued"].includes(existing.status)) return { skipped: true, reason: "already_processed" as const, send: existing };
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
+  const appUrl = canonicalAppUrl();
   const subject = `${input.subjectPrefix || ""}${template.subject}`;
   const token = unsubscribeToken(contact.id, contact.email);
   const unsubscribeUrl = `${appUrl}/api/crm/unsubscribe?token=${encodeURIComponent(token)}`;
