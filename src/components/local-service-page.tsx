@@ -90,7 +90,7 @@ export async function LocalServicePage({ locale, categorySlug, locationSlug }: {
             <article key={business.id} className="card p-6">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`badge ${business.status === "active" ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}><BadgeCheck size={14} /> {business.status === "active" ? c.verified : c.unclaimed}</span>
-                <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700"><Star size={14} fill="currentColor" /> {Number(business.ratingAverage).toFixed(1)} ({business.ratingCount})</span>
+                <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700"><Star size={14} fill="currentColor" /> {Number(business.averageRating).toFixed(1)} ({business.reviewCount})</span>
               </div>
               <h3 className="mt-4 text-xl font-black">{business.name}</h3>
               <p className="mt-2 text-sm text-[var(--muted)]">{business.city}, {business.state}</p>
