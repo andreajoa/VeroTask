@@ -2,6 +2,7 @@ import { and, eq, gt, lte } from "drizzle-orm";
 import { addHours } from "date-fns";
 import { getDb } from "@/db";
 import { bookingEvents, bookings, businesses, users } from "@/db/schema";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { sendTransactionalEmail } from "@/lib/email";
 
 async function eventExists(bookingId: string, eventType: string) {
@@ -32,6 +33,7 @@ export async function sendProtectionReminders(limit = 75) {
     .limit(Math.max(1, Math.min(limit, 100)));
 
   const results: Array<{ bookingId: string; reminder: string }> = [];
+  const base = canonicalAppUrl();
   for (const row of rows) {
     if (!row.booking.protectionDeadline) continue;
     const remainingMs = row.booking.protectionDeadline.getTime() - Date.now();
@@ -40,7 +42,6 @@ export async function sendProtectionReminders(limit = 75) {
     const eventType = `protection_reminder_${reminder}`;
     if (await eventExists(row.booking.id, eventType)) continue;
 
-    const base = (process.env.NEXT_PUBLIC_APP_URL ?? "https://verotask.com").replace(/\/$/, "");
     const url = `${base}/bookings/${row.booking.id}`;
     const sent = await sendTransactionalEmail({
       to: row.customer.email,
