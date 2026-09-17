@@ -38,15 +38,15 @@ export function canAutoComplete(score: number, hasOpenDispute: boolean) {
 
 export const SERVICE_PROTECTION_SUMMARY = {
   en: {
-    title: "VeroTask Payment Protection",
-    body: "After the provider marks a service complete, the customer has 24 hours to report a problem. If no dispute is opened and the required proof of service is present, the booking is automatically completed and the provider becomes eligible for payout. A dispute pauses the pending transfer while the evidence is reviewed."
+    title: "VeroTask Booking Protection",
+    body: "After the provider marks a service complete, the customer has 24 hours to report a problem. If no dispute is opened and the required proof of service is present, the booking is automatically completed. A dispute pauses booking completion while the evidence is reviewed. VeroTask can refund only the booking fee it collected; the service price is paid directly to the professional."
   },
   "pt-br": {
-    title: "Proteção de Pagamento VeroTask",
-    body: "Depois que o prestador marca o serviço como concluído, o cliente tem 24 horas para informar um problema. Se nenhuma disputa for aberta e houver as evidências exigidas do serviço, a reserva é concluída automaticamente e o prestador fica elegível para receber. Uma disputa pausa a transferência pendente enquanto as evidências são analisadas."
+    title: "Proteção de Reserva VeroTask",
+    body: "Depois que o prestador marca o serviço como concluído, o cliente tem 24 horas para informar um problema. Se nenhuma disputa for aberta e houver as evidências exigidas do serviço, a reserva é concluída automaticamente. Uma disputa pausa a conclusão da reserva enquanto as evidências são analisadas. A VeroTask pode reembolsar apenas a taxa de reserva que cobrou; o preço do serviço é pago diretamente ao profissional."
   },
   es: {
-    title: "Protección de Pago VeroTask",
-    body: "Después de que el proveedor marca el servicio como completado, el cliente tiene 24 horas para informar un problema. Si no se abre una disputa y existe la evidencia requerida del servicio, la reserva se completa automáticamente y el proveedor queda elegible para recibir el pago. Una disputa pausa la transferencia pendiente mientras se revisa la evidencia."
+    title: "Protección de Reserva VeroTask",
+    body: "Después de que el proveedor marca el servicio como completado, el cliente tiene 24 horas para informar un problema. Si no se abre una disputa y existe la evidencia requerida del servicio, la reserva se completa automáticamente. Una disputa pausa la finalización de la reserva mientras se revisa la evidencia. VeroTask solo puede reembolsar la tarifa de reserva que cobró; el precio del servicio se paga directamente al profesional."
   }
 };
