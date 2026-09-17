@@ -1,4 +1,4 @@
-name: Remove unused Stripe Connect dependencies
+name: Finalize fee-only CRM cleanup
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
@@ -25,30 +25,46 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Remove unused Connect packages
-        run: npm uninstall @stripe/connect-js @stripe/react-connect-js
+      - name: Fix customer spend semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/crm-automation.ts')
+          text = path.read_text()
+          old = "then ${bookings.subtotalCents} else 0 end), 0)::int`"
+          new = "then ${bookings.marketplaceFeeCents} else 0 end), 0)::int`"
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'expected exactly one legacy CRM spend expression, found {count}')
+          path.write_text(text.replace(old, new, 1))
+          PY
 
-      - name: Verify dependency removal
+      - name: Verify fee-only invariants
         shell: bash
         run: |
           set -euo pipefail
           ! grep -q '"@stripe/connect-js"' package.json
           ! grep -q '"@stripe/react-connect-js"' package.json
-          npm ci
+          grep -q 'then \${bookings.marketplaceFeeCents} else 0 end' src/lib/crm-automation.ts
+          npm ci --no-audit --no-fund
           npm run typecheck
           npm run lint
           npm test
+          npm run build
 
-      - name: Commit generated package metadata
+      - name: Commit CRM correction
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- package.json package-lock.json; then
-            echo 'No package metadata changes were required.'
+          if git diff --quiet -- src/lib/crm-automation.ts; then
+            echo 'CRM fee-only semantics already correct.'
             exit 0
           fi
           git config user.name 'VeroTask CI'
           git config user.email 'actions@users.noreply.github.com'
-          git add package.json package-lock.json
-          git commit -m 'chore: remove unused Stripe Connect dependencies'
+          git add src/lib/crm-automation.ts
+          git commit -m 'fix: count only VeroTask booking fees in CRM spend'
+          git pull --rebase origin main
           git push origin HEAD:main
