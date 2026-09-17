@@ -16,14 +16,14 @@ export const PROVIDER_PLANS: Record<PlanKey, ProviderPlanDefinition> = {
     name: "Free",
     monthlyPriceCents: 0,
     commissionBps: 1500,
-    description: "Start receiving VeroTask bookings with no monthly fee.",
+    description: "Start receiving VeroTask booking requests with no monthly fee.",
     benefits: [
       "Public provider profile",
-      "Eligible for local service search",
-      "Protected Stripe payments",
+      "Eligible for Orlando-area service search",
+      "VeroTask booking workflow and service records",
       "Booking and dispute center",
       "Verified customer reviews",
-      "15% marketplace fee on completed bookings"
+      "15% booking fee paid by the customer to VeroTask"
     ]
   },
   pro: {
@@ -31,10 +31,10 @@ export const PROVIDER_PLANS: Record<PlanKey, ProviderPlanDefinition> = {
     name: "Pro",
     monthlyPriceCents: 3900,
     commissionBps: 1000,
-    description: "For active local professionals who want more visibility and lower fees.",
+    description: "For active local professionals who want more visibility and a lower customer booking fee.",
     benefits: [
       "Everything in Free",
-      "10% marketplace fee on completed bookings",
+      "10% customer booking fee",
       "Priority placement over comparable Free providers",
       "Expanded service-area controls",
       "Business performance dashboard",
@@ -52,7 +52,7 @@ export const PROVIDER_PLANS: Record<PlanKey, ProviderPlanDefinition> = {
     description: "For high-volume providers and teams operating across Central Florida.",
     benefits: [
       "Everything in Pro",
-      "7% marketplace fee on completed bookings",
+      "7% customer booking fee",
       "Highest organic placement among equally qualified providers",
       "Multiple team members",
       "Multiple service areas",
