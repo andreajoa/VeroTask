@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const REQUIRED_ENV = [
+  "NEXT_PUBLIC_APP_URL",
   "DATABASE_URL",
   "AUTH_SECRET",
   "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
@@ -40,10 +41,18 @@ export async function GET() {
     }
   }
 
+  const configuredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "";
   const appUrl = canonicalAppUrl();
   const productionUrlValid = process.env.NODE_ENV !== "production" || appUrl.startsWith("https://");
-  const staleConfiguredAppUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") === "https://vero-task.vercel.app";
-  const ready = missing.length === 0 && database && productionUrlValid;
+  const configuredAppUrlValid = process.env.NODE_ENV !== "production" || (
+    configuredAppUrl.startsWith("https://") && configuredAppUrl !== "https://vero-task.vercel.app"
+  );
+  const staleConfiguredAppUrl = configuredAppUrl === "https://vero-task.vercel.app";
+  const ready = missing.length === 0
+    && database
+    && productionUrlValid
+    && configuredAppUrlValid
+    && !staleConfiguredAppUrl;
 
   return NextResponse.json({
     ok: ready,
@@ -55,6 +64,7 @@ export async function GET() {
       database,
       databaseError,
       productionUrlValid,
+      configuredAppUrlValid,
       canonicalUrlResolved: Boolean(appUrl),
       staleConfiguredAppUrl,
       requiredEnvironmentConfigured: missing.length === 0,
