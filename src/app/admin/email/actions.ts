@@ -6,6 +6,7 @@ import { sendCrmEmail } from "@/lib/crm-email";
 import { getDb } from "@/db";
 import { crmCampaigns, crmContacts } from "@/db/analytics-schema";
 import { isAdminSession } from "@/lib/admin-auth";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { EMAIL_TEMPLATES, getEmailTemplate } from "@/lib/crm-templates";
 
 async function requireAdmin() {
@@ -44,7 +45,7 @@ export async function sendTestEmail(formData: FormData) {
   const to = String(formData.get("email") || "").trim().toLowerCase();
   const template = getEmailTemplate(templateKey);
   if (!template || !/^\S+@\S+\.\S+$/.test(to)) redirect("/admin/email?error=invalid-test");
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "");
+  const appUrl = canonicalAppUrl();
   let failed = false;
   try {
     const [contact] = await getDb().insert(crmContacts).values({ email: to, tags: ["admin-test"] })
