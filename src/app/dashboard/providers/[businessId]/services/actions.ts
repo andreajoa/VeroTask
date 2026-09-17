@@ -58,6 +58,14 @@ export async function createService(formData: FormData) {
     active: true
   });
 
+  // Self-created Brazilian provider profiles become bookable once the first
+  // valid fixed-price service exists. Imported/unclaimed and suspended profiles
+  // never pass the ownership/status guard above.
+  if (business.status === "pending") {
+    await db.update(businesses).set({ status: "active", updatedAt: new Date() })
+      .where(and(eq(businesses.id, business.id), eq(businesses.status, "pending")));
+  }
+
   revalidatePath(`/dashboard/providers/${business.id}/services`);
   revalidatePath(`/providers/${business.slug}`);
   redirect(`/dashboard/providers/${business.id}/services?notice=created`);
