@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { businesses, users, providerSubscriptions } from "@/db/schema";
 import { providerCheckoutSessions } from "@/db/operations-schema";
+import { requestAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/auth";
 import { PROVIDER_PLANS } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
   }
 
   const definition = PROVIDER_PLANS[parsed.data.plan];
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
+  const baseUrl = requestAppUrl(request.nextUrl.origin);
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded_page",
     mode: "subscription",
