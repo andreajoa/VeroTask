@@ -10,6 +10,18 @@ import { canProviderAccept } from "@/lib/booking-state";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 import { algorithmReputationScore } from "@/lib/reputation-score";
 
+function postgresErrorCode(error: unknown) {
+  if (!error || typeof error !== "object") return null;
+  const direct = "code" in error ? (error as { code?: unknown }).code : undefined;
+  if (typeof direct === "string") return direct;
+  const cause = "cause" in error ? (error as { cause?: unknown }).cause : undefined;
+  if (cause && typeof cause === "object" && "code" in cause) {
+    const nested = (cause as { code?: unknown }).code;
+    if (typeof nested === "string") return nested;
+  }
+  return null;
+}
+
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -27,10 +39,20 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   }
 
   const db = getDb();
-  const [claimed] = await db.update(bookings).set({
-    status: "accepted",
-    updatedAt: new Date()
-  }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
+  let claimed;
+  try {
+    [claimed] = await db.update(bookings).set({
+      status: "accepted",
+      updatedAt: new Date()
+    }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
+  } catch (error) {
+    // PostgreSQL exclusion_violation. The database is the final authority when
+    // simultaneous provider-accept operations race for the same time window.
+    if (postgresErrorCode(error) === "23P01") {
+      return NextResponse.json({ error: "schedule_conflict" }, { status: 409 });
+    }
+    throw error;
+  }
   if (!claimed) return NextResponse.json({ error: "booking_state_changed" }, { status: 409 });
 
   const availability = await checkProviderAvailability(
