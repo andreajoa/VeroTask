@@ -1,5 +1,6 @@
 export const LAUNCH_LOCATIONS = [
   { slug: "orlando-fl", city: "Orlando", state: "FL", label: "Orlando, FL" },
+  { slug: "winter-park-fl", city: "Winter Park", state: "FL", label: "Winter Park, FL" },
   { slug: "kissimmee-fl", city: "Kissimmee", state: "FL", label: "Kissimmee, FL" },
   { slug: "davenport-fl", city: "Davenport", state: "FL", label: "Davenport, FL" },
   { slug: "celebration-fl", city: "Celebration", state: "FL", label: "Celebration, FL" },
