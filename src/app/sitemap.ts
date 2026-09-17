@@ -2,24 +2,11 @@ import type { MetadataRoute } from "next";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 
-function resolveBaseUrl() {
-  const fallback = "https://verotask.com";
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (!configured) return fallback;
-  try {
-    const candidate = /^https?:\/\//i.test(configured) ? configured : `https://${configured}`;
-    const parsed = new URL(candidate);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return fallback;
-    return parsed.toString().replace(/\/$/, "");
-  } catch {
-    return fallback;
-  }
-}
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = resolveBaseUrl();
+  const base = canonicalAppUrl();
   const now = new Date();
   const entries: MetadataRoute.Sitemap = [
     { url: `${base}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
