@@ -32,14 +32,6 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          def replace_exact(path, old, new, count=1):
-              p = Path(path)
-              text = p.read_text()
-              found = text.count(old)
-              if found != count:
-                  raise SystemExit(f'{path}: expected {count} occurrence(s), found {found}: {old[:120]!r}')
-              p.write_text(text.replace(old, new, count))
-
           # CRM automation: all absolute links use the canonical application origin.
           p = Path('src/lib/crm-automation.ts')
           text = p.read_text()
@@ -47,7 +39,7 @@ jobs:
           if 'import { canonicalAppUrl } from "@/lib/app-url";' not in text:
               if text.count(marker) != 1: raise SystemExit('crm-automation import marker mismatch')
               text = text.replace(marker, marker + 'import { canonicalAppUrl } from "@/lib/app-url";\n', 1)
-          legacy = '(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\\\/$/, "")'
+          legacy = r'(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "")'
           found = text.count(legacy)
           if found != 2: raise SystemExit(f'crm-automation expected 2 legacy appUrl expressions, found {found}')
           text = text.replace(legacy, 'canonicalAppUrl()')
@@ -62,7 +54,7 @@ jobs:
           text = p.read_text()
           if 'import { canonicalAppUrl } from "@/lib/app-url";' not in text:
               text = 'import { canonicalAppUrl } from "@/lib/app-url";\n\n' + text
-          old = '(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\\\/$/, "")'
+          old = r'(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\/$/, "")'
           if text.count(old) != 1: raise SystemExit(f'crm-templates appUrl fallback count={text.count(old)}')
           text = text.replace(old, 'canonicalAppUrl()', 1)
           replacements = {
