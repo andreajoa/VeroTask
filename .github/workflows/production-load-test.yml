@@ -1,0 +1,47 @@
+name: VeroTask Production Load Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      concurrency:
+        description: Concurrent requests
+        required: false
+        default: "1000"
+      requests:
+        description: Total requests
+        required: false
+        default: "3000"
+  push:
+    paths:
+      - ".github/workflows/production-load-test.yml"
+      - "scripts/load-test.mjs"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verotask-production-load-test
+  cancel-in-progress: false
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify production at 1,000 concurrent requests
+        env:
+          BASE_URL: https://vero-task.vercel.app
+          CONCURRENCY: ${{ github.event.inputs.concurrency || '1000' }}
+          REQUESTS: ${{ github.event.inputs.requests || '3000' }}
+          LOAD_PATHS: /api/health,/api/ready,/
+          REQUEST_TIMEOUT_MS: "15000"
+          MAX_ERROR_RATE: "0.01"
+        run: node scripts/load-test.mjs
