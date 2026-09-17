@@ -1,0 +1,54 @@
+name: Remove unused Stripe Connect dependencies
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/remove-connect-deps-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Remove unused Connect packages
+        run: npm uninstall @stripe/connect-js @stripe/react-connect-js
+
+      - name: Verify dependency removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q '"@stripe/connect-js"' package.json
+          ! grep -q '"@stripe/react-connect-js"' package.json
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm test
+
+      - name: Commit generated package metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- package.json package-lock.json; then
+            echo 'No package metadata changes were required.'
+            exit 0
+          fi
+          git config user.name 'VeroTask CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add package.json package-lock.json
+          git commit -m 'chore: remove unused Stripe Connect dependencies'
+          git push origin HEAD:main
