@@ -48,6 +48,7 @@ jobs:
             .checks.productionUrlValid == true and
             .checks.configuredAppUrlValid == true and
             .checks.staleConfiguredAppUrl == false and
+            .checks.supportEmailConfigured == true and
             .checks.requiredEnvironmentConfigured == true and
             .checks.missingEnvironmentCount == 0
           ' /tmp/ready.json >/dev/null
