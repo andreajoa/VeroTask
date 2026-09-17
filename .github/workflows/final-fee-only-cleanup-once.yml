@@ -1,0 +1,134 @@
+name: Final deterministic fee-only cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/final-fee-only-cleanup-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Apply deterministic cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, count=1):
+              p = Path(path)
+              text = p.read_text()
+              found = text.count(old)
+              if found != count:
+                  raise SystemExit(f'{path}: expected {count} occurrence(s), found {found}: {old[:120]!r}')
+              p.write_text(text.replace(old, new, count))
+
+          # CRM automation: all absolute links use the canonical application origin.
+          p = Path('src/lib/crm-automation.ts')
+          text = p.read_text()
+          marker = 'import { getDb } from "@/db";\n'
+          if 'import { canonicalAppUrl } from "@/lib/app-url";' not in text:
+              if text.count(marker) != 1: raise SystemExit('crm-automation import marker mismatch')
+              text = text.replace(marker, marker + 'import { canonicalAppUrl } from "@/lib/app-url";\n', 1)
+          legacy = '(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\\\/$/, "")'
+          found = text.count(legacy)
+          if found != 2: raise SystemExit(f'crm-automation expected 2 legacy appUrl expressions, found {found}')
+          text = text.replace(legacy, 'canonicalAppUrl()')
+          legacy_inline = '${process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com"}'
+          found = text.count(legacy_inline)
+          if found != 2: raise SystemExit(f'crm-automation expected 2 inline legacy origins, found {found}')
+          text = text.replace(legacy_inline, '${canonicalAppUrl()}')
+          p.write_text(text)
+
+          # CRM templates: fee-only language and canonical origin.
+          p = Path('src/lib/crm-templates.ts')
+          text = p.read_text()
+          if 'import { canonicalAppUrl } from "@/lib/app-url";' not in text:
+              text = 'import { canonicalAppUrl } from "@/lib/app-url";\n\n' + text
+          old = '(process.env.NEXT_PUBLIC_APP_URL || "https://verotask.com").replace(/\\\/$/, "")'
+          if text.count(old) != 1: raise SystemExit(f'crm-templates appUrl fallback count={text.count(old)}')
+          text = text.replace(old, 'canonicalAppUrl()', 1)
+          replacements = {
+            'preview: "The customer protection window is designed to prevent blind payout."': 'preview: "The customer protection window supports a documented completion review."',
+            'body: "If VeroTask already shows public information about your business, claiming the profile lets you verify ownership, complete Stripe onboarding and control bookable services."': 'body: "If VeroTask already shows public information about your business, claiming the profile lets you verify ownership, configure your provider profile and control bookable services. Customers pay your service price directly to you while VeroTask charges its booking fee separately."',
+            '"Payment stays inside VeroTask"': '"Only the VeroTask booking fee is paid through VeroTask"',
+            'and an open dispute pauses the normal provider payout.': 'and an open dispute pauses booking completion while the evidence is reviewed.'
+          }
+          for old_text, new_text in replacements.items():
+              if old_text not in text: raise SystemExit(f'crm-templates missing expected text: {old_text}')
+              text = text.replace(old_text, new_text)
+          p.write_text(text)
+
+          # Admin booking ledger: distinguish service value from VeroTask fee and preserve legacy records explicitly.
+          p = Path('src/app/admin/bookings/page.tsx')
+          text = p.read_text()
+          replacements = {
+            'gmv: sql<number>`coalesce(sum(${bookings.subtotalCents}), 0)::int`': 'serviceValue: sql<number>`coalesce(sum(${bookings.subtotalCents}), 0)::int`',
+            'refunds and payout state joined by booking ID.': 'refunds and completion state joined by booking ID.',
+            '{money(stats?.gmv)}</div><div className="text-xs text-slate-400">Lifetime listed GMV': '{money(stats?.serviceValue)}</div><div className="text-xs text-slate-400">Lifetime requested service value',
+            '<div className="mt-3 text-xl font-black">{money(detail.booking.subtotalCents)}</div><div className="mt-1 break-all text-[10px] text-slate-400">PI {detail.booking.stripePaymentIntentId || "--"}<br />Charge {detail.booking.stripeChargeId || "--"}</div>': '<div className="mt-3 text-xl font-black">{money(detail.booking.marketplaceFeeCents)}</div><div className="mt-1 text-xs text-slate-300">VeroTask booking fee charged through Stripe</div><div className="mt-1 text-xs text-slate-400">Service price {money(detail.booking.subtotalCents)} · paid directly to provider</div><div className="mt-2 break-all text-[10px] text-slate-400">PI {detail.booking.stripePaymentIntentId || "--"}<br />Charge {detail.booking.stripeChargeId || "--"}</div>',
+            '<br />Payout eligible <Timestamp value={detail.booking.payoutEligibleAt} />': '',
+            '<h3 className="font-black">Provider transfers</h3>': '<h3 className="font-black">Legacy transfer records</h3><p className="mt-1 text-[11px] leading-4 text-slate-400">Historical compatibility only. The active VeroTask model does not transfer service funds to providers.</p>',
+            'No transfer record.': 'No legacy transfer record.',
+            'CRM spend {money(detail.contact.totalSpendCents)}': 'CRM booking-fee spend {money(detail.contact.totalSpendCents)}',
+            '<th className="px-4 py-3">Amount</th>': '<th className="px-4 py-3">Service value</th>'
+          }
+          for old_text, new_text in replacements.items():
+              if old_text not in text: raise SystemExit(f'admin bookings missing expected text: {old_text[:100]}')
+              text = text.replace(old_text, new_text, 1)
+          p.write_text(text)
+
+          # Local browser journey no longer invents Stripe Connect eligibility.
+          p = Path('scripts/verify-local-booking.mjs')
+          text = p.read_text()
+          replacements = {
+            'const report = { checks: [], fixture: "Temporarily eligible local QA profile; no real Stripe verification or payment", failure: null };': 'const report = { checks: [], fixture: "Temporarily active local QA profile; no real payment", failure: null };',
+            'check("Pending Stripe verification blocks real booking eligibility");': 'check("Inactive provider profile blocks booking eligibility");',
+            '// Eligibility fixture for exercising the application workflow only. Always restored below.\n  await db.query("update businesses set status=\'active\', stripe_payouts_enabled=true, stripe_connect_account_id=\'acct_local_simulation\' where id=$1", [businessId]);': '// Eligibility fixture for exercising the application workflow only. Always restored below.\n  await db.query("update businesses set status=\'active\' where id=$1", [businessId]);',
+            'if(changed) await db.query("update businesses set status=$2, stripe_payouts_enabled=$3, stripe_connect_account_id=$4 where id=$1", [businessId, original.status, original.stripe_payouts_enabled, original.stripe_connect_account_id]);': 'if(changed) await db.query("update businesses set status=$2 where id=$1", [businessId, original.status]);'
+          }
+          for old_text, new_text in replacements.items():
+              if old_text not in text: raise SystemExit(f'local journey missing expected text: {old_text[:100]}')
+              text = text.replace(old_text, new_text, 1)
+          p.write_text(text)
+          PY
+
+      - name: Validate full repository
+        run: |
+          npm ci --no-audit --no-fund
+          npm run typecheck
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'VeroTask CI'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/lib/crm-automation.ts src/lib/crm-templates.ts src/app/admin/bookings/page.tsx scripts/verify-local-booking.mjs
+          if git diff --cached --quiet; then
+            echo 'No cleanup changes required.'
+            exit 0
+          fi
+          git commit -m 'fix: finish fee-only operational cleanup'
+          git pull --rebase origin main
+          git push origin HEAD:main
