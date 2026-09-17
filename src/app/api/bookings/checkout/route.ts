@@ -31,8 +31,11 @@ export async function POST(request: NextRequest) {
 
   const db = getDb();
   const [business] = await db.select().from(businesses).where(eq(businesses.id, parsed.data.businessId)).limit(1);
-  if (!business || business.status !== "active" || !business.ownerUserId || !business.stripePayoutsEnabled || !business.stripeConnectAccountId) {
+  if (!business || business.status !== "active" || !business.ownerUserId || !business.active) {
     return NextResponse.json({ error: "provider_not_bookable" }, { status: 409 });
+  }
+  if (business.country !== "US" || business.state !== "FL") {
+    return NextResponse.json({ error: "provider_outside_launch_market" }, { status: 409 });
   }
   if (business.ownerUserId === user.id) return NextResponse.json({ error: "cannot_book_own_business" }, { status: 409 });
 
@@ -97,7 +100,9 @@ export async function POST(request: NextRequest) {
       serviceGeocoded: Boolean(geocoded),
       geocodingSource: geocoded?.source ?? null,
       matchedAddress: geocoded?.matchedAddress ?? null,
-      providerDecisionRequiredBeforePayment: true
+      providerDecisionRequiredBeforePayment: true,
+      paymentModel: "booking_fee_only",
+      providerPaidDirectlyByCustomer: true
     }
   });
 
