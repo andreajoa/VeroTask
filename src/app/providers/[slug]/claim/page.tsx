@@ -32,7 +32,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
         <div className="card p-7 sm:p-9">
           <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]">BUSINESS OWNERSHIP</div>
           <h1 className="mt-5 text-3xl font-black tracking-tight">Claim {business.name}</h1>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Claiming a public listing gives you control of the profile, but VeroTask bookings remain disabled until business ownership is verified and Stripe Connect onboarding is complete.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Claiming a public listing gives you control of the profile. VeroTask bookings remain disabled until business ownership is verified and your provider profile, services and availability are ready.</p>
 
           {!user ? (
             <div className="mt-7 rounded-2xl bg-[var(--background)] p-6">
@@ -48,7 +48,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
               <form action={startBusinessClaim.bind(null, slug)}><button className="btn-primary mt-6 w-full" type="submit">Start ownership verification</button></form>
             </div>
           ) : claim.status === "verified" ? (
-            <div className="mt-7 rounded-2xl border border-emerald-200 bg-emerald-50 p-6"><div className="flex items-center gap-2 font-black text-emerald-900"><BadgeCheck size={20} /> Ownership verified</div><p className="mt-2 text-sm text-emerald-900/80">Continue in your dashboard to complete Stripe onboarding and choose a provider plan.</p><Link className="btn-primary mt-5" href="/dashboard">Open dashboard</Link></div>
+            <div className="mt-7 rounded-2xl border border-emerald-200 bg-emerald-50 p-6"><div className="flex items-center gap-2 font-black text-emerald-900"><BadgeCheck size={20} /> Ownership verified</div><p className="mt-2 text-sm text-emerald-900/80">Continue in your dashboard to finish your provider profile, add services and availability, and choose a provider plan. Customers pay your service price directly to you; VeroTask charges its booking fee separately.</p><Link className="btn-primary mt-5" href="/dashboard">Open dashboard</Link></div>
           ) : claim.verificationMethod === "public_email" ? (
             <div className="mt-7 rounded-2xl bg-[var(--background)] p-6">
               <div className="flex items-center gap-2 font-black"><MailCheck size={20} className="text-[var(--brand)]" /> Verify through the public business email</div>
@@ -66,7 +66,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           ) : (
             <div className="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-6">
               <h2 className="font-black text-amber-950">Automatic verification is not available for this listing</h2>
-              <p className="mt-2 text-sm leading-6 text-amber-900">This listing does not currently expose a public business email or website that VeroTask can verify automatically. It stays unclaimed and cannot receive marketplace payments.</p>
+              <p className="mt-2 text-sm leading-6 text-amber-900">This listing does not currently expose a public business email or website that VeroTask can verify automatically. It stays unclaimed and cannot receive marketplace booking requests.</p>
             </div>
           )}
         </div>
