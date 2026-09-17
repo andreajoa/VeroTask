@@ -14,8 +14,15 @@ export function localEmailEnabled() {
   return process.env.LOCAL_EMAIL === "true" && ["localhost", "127.0.0.1", "[::1]"].includes(hostname) && !process.env.VERCEL;
 }
 
+function configuredFromAddress() {
+  const configured = process.env.EMAIL_FROM?.trim();
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") throw new Error("EMAIL_FROM is required in production");
+  return "VeroTask <notifications@verotask.invalid>";
+}
+
 export async function deliverEmail(message: EmailMessage) {
-  const from = process.env.EMAIL_FROM || "VeroTask <notifications@verotask.com>";
+  const from = configuredFromAddress();
   if (localEmailEnabled()) {
     const response = await fetch("http://127.0.0.1:8026/api/v1/send", {
       method: "POST",
