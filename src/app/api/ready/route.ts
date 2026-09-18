@@ -6,6 +6,7 @@ import { canonicalAppUrl } from "@/lib/app-url";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Diagnostic redeploy marker: refresh production environment bindings.
 const REQUIRED_ENV = [
   "NEXT_PUBLIC_APP_URL",
   "NEXT_PUBLIC_SUPPORT_EMAIL",
