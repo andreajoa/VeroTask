@@ -72,7 +72,8 @@ export async function GET() {
       staleConfiguredAppUrl,
       supportEmailConfigured,
       requiredEnvironmentConfigured: missing.length === 0,
-      missingEnvironmentCount: missing.length
+      missingEnvironmentCount: missing.length,
+      missingEnvironmentKeys: missing
     },
     timestamp: new Date().toISOString()
   }, {
