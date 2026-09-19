@@ -49,3 +49,18 @@ export function containsDirectContactInfo(value: string) {
   const phone = /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/;
   return email.test(text) || url.test(text) || domain.test(text) || social.test(text) || phone.test(text);
 }
+
+function normalizeComparable(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+export function containsExactServiceAddress(text: string, serviceAddress: string) {
+  const haystack = normalizeComparable(text);
+  if (!haystack) return false;
+
+  const full = normalizeComparable(serviceAddress);
+  const streetPart = normalizeComparable(serviceAddress.split(",")[0] ?? "");
+  if (full.length >= 8 && haystack.includes(full)) return true;
+  if (streetPart.length >= 6 && haystack.includes(streetPart)) return true;
+  return false;
+}
