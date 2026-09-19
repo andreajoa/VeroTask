@@ -11,7 +11,7 @@ import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from 
 import { sendProviderNewRequestNotification, sendUnclaimedProviderOpportunityNotification } from "@/lib/booking-notifications";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
-import { serializeQuoteRequestBrief } from "@/lib/quote-request";
+import { containsDirectContactInfo, serializeQuoteRequestBrief } from "@/lib/quote-request";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -33,6 +33,10 @@ export async function POST(request: NextRequest) {
 
   const parsed = schema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "invalid_quote_request" }, { status: 400 });
+
+  if (containsDirectContactInfo(parsed.data.task) || containsDirectContactInfo(parsed.data.details)) {
+    return NextResponse.json({ error: "direct_contact_not_allowed" }, { status: 400 });
+  }
 
   const db = getDb();
   const [business] = await db.select().from(businesses).where(eq(businesses.id, parsed.data.businessId)).limit(1);
