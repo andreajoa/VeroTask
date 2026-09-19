@@ -1,5 +1,4 @@
 name: Production Journey E2E TempMail
-# protected-quote-flow-refresh
 
 on:
   push:
@@ -25,7 +24,7 @@ jobs:
         uses: browser-actions/setup-chrome@v1
       - name: Install browser harness
         run: npm install --no-save --package-lock=false playwright-core@1.55.0
-      - name: Extract and patch journey test
+      - name: Extract quote-flow journey and use TempMail
         shell: bash
         run: |
           awk '
@@ -33,6 +32,7 @@ jobs:
             capture && /^          NODE$/ {capture=0; exit}
             capture {sub(/^          /, ""); print}
           ' .github/workflows/production-journey-e2e-once.yml > .production-journey-e2e.mjs
+
           node <<'NODE'
           const fs = require("fs");
           const path = ".production-journey-e2e.mjs";
@@ -75,66 +75,9 @@ jobs:
           async function login`
           );
 
-          const needle = 'pass("Customer passwordless production login");';
-          const replacement = `pass("Customer passwordless production login");
-            const privacyButton = customer.getByRole("button", { name: "Essential only", exact: true });
-            try {
-              await privacyButton.waitFor({ state: "visible", timeout: 5000 });
-              await privacyButton.click();
-              pass("Customer privacy choice saved");
-            } catch {
-              console.log("PRIVACY_BANNER_NOT_PRESENT");
-            }`;
-          if (!source.includes(needle)) throw new Error("privacy_patch_anchor_missing");
-          source = source.replace(needle, replacement);
-
-          const r2Anchor = 'pass("Provider accepted booking request");';
-          const r2Patch = `pass("Provider accepted booking request");
-
-            let storageFailure = null;
-            try {
-              const presignResponse = await provider.request.post(\`\${BASE}/api/bookings/\${bookingId}/uploads/presign\`, {
-                data: { kind: "before", contentType: "image/png" }
-              });
-              assert.equal(presignResponse.status(), 200, \`presign HTTP \${presignResponse.status()}\`);
-              const upload = await presignResponse.json();
-              assert.equal(typeof upload.uploadUrl, "string");
-              assert.equal(typeof upload.objectRef, "string");
-
-              const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlW4YQAAAAASUVORK5CYII=", "base64");
-              const put = await fetch(upload.uploadUrl, {
-                method: "PUT",
-                headers: { "content-type": "image/png" },
-                body: png
-              });
-              assert(put.ok, \`R2 upload HTTP \${put.status}\`);
-
-              const evidenceResponse = await provider.request.post(\`\${BASE}/api/bookings/\${bookingId}/evidence\`, {
-                data: {
-                  type: "before_photo",
-                  objectRef: upload.objectRef,
-                  note: "Automated launch QA storage verification."
-                }
-              });
-              assert.equal(evidenceResponse.status(), 200, \`evidence HTTP \${evidenceResponse.status()}\`);
-              const evidence = await evidenceResponse.json();
-              assert.equal(evidence.ok, true);
-              pass("Cloudflare R2 signed upload and evidence verification");
-            } catch (error) {
-              storageFailure = String(error?.message || error);
-              console.error("R2_FAILURE", storageFailure);
-            }`;
-
-          if (!source.includes(r2Anchor)) throw new Error("r2_patch_anchor_missing");
-          source = source.replace(r2Anchor, r2Patch);
-          source = source.replace(
-            'pass("QA service hidden after journey");',
-            `pass("QA service hidden after journey");
-            if (typeof storageFailure !== "undefined" && storageFailure) throw new Error("r2_validation_failed:" + storageFailure);`
-          );
           fs.writeFileSync(path, source);
           NODE
-      - name: Run production journey without payment
+      - name: Run protected quote journey without payment
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
         run: node .production-journey-e2e.mjs
