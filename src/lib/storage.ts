@@ -25,15 +25,18 @@ export function evidenceStorageReady() {
   return localStorageEnabled() || Boolean(storageConfig());
 }
 
-export async function verifyEvidenceStorageAccess() {
-  if (localStorageEnabled()) return true;
+export async function verifyEvidenceStorageAccess(): Promise<{ ok: boolean; errorCode: string | null; httpStatusCode: number | null }> {
+  if (localStorageEnabled()) return { ok: true, errorCode: null, httpStatusCode: 200 };
   const config = storageConfig();
-  if (!config) return false;
+  if (!config) return { ok: false, errorCode: "storage_not_configured", httpStatusCode: null };
   try {
     await clientFor(config).send(new HeadBucketCommand({ Bucket: config.bucket }));
-    return true;
-  } catch {
-    return false;
+    return { ok: true, errorCode: null, httpStatusCode: 200 };
+  } catch (error) {
+    const candidate = error && typeof error === "object" ? error as { name?: unknown; $metadata?: { httpStatusCode?: unknown } } : null;
+    const errorCode = typeof candidate?.name === "string" ? candidate.name.slice(0, 80) : "storage_access_failed";
+    const status = candidate?.$metadata?.httpStatusCode;
+    return { ok: false, errorCode, httpStatusCode: typeof status === "number" ? status : null };
   }
 }
 
