@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
 import { BadgeCheck, Globe2, MailCheck, ShieldCheck } from "lucide-react";
@@ -7,6 +8,8 @@ import { businessClaims, businesses } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { publicProviderId, publicProviderName } from "@/lib/public-provider";
 import { startBusinessClaim, verifyWebsiteClaim } from "./actions";
+
+export const metadata: Metadata = { title: "Provider Ownership Verification", robots: { index: false, follow: false } };
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +38,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]">BUSINESS OWNERSHIP</div>
           <h1 className="mt-5 text-3xl font-black tracking-tight">Claim {publicProviderName(business.id, "en")}</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Claiming a public listing gives you control of the profile. VeroTask bookings remain disabled until business ownership is verified and your provider profile, services and availability are ready.</p>
+          <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950"><strong>Official verification only:</strong> VeroTask verifies ownership through the public business email already associated with the listing or control of the listed business website. We never ask for your email password, banking credentials, gift cards, remote access, software installation or payment to claim a profile. <Link href="/security" className="font-black underline">Read security guidance</Link>.</div>
 
           {!user ? (
             <div className="mt-7 rounded-2xl bg-[var(--background)] p-6">

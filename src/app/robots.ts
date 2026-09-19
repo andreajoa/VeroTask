@@ -3,19 +3,18 @@ import { canonicalAppUrl } from "@/lib/app-url";
 
 export default function robots(): MetadataRoute.Robots {
   const base = canonicalAppUrl();
-  const publicRule = {
-    userAgent: ["Googlebot", "Bingbot", "OAI-SearchBot", "PerplexityBot", "ClaudeBot"],
-    allow: "/",
-    disallow: ["/api/", "/dashboard/", "/bookings/", "/signin", "/admin", "/dashboard", "/unsubscribe"]
-  };
 
   return {
     rules: [
-      publicRule,
+      {
+        userAgent: ["Googlebot", "Bingbot", "OAI-SearchBot", "PerplexityBot", "ClaudeBot"],
+        allow: "/",
+        disallow: ["/api/"]
+      },
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/dashboard/", "/bookings/", "/signin", "/admin", "/dashboard", "/unsubscribe"]
+        disallow: ["/api/"]
       }
     ],
     sitemap: `${base}/sitemap.xml`,

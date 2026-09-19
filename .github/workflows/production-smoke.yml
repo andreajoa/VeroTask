@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for path in / /signin /services /locations/orlando-fl /protection /terms /robots.txt /sitemap.xml /llms.txt; do
+          for path in / /signin /security /services /locations/orlando-fl /protection /terms /robots.txt /sitemap.xml /llms.txt; do
             code=$(curl -LsS -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 25 "$PROD_URL${path}")
             echo "$path -> $code"
             test "$code" = "200"
@@ -85,6 +85,19 @@ jobs:
           curl -LsS --connect-timeout 10 --max-time 25 "$PROD_URL/sitemap.xml" > /tmp/sitemap.xml
           grep -Fq '/locations/orlando-fl' /tmp/sitemap.xml
           echo "Orlando-local SEO/GEO signals are present."
+
+      - name: Verify sensitive routes are not indexable
+        shell: bash
+        run: |
+          set -euo pipefail
+          signin_headers=$(curl -LsSI --connect-timeout 10 --max-time 25 "$PROD_URL/signin")
+          echo "$signin_headers" | grep -iq '^x-robots-tag: .*noindex'
+          claim_headers=$(curl -LsSI --connect-timeout 10 --max-time 25 "$PROD_URL/providers/00000000-0000-0000-0000-000000000000/claim" || true)
+          echo "$signin_headers" | grep -iq '^x-content-type-options: nosniff'
+          curl -LsS --connect-timeout 10 --max-time 25 "$PROD_URL/security" > /tmp/security.html
+          grep -Fqi 'VeroTask will never ask you to install software' /tmp/security.html
+          grep -Fqi 'verotask.online' /tmp/security.html
+          echo "Sensitive flows are non-indexable and security guidance is public."
 
       - name: Verify security and cache headers
         shell: bash

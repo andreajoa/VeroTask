@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { BadgeCheck, BriefcaseBusiness, MailCheck, MapPin, Phone, ShieldCheck } from "lucide-react";
@@ -7,6 +8,8 @@ import { bookings, businesses } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { maskedServiceLocation, parseQuoteRequestBrief, quoteRequestLabel } from "@/lib/quote-request";
 import { requestOpportunityEmailVerification } from "./actions";
+
+export const metadata: Metadata = { title: "Provider Opportunity Verification", robots: { index: false, follow: false } };
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +61,7 @@ export default async function Page({
             <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]">NEW CUSTOMER OPPORTUNITY</div>
             <h1 className="mt-5 text-3xl font-black tracking-tight">Confirm this is your Pro profile</h1>
             <p className="mt-3 text-sm leading-6 text-[var(--muted)]">A customer selected this listing and wants a quote. Confirm your current email to take control of the profile and open the request.</p>
+            <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm leading-6 text-sky-950"><strong>Security notice:</strong> this flow never asks for your email password, banking credentials, gift cards, remote access, software installation or payment. Verification links use the official verotask.online domain. <Link href="/security" className="font-black underline">Security guidance</Link>.</div>
 
             <div className="mt-7 space-y-3 rounded-2xl border border-[var(--line)] bg-white p-5">
               <div className="flex items-start gap-3"><BriefcaseBusiness size={18} className="mt-0.5 text-[var(--brand)]" /><div><div className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Business</div><div className="mt-1 font-black">{row.business.name}</div></div></div>

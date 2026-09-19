@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BadgeCheck, Mail, ShieldCheck } from "lucide-react";
 import { getCurrentUser, safeRedirectPath } from "@/lib/auth";
 import { requestMagicLink } from "./actions";
+
+export const metadata: Metadata = {
+  title: "Secure Sign In",
+  robots: { index: false, follow: false }
+};
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string; next?: string }> }) {
   const params = await searchParams;
@@ -43,7 +49,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
             </label>
             <button className="btn-primary w-full" type="submit">Email me a secure link</button>
           </form>
-          <p className="mt-5 text-xs leading-5 text-[var(--muted)]">By continuing, you agree to VeroTask&apos;s Terms and acknowledge the Privacy Policy. Provider profile verification is handled separately from sign-in.</p>
+          <div className="mt-5 rounded-xl border border-sky-200 bg-sky-50 p-4 text-xs leading-5 text-sky-950"><strong>Security notice:</strong> VeroTask sign-in asks only for your email address and sends a one-time link from the official verotask.online domain. We never ask for your email password, banking credentials, gift cards, remote access or software installation.</div>
+          <p className="mt-5 text-xs leading-5 text-[var(--muted)]">By continuing, you agree to VeroTask&apos;s Terms and acknowledge the Privacy Policy. Provider profile verification is handled separately from sign-in. <Link className="font-black text-[var(--brand)]" href="/security">Security guidance</Link></p>
         </div>
       </section>
     </main>
