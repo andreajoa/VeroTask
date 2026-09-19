@@ -18,10 +18,6 @@ const REQUIRED_ENV = [
   "CRON_SECRET",
   "RESEND_API_KEY",
   "EMAIL_FROM",
-  "STORAGE_ENDPOINT",
-  "STORAGE_BUCKET",
-  "STORAGE_ACCESS_KEY_ID",
-  "STORAGE_SECRET_ACCESS_KEY",
   "ADMIN_PASSWORD_HASH",
   "ADMIN_SESSION_SECRET",
   "AUDIT_ENCRYPTION_KEY",
@@ -101,7 +97,6 @@ export async function GET() {
     rawStorageSecretAccessKey !== rawStorageSecretAccessKey.trim();
   const ready = missing.length === 0
     && database
-    && storage
     && productionUrlValid
     && configuredAppUrlValid
     && !staleConfiguredAppUrl
@@ -117,6 +112,8 @@ export async function GET() {
       database,
       databaseError,
       storage,
+      storageOptional: true,
+      storageOperational: storage,
       storageError,
       storageErrorCode,
       storageHttpStatusCode,

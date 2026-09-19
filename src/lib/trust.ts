@@ -1,13 +1,12 @@
 export const CUSTOMER_PROTECTION_HOURS = 24;
 export const DEFAULT_GEOFENCE_METERS = 250;
-export const MIN_AUTO_COMPLETE_SCORE = 55;
+export const MIN_AUTO_COMPLETE_SCORE = 85;
 
 export type EvidenceSignal = {
   geoCheckIn?: boolean;
   geoCheckOut?: boolean;
   customerPin?: boolean;
-  beforePhotos?: number;
-  afterPhotos?: number;
+  customerArrivalConfirmation?: boolean;
   checklistCompleted?: boolean;
   providerCompletionTimestamp?: boolean;
 };
@@ -15,12 +14,11 @@ export type EvidenceSignal = {
 export function proofOfServiceScore(signals: EvidenceSignal) {
   let score = 0;
 
-  if (signals.geoCheckIn) score += 25;
-  if (signals.geoCheckOut) score += 20;
-  if (signals.customerPin) score += 30;
-  if ((signals.beforePhotos ?? 0) > 0) score += 8;
-  if ((signals.afterPhotos ?? 0) > 0) score += 10;
-  if (signals.checklistCompleted) score += 5;
+  if (signals.geoCheckIn) score += 40;
+  if (signals.customerPin) score += 50;
+  if (signals.customerArrivalConfirmation) score += 50;
+  if (signals.geoCheckOut) score += 5;
+  if (signals.checklistCompleted) score += 3;
   if (signals.providerCompletionTimestamp) score += 2;
 
   return Math.min(score, 100);
@@ -39,11 +37,11 @@ export function canAutoComplete(score: number, hasOpenDispute: boolean) {
 export const SERVICE_PROTECTION_SUMMARY = {
   en: {
     title: "VeroTask Booking Protection",
-    body: "After the provider marks a service complete, the customer has 24 hours to report a problem. If no dispute is opened and the required proof of service is present, the booking is automatically completed. A dispute pauses booking completion while the evidence is reviewed. VeroTask can refund only the booking fee it collected; the service price is paid directly to the professional."
+    body: "VeroTask verifies provider arrival using geolocation plus either the customer service PIN or direct customer arrival confirmation. This verifies attendance, not workmanship or service quality. VeroTask can review or refund only the booking fee it collected; the service price is paid directly to the professional."
   },
   "pt-br": {
     title: "Proteção de Reserva VeroTask",
-    body: "Depois que o prestador marca o serviço como concluído, o cliente tem 24 horas para informar um problema. Se nenhuma disputa for aberta e houver as evidências exigidas do serviço, a reserva é concluída automaticamente. Uma disputa pausa a conclusão da reserva enquanto as evidências são analisadas. A VeroTask pode reembolsar apenas a taxa de reserva que cobrou; o preço do serviço é pago diretamente ao profissional."
+    body: "A VeroTask confirma a chegada do prestador usando geolocalização junto com o PIN da cliente ou uma confirmação direta da cliente. Isso comprova comparecimento, não qualidade ou execução do serviço. A VeroTask pode analisar ou reembolsar apenas a taxa de reserva que cobrou; o preço do serviço é pago diretamente ao profissional."
   },
   es: {
     title: "Protección de Reserva VeroTask",

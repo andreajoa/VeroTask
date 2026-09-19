@@ -51,19 +51,18 @@ function isVerifiedGeo(row: typeof bookingEvidence.$inferSelect) {
   return row.distanceFromServiceMeters !== null && row.distanceFromServiceMeters <= configuredRadius;
 }
 
-export function evidenceSignals(rows: Array<typeof bookingEvidence.$inferSelect>): EvidenceSignal {
+export function evidenceSignals(rows: Array<typeof bookingEvidence.$inferSelect>, eventTypes: string[] = []): EvidenceSignal {
   const has = (type: typeof bookingEvidence.$inferSelect.type) => rows.some((row) => row.type === type);
   return {
     geoCheckIn: rows.some((row) => row.type === "geo_check_in" && isVerifiedGeo(row)),
     geoCheckOut: rows.some((row) => row.type === "geo_check_out" && isVerifiedGeo(row)),
     customerPin: has("customer_pin"),
-    beforePhotos: rows.filter((row) => row.type === "before_photo" && Boolean(row.objectUrl)).length,
-    afterPhotos: rows.filter((row) => row.type === "after_photo" && Boolean(row.objectUrl)).length,
+    customerArrivalConfirmation: eventTypes.includes("customer_arrival_confirmed"),
     checklistCompleted: rows.some((row) => row.type === "checklist" && row.metadata?.completed === true),
     providerCompletionTimestamp: true
   };
 }
 
-export function scoreEvidence(rows: Array<typeof bookingEvidence.$inferSelect>) {
-  return proofOfServiceScore(evidenceSignals(rows));
+export function scoreEvidence(rows: Array<typeof bookingEvidence.$inferSelect>, eventTypes: string[] = []) {
+  return proofOfServiceScore(evidenceSignals(rows, eventTypes));
 }

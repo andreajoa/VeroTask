@@ -45,8 +45,12 @@ export async function recordBookingEvent(input: {
 
 export async function bookingEvidenceSummary(bookingId: string) {
   const db = getDb();
-  const rows = await db.select().from(bookingEvidence).where(eq(bookingEvidence.bookingId, bookingId));
-  const score = scoreEvidence(rows);
+  const [rows, events] = await Promise.all([
+    db.select().from(bookingEvidence).where(eq(bookingEvidence.bookingId, bookingId)),
+    db.select({ eventType: bookingEvents.eventType }).from(bookingEvents).where(eq(bookingEvents.bookingId, bookingId))
+  ]);
+  const eventTypes = events.map((event) => event.eventType);
+  const score = scoreEvidence(rows, eventTypes);
   return { rows, score, confidence: evidenceConfidence(score) };
 }
 

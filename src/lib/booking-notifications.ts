@@ -140,3 +140,21 @@ export async function sendOpportunityEmailVerification({
     )
   });
 }
+
+
+export async function sendCustomerArrivalConfirmationRequest(bookingId: string, to: string, magicLink: string) {
+  const ctx = await bookingContext(bookingId);
+  if (!ctx?.business) return false;
+  const when = ctx.booking.scheduledStart.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  return sendTransactionalEmail({
+    to,
+    subject: "VeroTask: Confirm your Pro has arrived",
+    html: emailShell(
+      "Is your Pro with you now?",
+      `<p><strong>${esc(publicProviderName(ctx.business.id, "en"))}</strong> says they have arrived for your booking scheduled for <strong>${esc(when)}</strong>.</p><p>Only confirm if the professional is physically at the service location now. VeroTask has also recorded the professional's geolocation near the booked address.</p><p>This confirmation is a fallback for cases where you cannot access the service PIN. Confirming arrival proves the professional showed up for this booking. It does not confirm that the service has been completed or that you are satisfied with the work.</p>`,
+      magicLink,
+      "Open booking and confirm arrival",
+      "Your Pro is requesting arrival confirmation for this booking."
+    )
+  });
+}

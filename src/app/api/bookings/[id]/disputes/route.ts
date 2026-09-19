@@ -35,6 +35,19 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (now > serviceEnd + 72 * 60 * 60 * 1000) return NextResponse.json({ error: "internal_dispute_window_closed" }, { status: 409 });
 
   const db = getDb();
+
+  if (parsed.data.reason === "provider_no_show") {
+    const [arrivalVerified] = await db.select({ id: bookingEvents.id }).from(bookingEvents)
+      .where(and(eq(bookingEvents.bookingId, id), eq(bookingEvents.eventType, "provider_arrival_verified")))
+      .limit(1);
+    if (arrivalVerified) {
+      return NextResponse.json({
+        error: "provider_arrival_already_verified",
+        bookingFeeRefundAvailableForNoShow: false
+      }, { status: 409 });
+    }
+  }
+
   const [open] = await db.select({ id: disputes.id }).from(disputes)
     .where(and(eq(disputes.bookingId, id), isNull(disputes.resolvedAt))).limit(1);
   if (open) return NextResponse.json({ error: "dispute_already_open", disputeId: open.id }, { status: 409 });

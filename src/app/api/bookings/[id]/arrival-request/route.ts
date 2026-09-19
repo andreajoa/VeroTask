@@ -1,19 +1,20 @@
-import { and, eq, sql } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, gte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { bookingSecrets } from "@/db/operations-schema";
-import { bookingEvidence, bookingEvents, bookings } from "@/db/schema";
-import { getCurrentUser } from "@/lib/auth";
+import { bookingEvidence, bookingEvents, bookings, users } from "@/db/schema";
+import { createMagicLink } from "@/lib/auth";
 import { requireProviderBooking } from "@/lib/booking-access";
-import { hashServicePin, haversineDistanceMeters } from "@/lib/booking";
+import { haversineDistanceMeters } from "@/lib/booking";
+import { sendCustomerArrivalConfirmationRequest } from "@/lib/booking-notifications";
 import { DEFAULT_GEOFENCE_METERS } from "@/lib/trust";
+import { getCurrentUser } from "@/lib/auth";
 
 const bodySchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-  accuracyMeters: z.number().positive().max(5000).optional(),
-  pin: z.string().regex(/^\d{6}$/)
+  accuracyMeters: z.number().positive().max(5000).optional()
 });
 
 function allowedDistance(accuracyMeters?: number) {
@@ -25,9 +26,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
-
   const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success) return NextResponse.json({ error: "pin_and_location_required" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "location_required" }, { status: 400 });
 
   let access;
   try { access = await requireProviderBooking(id, user.id); }
@@ -59,23 +59,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   const db = getDb();
-  const [secret] = await db.select().from(bookingSecrets).where(eq(bookingSecrets.bookingId, id)).limit(1);
-  if (!secret) return NextResponse.json({ error: "pin_unavailable" }, { status: 404 });
-  if (secret.pinFailures >= 10) return NextResponse.json({ error: "pin_locked_use_customer_confirmation" }, { status: 429 });
-
-  if (hashServicePin(parsed.data.pin) !== secret.servicePinHash) {
-    await db.update(bookingSecrets)
-      .set({ pinFailures: sql`${bookingSecrets.pinFailures} + 1` })
-      .where(eq(bookingSecrets.id, secret.id));
-    return NextResponse.json({ error: "incorrect_pin" }, { status: 409 });
+  const since = new Date(Date.now() - 30 * 60 * 1000);
+  const recentRequests = await db.select({ id: bookingEvents.id }).from(bookingEvents).where(and(
+    eq(bookingEvents.bookingId, id),
+    eq(bookingEvents.eventType, "provider_arrival_confirmation_requested"),
+    gte(bookingEvents.createdAt, since)
+  ));
+  if (recentRequests.length >= 3) {
+    return NextResponse.json({ error: "arrival_confirmation_rate_limited" }, { status: 429 });
   }
 
-  const [claimed] = await db.update(bookings).set({
-    status: "in_progress",
-    updatedAt: new Date()
-  }).where(and(eq(bookings.id, id), eq(bookings.status, "scheduled"))).returning();
-  if (!claimed) return NextResponse.json({ error: "booking_state_changed" }, { status: 409 });
-
+  const requestId = randomUUID();
   const [geoEvidence] = await db.insert(bookingEvidence).values({
     bookingId: id,
     submittedByUserId: user.id,
@@ -87,42 +81,43 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       accuracyMeters: parsed.data.accuracyMeters,
       geofenceMeters,
       geofenceVerified: true,
-      verificationMethod: "customer_pin"
-    }
-  }).returning();
-
-  const [pinEvidence] = await db.insert(bookingEvidence).values({
-    bookingId: id,
-    submittedByUserId: user.id,
-    type: "customer_pin",
-    metadata: {
-      verified: true,
-      verificationMethod: "customer_pin",
-      geoEvidenceId: geoEvidence.id
+      verificationMethod: "customer_confirmation_pending",
+      arrivalRequestId: requestId
     }
   }).returning();
 
   await db.insert(bookingEvents).values({
     bookingId: id,
     actorUserId: user.id,
-    eventType: "provider_arrival_verified",
+    eventType: "provider_arrival_confirmation_requested",
     previousStatus: "scheduled",
-    nextStatus: "in_progress",
+    nextStatus: "scheduled",
     metadata: {
-      verificationMethod: "customer_pin_plus_geofence",
+      requestId,
       distanceMeters: distance,
       geofenceMeters,
       geoEvidenceId: geoEvidence.id,
-      pinEvidenceId: pinEvidence.id,
-      verifiedAt: new Date().toISOString()
+      requestedAt: new Date().toISOString()
     }
   });
 
+  const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId)).limit(1);
+  if (!customer) return NextResponse.json({ error: "customer_not_found" }, { status: 404 });
+
+  let emailSent = false;
+  try {
+    const magicLink = await createMagicLink(customer.email, `/bookings/${id}?arrival=requested`, request.headers.get("origin"));
+    await sendCustomerArrivalConfirmationRequest(id, customer.email, magicLink);
+    emailSent = true;
+  } catch (error) {
+    console.error("[VeroTask arrival confirmation email]", error);
+  }
+
   return NextResponse.json({
     ok: true,
-    status: "in_progress",
-    arrivalVerified: true,
-    verificationMethod: "customer_pin_plus_geofence",
+    pendingCustomerConfirmation: true,
+    emailSent,
+    requestId,
     distanceMeters: distance,
     geofenceMeters
   });

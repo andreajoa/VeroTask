@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Camera, CheckCircle2, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
 
 type EvidenceItem = {
   id: string;
@@ -32,40 +32,41 @@ type Props = {
   openDispute: { id: string; reason: string; status: string } | null;
   locale: Locale;
   addressReleased: boolean;
+  arrivalRequestPending: boolean;
 };
 
 const COPY = {
   en: {
     booking: "Booking", scheduled: "Scheduled", address: "Service address", price: "Service price", fee: "VeroTask booking fee",
     proof: "Proof of service", pin: "Service PIN", pinHelp: "Give this PIN to the provider only after they arrive. It proves that both sides met for this booking.",
-    confirm: "Confirm service completed", dispute: "Report a problem", cancel: "Cancel booking", checkIn: "Check in at service location", checkOut: "Check out", verifyPin: "Verify customer PIN",
-    before: "Upload before photo", after: "Upload after photo", checklist: "Mark job checklist complete", complete: "Mark service complete", protection: "Customer protection window",
+    confirm: "Confirm service completed", dispute: "Report a problem", cancel: "Cancel booking", checkIn: "Verify arrival with PIN", checkOut: "Check out", verifyPin: "Verify customer PIN",
+    fallback: "Customer can’t access the PIN", confirmArrival: "Confirm the Pro is here", arrivalHelp: "The Pro is requesting arrival confirmation. Confirm only if they are physically at the service location now.", checklist: "Mark job checklist complete", complete: "Mark service complete", protection: "Customer protection window",
     auto: "If no problem is reported and the required proof is sufficient, the booking can auto-complete after this deadline.", evidence: "Evidence history", noEvidence: "No service evidence recorded yet.",
     review: "Leave a verified review", submitReview: "Submit review", disputeReason: "Problem type", disputeSummary: "Describe what happened", submitDispute: "Open dispute for review",
     openDispute: "This booking has an open dispute. Completion is paused while the record is reviewed.", working: "Processing…", error: "Something went wrong. Please try again.",
-    gpsError: "Location permission is required for service check-in/out.", cancellationReason: "Reason for cancellation", evidenceScore: "Evidence score", privacy: "Evidence photos are private and use temporary authorized links.",
+    gpsError: "Location permission is required to verify arrival.", cancellationReason: "Reason for cancellation", evidenceScore: "Arrival proof", privacy: "Arrival is verified with your device location plus the customer PIN or direct customer confirmation.",
     directPayment: "The service price is paid directly to the professional. VeroTask collects only the booking fee."
   },
   "pt-br": {
     booking: "Reserva", scheduled: "Agendado", address: "Endereço do serviço", price: "Valor do serviço", fee: "Taxa de reserva VeroTask",
     proof: "Comprovação do serviço", pin: "PIN do serviço", pinHelp: "Informe este PIN ao prestador somente depois que ele chegar. Ele comprova que as duas partes se encontraram nesta reserva.",
-    confirm: "Confirmar serviço concluído", dispute: "Informar um problema", cancel: "Cancelar reserva", checkIn: "Fazer check-in no local", checkOut: "Fazer check-out", verifyPin: "Validar PIN do cliente",
-    before: "Enviar foto de antes", after: "Enviar foto de depois", checklist: "Marcar checklist como concluído", complete: "Marcar serviço como concluído", protection: "Janela de proteção do cliente",
+    confirm: "Confirmar serviço concluído", dispute: "Informar um problema", cancel: "Cancelar reserva", checkIn: "Confirmar chegada com PIN", checkOut: "Fazer check-out", verifyPin: "Validar PIN do cliente",
+    fallback: "Cliente não consegue acessar o PIN", confirmArrival: "Confirmar que o PRO chegou", arrivalHelp: "O PRO solicitou confirmação de chegada. Confirme somente se ele estiver fisicamente no local do serviço agora.", checklist: "Marcar checklist como concluído", complete: "Marcar serviço como concluído", protection: "Janela de proteção do cliente",
     auto: "Se nenhum problema for informado e as evidências exigidas forem suficientes, a reserva poderá ser concluída automaticamente após este prazo.", evidence: "Histórico de evidências", noEvidence: "Ainda não há evidências registradas.",
     review: "Deixar avaliação verificada", submitReview: "Enviar avaliação", disputeReason: "Tipo de problema", disputeSummary: "Descreva o que aconteceu", submitDispute: "Abrir disputa para análise",
     openDispute: "Esta reserva possui uma disputa aberta. A conclusão está pausada durante a análise do registro.", working: "Processando…", error: "Algo deu errado. Tente novamente.",
-    gpsError: "A permissão de localização é necessária para o check-in/check-out.", cancellationReason: "Motivo do cancelamento", evidenceScore: "Pontuação das evidências", privacy: "As fotos de evidência são privadas e usam links temporários autorizados.",
+    gpsError: "A permissão de localização é necessária para confirmar a chegada.", cancellationReason: "Motivo do cancelamento", evidenceScore: "Comprovação de chegada", privacy: "A chegada é validada pela localização do PRO junto com o PIN da cliente ou confirmação direta da cliente.",
     directPayment: "O valor do serviço é pago diretamente ao profissional. A VeroTask recebe somente a taxa de reserva."
   },
   es: {
     booking: "Reserva", scheduled: "Programado", address: "Dirección del servicio", price: "Precio del servicio", fee: "Tarifa de reserva VeroTask",
     proof: "Prueba del servicio", pin: "PIN del servicio", pinHelp: "Entrega este PIN al proveedor solo después de que llegue. Sirve como prueba de que ambas partes se encontraron.",
-    confirm: "Confirmar servicio completado", dispute: "Informar un problema", cancel: "Cancelar reserva", checkIn: "Registrar llegada", checkOut: "Registrar salida", verifyPin: "Verificar PIN del cliente",
-    before: "Subir foto anterior", after: "Subir foto posterior", checklist: "Marcar lista como completada", complete: "Marcar servicio completado", protection: "Ventana de protección del cliente",
+    confirm: "Confirmar servicio completado", dispute: "Informar un problema", cancel: "Cancelar reserva", checkIn: "Confirmar llegada con PIN", checkOut: "Registrar salida", verifyPin: "Verificar PIN del cliente",
+    fallback: "El cliente no puede acceder al PIN", confirmArrival: "Confirmar que el Pro llegó", arrivalHelp: "El Pro solicitó confirmación de llegada. Confirma solamente si está físicamente en el lugar del servicio ahora.", checklist: "Marcar lista como completada", complete: "Marcar servicio completado", protection: "Ventana de protección del cliente",
     auto: "Si no se informa un problema y la evidencia requerida es suficiente, la reserva puede completarse automáticamente al terminar este plazo.", evidence: "Historial de evidencias", noEvidence: "Todavía no hay evidencia registrada.",
     review: "Dejar reseña verificada", submitReview: "Enviar reseña", disputeReason: "Tipo de problema", disputeSummary: "Describe lo ocurrido", submitDispute: "Abrir disputa para revisión",
     openDispute: "Esta reserva tiene una disputa abierta. La finalización está pausada mientras se revisa el registro.", working: "Procesando…", error: "Ocurrió un error. Inténtalo de nuevo.",
-    gpsError: "Se requiere permiso de ubicación para registrar llegada/salida.", cancellationReason: "Motivo de cancelación", evidenceScore: "Puntuación de evidencia", privacy: "Las fotos de evidencia son privadas y usan enlaces temporales autorizados.",
+    gpsError: "Se requiere permiso de ubicación para confirmar la llegada.", cancellationReason: "Motivo de cancelación", evidenceScore: "Prueba de llegada", privacy: "La llegada se valida con la ubicación del Pro más el PIN del cliente o la confirmación directa del cliente.",
     directPayment: "El precio del servicio se paga directamente al profesional. VeroTask cobra únicamente la tarifa de reserva."
   }
 } as const;
@@ -134,9 +135,15 @@ export function BookingWorkflowPanel(props: Props) {
     }
   }
 
-  function withLocation(endpoint: "check-in" | "check-out") {
-    setBusy(endpoint);
+  function withArrivalLocation(mode: "pin" | "fallback") {
+    const busyKey = mode === "pin" ? "check-in" : "arrival-request";
+    setBusy(busyKey);
     setError(null);
+    if (mode === "pin" && pin.length !== 6) {
+      setError("Enter the 6-digit customer PIN.");
+      setBusy(null);
+      return;
+    }
     if (!navigator.geolocation) {
       setError(c.gpsError);
       setBusy(null);
@@ -144,14 +151,16 @@ export function BookingWorkflowPanel(props: Props) {
     }
     navigator.geolocation.getCurrentPosition(async (position) => {
       try {
+        const endpoint = mode === "pin" ? "check-in" : "arrival-request";
         await api(`/api/bookings/${props.bookingId}/${endpoint}`, {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
-          accuracyMeters: position.coords.accuracy
+          accuracyMeters: position.coords.accuracy,
+          ...(mode === "pin" ? { pin } : {})
         });
         window.location.reload();
       } catch (e) {
-        setError(e instanceof Error ? e.message : c.error);
+        setError(e instanceof Error ? e.message.replaceAll("_", " ") : c.error);
         setBusy(null);
       }
     }, () => {
@@ -160,18 +169,30 @@ export function BookingWorkflowPanel(props: Props) {
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   }
 
-  async function uploadPhoto(file: File, kind: "before" | "after") {
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) throw new Error("unsupported_image_type");
-    if (file.size > 10 * 1024 * 1024) throw new Error("image_too_large");
-    const signed = await api(`/api/bookings/${props.bookingId}/uploads/presign`, { kind, contentType: file.type });
-    const upload = await fetch(signed.uploadUrl, { method: "PUT", headers: { "content-type": file.type }, body: file });
-    if (!upload.ok) throw new Error("photo_upload_failed");
-    await api(`/api/bookings/${props.bookingId}/evidence`, {
-      type: kind === "before" ? "before_photo" : "after_photo",
-      objectRef: signed.objectRef,
-      metadata: { originalName: file.name, size: file.size, contentType: file.type }
-    });
+  function withCheckOutLocation() {
+    setBusy("check-out");
+    setError(null);
+    if (!navigator.geolocation) {
+      setError(c.gpsError);
+      setBusy(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        await api(`/api/bookings/${props.bookingId}/check-out`, {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracyMeters: position.coords.accuracy
+        });
+        window.location.reload();
+      } catch (e) {
+        setError(e instanceof Error ? e.message.replaceAll("_", " ") : c.error);
+        setBusy(null);
+      }
+    }, () => {
+      setError(c.gpsError);
+      setBusy(null);
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   }
 
   const actionBusy = (name: string) => busy === name ? c.working : null;
@@ -199,16 +220,19 @@ export function BookingWorkflowPanel(props: Props) {
 
       {props.role === "customer" && props.servicePin && ["scheduled", "in_progress"].includes(props.status) && <div className="card p-6"><div className="flex items-center gap-2 font-black"><ShieldCheck size={19} />{c.pin}</div><div className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-3 font-mono text-2xl font-black tracking-[0.3em] text-white">{props.servicePin}</div><p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">{c.pinHelp}</p></div>}
 
+      {props.role === "customer" && props.status === "scheduled" && props.arrivalRequestPending && <div className="card border-amber-200 bg-amber-50 p-6"><div className="flex items-center gap-2 font-black text-amber-950"><MapPin size={19} />{c.confirmArrival}</div><p className="mt-2 max-w-2xl text-sm leading-6 text-amber-900">{c.arrivalHelp}</p><button className="btn-primary mt-4" disabled={Boolean(busy)} onClick={() => run("confirm-arrival", () => api(`/api/bookings/${props.bookingId}/confirm-arrival`))}>{actionBusy("confirm-arrival") || c.confirmArrival}</button></div>}
+
       {props.status === "provider_completed" && props.protectionDeadline && <div className="card p-6"><div className="flex items-center gap-2 font-black"><Clock3 size={19} />{c.protection}</div><div className="mt-3 text-2xl font-black">{protectionRemaining}</div><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{c.auto} Deadline: {localDate(props.protectionDeadline, props.locale)}</p></div>}
 
       {canProviderWork && <div className="card p-6"><h2 className="text-lg font-black">{c.proof}</h2><p className="mt-2 text-sm text-[var(--muted)]">{c.privacy}</p><div className="mt-5 grid gap-3 md:grid-cols-2">
-        <button className="btn-secondary" disabled={Boolean(busy)} onClick={() => withLocation("check-in")}><MapPin size={17} /> {actionBusy("check-in") || c.checkIn}</button>
-        <button className="btn-secondary" disabled={Boolean(busy)} onClick={() => withLocation("check-out")}><MapPin size={17} /> {actionBusy("check-out") || c.checkOut}</button>
-        <div className="flex gap-2"><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="000000" className="min-w-0 flex-1 rounded-xl border border-[var(--line)] px-3 py-2 font-mono" /><button className="btn-secondary" disabled={pin.length !== 6 || Boolean(busy)} onClick={() => run("pin", () => api(`/api/bookings/${props.bookingId}/verify-pin`, { pin }))}>{actionBusy("pin") || c.verifyPin}</button></div>
-        <label className="btn-secondary cursor-pointer"><Camera size={17} /> {c.before}<input className="hidden" type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(busy)} onChange={(e) => { const file = e.target.files?.[0]; if (file) run("before", () => uploadPhoto(file, "before")); }} /></label>
-        <label className="btn-secondary cursor-pointer"><Camera size={17} /> {c.after}<input className="hidden" type="file" accept="image/jpeg,image/png,image/webp" disabled={Boolean(busy)} onChange={(e) => { const file = e.target.files?.[0]; if (file) run("after", () => uploadPhoto(file, "after")); }} /></label>
+        {props.status === "scheduled" && <div className="md:col-span-2 rounded-xl border border-[var(--line)] bg-[var(--background)] p-4">
+          <label className="text-sm font-black">Customer PIN</label>
+          <div className="mt-2 flex gap-2"><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="000000" className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-mono text-lg tracking-[0.2em]" /><button className="btn-primary" disabled={pin.length !== 6 || Boolean(busy)} onClick={() => withArrivalLocation("pin")}><MapPin size={17} /> {actionBusy("check-in") || c.checkIn}</button></div>
+          <button className="mt-3 text-sm font-black text-[var(--brand)] underline-offset-4 hover:underline" disabled={Boolean(busy)} onClick={() => withArrivalLocation("fallback")}>{actionBusy("arrival-request") || c.fallback}</button>
+        </div>}
+        {props.status === "in_progress" && <button className="btn-secondary" disabled={Boolean(busy)} onClick={withCheckOutLocation}><MapPin size={17} /> {actionBusy("check-out") || c.checkOut}</button>}
         <button className="btn-secondary" disabled={Boolean(busy)} onClick={() => run("checklist", () => api(`/api/bookings/${props.bookingId}/evidence`, { type: "checklist", metadata: { completed: true } }))}><CheckCircle2 size={17} /> {actionBusy("checklist") || c.checklist}</button>
-        <button className="btn-primary" disabled={Boolean(busy)} onClick={() => run("complete", () => api(`/api/bookings/${props.bookingId}/complete`))}><CheckCircle2 size={17} /> {actionBusy("complete") || c.complete}</button>
+        <button className="btn-primary" disabled={Boolean(busy) || props.status !== "in_progress"} onClick={() => run("complete", () => api(`/api/bookings/${props.bookingId}/complete`))}><CheckCircle2 size={17} /> {actionBusy("complete") || c.complete}</button>
       </div></div>}
 
       {canConfirm && <div className="card p-6"><div className="grid gap-3 sm:grid-cols-2"><button className="btn-primary" disabled={Boolean(busy)} onClick={() => run("confirm", () => api(`/api/bookings/${props.bookingId}/confirm`))}><CheckCircle2 size={17} /> {actionBusy("confirm") || c.confirm}</button><button className="btn-secondary" disabled={Boolean(busy)} onClick={() => setShowDispute(true)}><AlertTriangle size={17} /> {c.dispute}</button></div></div>}
