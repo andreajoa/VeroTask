@@ -1,3 +1,4 @@
+import { canonicalAppUrl } from "@/lib/app-url";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
@@ -24,7 +25,7 @@ async function unsubscribe(token: string) {
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get("token") || "";
   const ok = await unsubscribe(token);
-  return NextResponse.redirect(new URL(ok ? "/unsubscribe?status=done" : "/unsubscribe?status=invalid", request.url));
+  return NextResponse.redirect(new URL(ok ? "/unsubscribe?status=done" : "/unsubscribe?status=invalid", canonicalAppUrl()));
 }
 
 export async function POST(request: NextRequest) {
