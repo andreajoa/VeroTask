@@ -5,10 +5,10 @@ import { stat } from "node:fs/promises";
 import { localStorageEnabled, localObjectPath, signedLocalStorageUrl } from "@/lib/local-storage";
 
 function storageConfig() {
-  const endpoint = process.env.STORAGE_ENDPOINT;
-  const bucket = process.env.STORAGE_BUCKET;
-  const accessKeyId = process.env.STORAGE_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY;
+  const endpoint = process.env.STORAGE_ENDPOINT?.trim();
+  const bucket = process.env.STORAGE_BUCKET?.trim();
+  const accessKeyId = process.env.STORAGE_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY?.trim();
   if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) return null;
   return { endpoint, bucket, accessKeyId, secretAccessKey };
 }
