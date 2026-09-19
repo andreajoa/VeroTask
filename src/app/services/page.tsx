@@ -4,19 +4,24 @@ import { ServicesPage, type ServiceSearchParams } from "@/components/services-pa
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Find Local Pros in Orlando, FL",
-  description: "Search local professionals serving Orlando and Central Florida by service, city or ZIP code.",
-  alternates: {
-    canonical: "/services",
-    languages: {
-      "en-US": "/services",
-      "pt-US": "/pt-br/services",
-      "es-US": "/es/services",
-      "x-default": "/services"
-    }
-  }
-};
+export async function generateMetadata({ searchParams }: { searchParams: Promise<ServiceSearchParams> }): Promise<Metadata> {
+  const query = await searchParams;
+  const parameterized = Object.values(query).some((value) => Boolean(value));
+  return {
+    title: "Find Local Pros in Orlando, FL",
+    description: "Search local professionals serving Orlando and Central Florida by service, city or ZIP code.",
+    alternates: {
+      canonical: "/services",
+      languages: {
+        "en-US": "/services",
+        "pt-US": "/pt-br/services",
+        "es-US": "/es/services",
+        "x-default": "/services"
+      }
+    },
+    robots: parameterized ? { index: false, follow: true } : { index: true, follow: true }
+  };
+}
 
 export default async function Page({ searchParams }: { searchParams: Promise<ServiceSearchParams> }) {
   const query = await searchParams;

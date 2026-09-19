@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { canonicalAppUrl } from "@/lib/app-url";
+import { loadActiveLaunchLocations } from "@/lib/local-seo";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export function GET() {
+export async function GET() {
   const base = canonicalAppUrl();
+  const activeLocations = await loadActiveLaunchLocations();
+  const locationLines = activeLocations.map((location) => `- ${location.label}: ${base}/locations/${location.slug}`).join("\n");
   const body = `# VeroTask
 
 > Trusted local services. Verified work.
@@ -26,16 +29,8 @@ VeroTask is a local-services marketplace for Orlando and selected Central Florid
 ## Geographic focus
 - Primary market: Orlando, Florida, United States
 - Service region: selected communities in Central Florida
-- Orlando: ${base}/locations/orlando-fl
-- Winter Park: ${base}/locations/winter-park-fl
-- Kissimmee: ${base}/locations/kissimmee-fl
-- Davenport: ${base}/locations/davenport-fl
-- Celebration: ${base}/locations/celebration-fl
-- Clermont: ${base}/locations/clermont-fl
-- Winter Garden: ${base}/locations/winter-garden-fl
-- Lake Buena Vista: ${base}/locations/lake-buena-vista-fl
-- Windermere: ${base}/locations/windermere-fl
-- St. Cloud: ${base}/locations/st-cloud-fl
+- Current indexable local-market hubs are generated only where VeroTask has active listings:
+${locationLines}
 
 ## Languages for the U.S. market
 - English (en-US): ${base}/

@@ -45,7 +45,8 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
   const base = canonicalAppUrl();
   const location = LAUNCH_LOCATIONS.find((item) => item.city === business.city && item.state === business.state);
   const providerPath = localePath(locale, `/providers/${publicSlug}`);
-  const jsonLd = {
+  const jsonLd = [
+  {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     name: displayName,
@@ -80,7 +81,17 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
         }
       }
     }))
-  };
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "VeroTask", item: base },
+      ...(location ? [{ "@type": "ListItem", position: 2, name: location.label, item: `${base}${localePath(locale, `/locations/${location.slug}`)}` }] : []),
+      { "@type": "ListItem", position: location ? 3 : 2, name: displayName, item: `${base}${providerPath}` }
+    ]
+  }
+];
 
   return (
     <main className="min-h-screen bg-white">

@@ -72,3 +72,17 @@ export async function loadLocationHub(locationSlug: string, locale: PublicLocale
       .sort((a, b) => a.name.localeCompare(b.name))
   };
 }
+
+
+export async function loadActiveLaunchLocations() {
+  try {
+    const db = getDb();
+    const rows = await db.selectDistinct({ city: businesses.city, state: businesses.state })
+      .from(businesses)
+      .where(eq(businesses.active, true));
+    const active = new Set(rows.map((row) => `${row.city}|${row.state}`));
+    return LAUNCH_LOCATIONS.filter((location) => active.has(`${location.city}|${location.state}`));
+  } catch {
+    return LAUNCH_LOCATIONS.filter((location) => location.slug === "orlando-fl");
+  }
+}

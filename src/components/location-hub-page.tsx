@@ -97,6 +97,14 @@ export async function LocationHubPage({ locale, locationSlug }: { locale: Public
         name: question,
         acceptedAnswer: { "@type": "Answer", text: answer }
       }))
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "VeroTask", item: base },
+        { "@type": "ListItem", position: 2, name: data.location.label, item: `${base}${path}` }
+      ]
     }
   ];
 

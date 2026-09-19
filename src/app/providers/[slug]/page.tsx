@@ -37,7 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
         "es-US": `/es/providers/${canonicalSlug}`,
         "x-default": path
       }
-    }
+    },
+    robots: business.ownerUserId ? { index: true, follow: true } : { index: false, follow: true }
   };
 }
 

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "VeroTask",
     short_name: "VeroTask",
-    description: "Trusted local services with verified work and protected marketplace payments.",
+    description: "Local services marketplace for Orlando and Central Florida, United States, with protected quote requests and booking coordination.",
     start_url: "/",
     display: "standalone",
     background_color: "#f7faf8",

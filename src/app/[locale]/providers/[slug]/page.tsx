@@ -47,7 +47,8 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
         "es-US": `/es/providers/${canonicalSlug}`,
         "x-default": english
       }
-    }
+    },
+    robots: business.ownerUserId ? { index: true, follow: true } : { index: false, follow: true }
   };
 }
 

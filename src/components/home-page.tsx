@@ -4,12 +4,13 @@ import { GuidedMarketplaceHero } from "@/components/guided-match";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { canonicalAppUrl } from "@/lib/app-url";
-import { LAUNCH_LOCATIONS } from "@/lib/locations";
+import { loadActiveLaunchLocations } from "@/lib/local-seo";
 import { localePath, publicCopy, type PublicLocale } from "@/lib/site-copy";
 
-export function HomePage({ locale }: { locale: PublicLocale }) {
+export async function HomePage({ locale }: { locale: PublicLocale }) {
   const c = publicCopy[locale];
   const base = canonicalAppUrl();
+  const activeLocations = await loadActiveLaunchLocations();
   const jsonLd = [
     {
       "@context": "https://schema.org",
@@ -31,7 +32,7 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
       name: "VeroTask local services marketplace",
       serviceType: "Local service discovery, quote requests and booking coordination",
       provider: { "@type": "Organization", name: "VeroTask", url: base },
-      areaServed: LAUNCH_LOCATIONS.map((location) => ({
+      areaServed: activeLocations.map((location) => ({
         "@type": "City",
         name: location.city,
         address: {
@@ -125,7 +126,7 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
         <div className="container-shell">
           <div className="mb-5 flex items-center justify-center gap-2 text-sm font-black text-slate-500"><Star size={15} className="text-[var(--accent)]" fill="currentColor" /> Find help across Central Florida</div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-bold text-slate-700">
-            {LAUNCH_LOCATIONS.map((location) => <Link href={localePath(locale, `/locations/${location.slug}`)} key={location.slug} className="hover:text-[var(--brand)]">{location.label}</Link>)}
+            {activeLocations.map((location) => <Link href={localePath(locale, `/locations/${location.slug}`)} key={location.slug} className="hover:text-[var(--brand)]">{location.label}</Link>)}
           </div>
         </div>
       </section>
