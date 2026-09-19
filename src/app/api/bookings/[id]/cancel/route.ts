@@ -1,11 +1,13 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
+import { bookingCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { POLICY_VERSION, refundBookingPayment } from "@/lib/booking-workflow";
+import { getStripe } from "@/lib/stripe";
 
 const schema = z.object({ reason: z.string().trim().min(3).max(1000) });
 
@@ -24,6 +26,32 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const db = getDb();
   const paymentCaptured = Boolean(access.booking.stripePaymentIntentId);
+
+  // If payment has not been captured, invalidate any still-open Checkout Session
+  // before cancelling. This prevents a stale booking-fee payment after cancellation.
+  if (!paymentCaptured) {
+    const [checkout] = await db.select().from(bookingCheckoutSessions)
+      .where(eq(bookingCheckoutSessions.bookingId, id)).limit(1);
+    if (checkout?.status === "open") {
+      try {
+        const stripe = getStripe();
+        const session = await stripe.checkout.sessions.retrieve(checkout.stripeSessionId);
+        if (session.status === "complete") {
+          return NextResponse.json({ error: "payment_confirmation_pending" }, { status: 409 });
+        }
+        if (session.status === "open") {
+          await stripe.checkout.sessions.expire(checkout.stripeSessionId);
+        }
+        await db.update(bookingCheckoutSessions)
+          .set({ status: "expired", updatedAt: new Date() })
+          .where(and(eq(bookingCheckoutSessions.id, checkout.id), eq(bookingCheckoutSessions.status, "open")));
+      } catch (error) {
+        console.error("[VeroTask cancellation] failed to expire checkout session", error);
+        return NextResponse.json({ error: "payment_service_unavailable" }, { status: 502 });
+      }
+    }
+  }
+
   let refundCents = 0;
   let rule = "unpaid_cancellation";
 
