@@ -10,7 +10,7 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     env:
-      PROD_URL: ${{ vars.VEROTASK_PRODUCTION_URL || 'https://vero-task-andres-projects-bbfd1881.vercel.app' }}
+      PROD_URL: ${{ vars.VEROTASK_PRODUCTION_URL || 'https://www.verotask.online' }}
     outputs:
       base_url: ${{ steps.production.outputs.base_url }}
       target_epoch: ${{ steps.clock.outputs.target_epoch }}
@@ -21,10 +21,13 @@ jobs:
         run: |
           set -euo pipefail
           code="$(curl -L --silent --show-error --output /tmp/verotask-health --write-out '%{http_code}' --max-time 15 "$PROD_URL/api/health" || true)"
-          echo "$PROD_URL -> HTTP $code"
-          if [ "$code" != "200" ]; then
-            echo "Production must be publicly reachable and healthy before the 1,000-user test."
+          ready="$(curl -L --silent --show-error --output /tmp/verotask-ready --write-out '%{http_code}' --max-time 20 "$PROD_URL/api/ready" || true)"
+          echo "$PROD_URL health -> HTTP $code"
+          echo "$PROD_URL ready -> HTTP $ready"
+          if [ "$code" != "200" ] || [ "$ready" != "200" ]; then
+            echo "Production must be healthy and ready before the 1,000-user test."
             cat /tmp/verotask-health || true
+            cat /tmp/verotask-ready || true
             exit 1
           fi
           echo "base_url=$PROD_URL" >> "$GITHUB_OUTPUT"
