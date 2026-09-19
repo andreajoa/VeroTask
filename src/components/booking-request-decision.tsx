@@ -23,7 +23,6 @@ export function BookingRequestDecision({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [quote, setQuote] = useState("");
-  const [note, setNote] = useState("");
 
   async function decline() {
     setBusy("decline");
@@ -57,8 +56,7 @@ export function BookingRequestDecision({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          quoteCents: Math.round(amount * 100),
-          note: note.trim() || undefined
+          quoteCents: Math.round(amount * 100)
         })
       });
       const data = await response.json().catch(() => ({})) as { error?: string };
@@ -94,17 +92,14 @@ export function BookingRequestDecision({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-[220px_1fr]">
+      <div className="mt-5 max-w-xs">
         <label className="block">
           <span className="mb-2 block text-sm font-bold">Your service price</span>
           <div className="flex min-h-12 items-center rounded-xl border border-[var(--line)] bg-white px-3">
             <DollarSign size={17} className="text-[var(--muted)]" />
             <input value={quote} onChange={(e) => setQuote(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" className="min-w-0 flex-1 bg-transparent px-2 outline-none" />
           </div>
-        </label>
-        <label className="block">
-          <span className="mb-2 block text-sm font-bold">Quote note (optional)</span>
-          <input value={note} onChange={(e) => setNote(e.target.value.slice(0, 1000))} placeholder="Example: labor included; materials billed separately" className="min-h-12 w-full rounded-xl border border-[var(--line)] px-4" />
+          <span className="mt-1 block text-xs text-[var(--muted)]">Use the structured job brief above to calculate your price. Direct contact details cannot be exchanged here.</span>
         </label>
       </div>
 
