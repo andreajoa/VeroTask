@@ -4,6 +4,8 @@ import { bookings, businesses, services, users } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { sendTransactionalEmail } from "@/lib/email";
 import { getCustomerReputationSummary } from "@/lib/reputation";
+import { parseQuoteRequestBrief, quoteRequestLabel } from "@/lib/quote-request";
+import { publicProviderName } from "@/lib/public-provider";
 
 function esc(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
@@ -40,15 +42,40 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
   if (!owner) return false;
   const reputation = await getCustomerReputationSummary(ctx.booking.customerId);
   const when = ctx.booking.scheduledStart.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
+  const task = brief?.task ?? ctx.service?.name ?? "Local service";
+  const location = brief?.postalCode ? `${ctx.business.city}, FL · ZIP ${brief.postalCode}` : `${ctx.business.city}, FL`;
+  const scope = brief ? `${quoteRequestLabel(brief.scope)} · ${quoteRequestLabel(brief.jobLength)} · ${quoteRequestLabel(brief.timeline)}` : "Review request details in VeroTask";
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   return sendTransactionalEmail({
     to: owner.email,
-    subject: `New VeroTask request · ${ctx.service?.name ?? "Local service"}`,
+    subject: `New VeroTask quote request · ${task}`,
     html: emailShell(
-      "New service request",
-      `<p>A customer requested <strong>${esc(ctx.service?.name ?? "a local service")}</strong> for ${esc(when)}.</p><p>Customer reputation: <strong>${reputation.rating.toFixed(2)} ★</strong> · ${reputation.ratingCount === 0 ? "New" : `${reputation.ratingCount} ratings`} · ${reputation.completedJobs} completed services.</p><p>Review the booking details and decide whether to accept. If you accept, VeroTask will ask the customer to pay only the VeroTask booking fee. The <strong>${esc(money(ctx.booking.subtotalCents))}</strong> service price is paid directly to you by the customer.</p>`,
+      "New service opportunity",
+      `<p>A customer requested <strong>${esc(task)}</strong> for ${esc(when)}.</p><p>Service area: <strong>${esc(location)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Customer reputation: <strong>${reputation.rating.toFixed(2)} ★</strong> · ${reputation.ratingCount === 0 ? "New" : `${reputation.ratingCount} ratings`} · ${reputation.completedJobs} completed services.</p><p>Review the structured job brief, decide whether you want the job and send your price through VeroTask. The customer's exact street address, email and phone remain private before the booking fee is paid.</p>`,
       url,
-      "Review request"
+      "Review and quote"
+    )
+  });
+}
+
+export async function sendUnclaimedProviderOpportunityNotification(bookingId: string, to: string, magicLink: string) {
+  const ctx = await bookingContext(bookingId);
+  if (!ctx?.business) return false;
+  const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
+  const when = ctx.booking.scheduledStart.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
+  const task = brief?.task ?? ctx.service?.name ?? "Local service";
+  const location = brief?.postalCode ? `${ctx.business.city}, FL · ZIP ${brief.postalCode}` : `${ctx.business.city}, FL`;
+  const scope = brief ? `${quoteRequestLabel(brief.scope)} · ${quoteRequestLabel(brief.jobLength)} · ${quoteRequestLabel(brief.timeline)}` : "Review the request in VeroTask";
+
+  return sendTransactionalEmail({
+    to,
+    subject: `New VeroTask opportunity near ${brief?.postalCode ?? ctx.business.city}`,
+    html: emailShell(
+      `A customer selected ${ctx.business.name}`,
+      `<p>There is a new VeroTask request for <strong>${esc(task)}</strong>.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your public listing is not claimed yet. This secure one-time link verifies control of this business email, signs you in, claims the profile automatically and opens the request.</p><p>You can review or edit your provider details before deciding. The customer's exact street address, email and phone remain private until the VeroTask booking fee is paid.</p>`,
+      magicLink,
+      "Claim profile and review request"
     )
   });
 }
@@ -56,15 +83,18 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
 export async function sendCustomerAcceptedNotification(bookingId: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.customer || !ctx.business) return false;
+  const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
+  const task = brief?.task ?? ctx.service?.name ?? "local service";
+  const providerLabel = publicProviderName(ctx.business.id, "en");
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   return sendTransactionalEmail({
     to: ctx.customer.email,
-    subject: `Your VeroTask request was accepted · ${ctx.business.name}`,
+    subject: `Your VeroTask quote is ready · ${task}`,
     html: emailShell(
-      "Your provider accepted the request",
-      `<p><strong>${esc(ctx.business.name)}</strong> accepted your request for ${esc(ctx.service?.name ?? "local service")}.</p><p>Open the booking to pay the VeroTask booking fee of <strong>${esc(money(ctx.booking.marketplaceFeeCents))}</strong>. The service price of <strong>${esc(money(ctx.booking.subtotalCents))}</strong> is paid directly to the professional and is not collected or transferred by VeroTask.</p>`,
+      "Your professional sent a quote",
+      `<p><strong>${esc(providerLabel)}</strong> accepted your request for ${esc(task)} and quoted <strong>${esc(money(ctx.booking.subtotalCents))}</strong>.</p><p>Open VeroTask to review the quote and pay the VeroTask booking fee of <strong>${esc(money(ctx.booking.marketplaceFeeCents))}</strong> if you want to confirm the booking. The service price is paid directly to the professional.</p><p>Direct contact details and the professional's off-platform contact information remain private in the marketplace flow.</p>`,
       url,
-      "Pay booking fee"
+      "Review quote"
     )
   });
 }
