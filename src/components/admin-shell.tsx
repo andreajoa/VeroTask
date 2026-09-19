@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, BadgeCheck, BriefcaseBusiness, FileSearch, LayoutDashboard, LogOut, Mail, Scale, UsersRound } from "lucide-react";
+import { Activity, BadgeCheck, BriefcaseBusiness, FileSearch, LayoutDashboard, LockKeyhole, LogOut, Mail, Scale, UsersRound } from "lucide-react";
 import { adminSignOut } from "@/app/admin/actions";
 
 const links = [
@@ -9,7 +9,8 @@ const links = [
   ["/admin/bookings", "Bookings", BriefcaseBusiness],
   ["/admin/email", "Email", Mail],
   ["/admin/legal", "Legal & Audit", Scale],
-  ["/admin/evidence", "Evidence", FileSearch]
+  ["/admin/evidence", "Evidence", FileSearch],
+  ["/admin/security", "Security", LockKeyhole]
 ] as const;
 
 export function AdminShell({ children, active }: { children: React.ReactNode; active: string }) {
