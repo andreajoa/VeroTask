@@ -184,14 +184,17 @@ jobs:
 
             const publicProviderPath = `/providers/pro-${businessId}`;
             await provider.goto(`${BASE}${publicProviderPath}`, { waitUntil: "domcontentloaded" });
-            const requestLink = provider.getByRole("link", { name: "Request", exact: true }).first();
+            const requestLink = provider.getByRole("link", { name: "Request quote", exact: true }).last();
             await requestLink.waitFor();
             const href = await requestLink.getAttribute("href");
             assert(href);
             const serviceId = new URL(href, BASE).searchParams.get("service");
             assert.match(serviceId || "", /^[0-9a-f-]{36}$/i);
             report.serviceId = serviceId;
-            pass("Provider appears publicly with a bookable service", { serviceId });
+            const publicBody = await provider.textContent("body");
+            assert(!publicBody?.includes("(407) 555-0198"), "provider phone leaked on public profile");
+            assert(!publicBody?.includes(`VeroTask QA ${unique}`), "real provider identity leaked on public profile");
+            pass("Public provider profile is contact-private and quote enabled", { serviceId });
 
             const customerContext = await browser.newContext({ viewport: { width: 1365, height: 900 } });
             customer = await customerContext.newPage();
@@ -201,22 +204,40 @@ jobs:
             await login(customer, customerMailbox, bookPath);
             pass("Customer passwordless production login");
 
+            const privacyButton = customer.getByRole("button", { name: "Essential only", exact: true });
+            try {
+              await privacyButton.waitFor({ state: "visible", timeout: 5000 });
+              await privacyButton.click();
+            } catch {}
+
             const target = new Date(Date.now() + 4 * 86400000);
             const scheduledLocal = target.toISOString().slice(0, 10) + "T10:00";
+            await customer.locator('[name="scope"]').selectOption("small");
+            await customer.locator('[name="jobLength"]').selectOption("under-2h");
+            await customer.locator('[name="timeline"]').selectOption("specific-date");
+            await customer.locator('[name="postalCode"]').fill("32801");
             await customer.locator('[name="scheduledLocal"]').fill(scheduledLocal);
             await customer.locator('[name="serviceAddress"]').fill("400 South Orange Avenue, Orlando, FL 32801");
-            await customer.locator('[name="customerNotes"]').fill("Automated launch QA. No real service visit.");
+            await customer.locator('[name="details"]').fill("Assemble one boxed furniture item. All parts and instructions are available onsite. No wall mounting is required.");
             await customer.locator('[name="acceptsPolicy"]').check();
-            await customer.getByRole("button", { name: "Send booking request" }).click();
+            await customer.getByRole("button", { name: "Request a quote", exact: true }).click();
             await customer.waitForURL(/\/bookings\/[0-9a-f-]+\?requested=1/, { timeout: 60000 });
             const bookingId = new URL(customer.url()).pathname.split("/")[2];
             report.bookingId = bookingId;
-            pass("Customer booking request created with no payment", { bookingId });
+            pass("Structured customer quote request created with no payment", { bookingId });
 
             await provider.goto(`${BASE}/bookings/${bookingId}`, { waitUntil: "domcontentloaded" });
-            await provider.getByRole("button", { name: "Accept service request" }).click();
-            await provider.getByText("Request accepted", { exact: true }).waitFor({ timeout: 60000 });
-            pass("Provider accepted booking request");
+            const providerBodyBeforeQuote = await provider.textContent("body");
+            assert(!providerBodyBeforeQuote?.includes("400 South Orange Avenue"), "exact service address leaked before payment");
+            assert(providerBodyBeforeQuote?.includes("ZIP 32801"), "service ZIP missing from provider brief");
+            pass("Provider sees service area but not exact address before payment");
+
+            await provider.getByLabel("Your service price").fill("120.00");
+            await provider.getByRole("button", { name: "Send quote and accept", exact: true }).click();
+            await provider.getByText("Quote sent", { exact: true }).waitFor({ timeout: 60000 });
+            const providerBodyAfterQuote = await provider.textContent("body");
+            assert(!providerBodyAfterQuote?.includes("400 South Orange Avenue"), "exact service address leaked after quote but before payment");
+            pass("Provider submitted $120 quote while exact address remained private");
 
             const paymentResponse = await customer.request.post(`${BASE}/api/bookings/${bookingId}/payment-session`);
             assert.equal(paymentResponse.status(), 200, `payment-session HTTP ${paymentResponse.status()}`);
@@ -226,7 +247,7 @@ jobs:
             assert(payment.clientSecret.startsWith("cs_live_"), "expected live Checkout Session client secret");
             report.checkoutSessionCreated = true;
             report.checkoutClientSecretLive = true;
-            pass("LIVE Stripe Checkout Session created without submitting payment");
+            pass("LIVE Stripe booking-fee Checkout Session created from provider quote without submitting payment");
 
             const cancelResponse = await customer.request.post(`${BASE}/api/bookings/${bookingId}/cancel`, {
               data: { reason: "Automated launch QA cancellation before any payment was submitted." }
@@ -253,6 +274,8 @@ jobs:
               serviceId,
               bookingId,
               checkoutSessionCreated: true,
+              quoteCents: 12000,
+              expectedFreePlanBookingFeeCents: 1800,
               liveChargeAttempted: false,
               livePaymentCompleted: false,
               checks: report.checks.map(x => x.name)
