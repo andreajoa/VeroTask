@@ -38,3 +38,14 @@ export function quoteRequestLabel(value: string) {
 export function maskedServiceLocation(brief: QuoteRequestBrief | null, city: string, state: string) {
   return brief?.postalCode ? `${city}, ${state} · ZIP ${brief.postalCode}` : `${city}, ${state}`;
 }
+
+export function containsDirectContactInfo(value: string) {
+  const text = value.trim();
+  if (!text) return false;
+  const email = /[\w.+-]+@[\w.-]+\.[a-z]{2,}/i;
+  const url = /(?:https?:\/\/|www\.)[^\s<>]+/i;
+  const domain = /\b(?:[a-z0-9-]+\.)+(?:com|net|org|io|co|us|biz|info|me)\b/i;
+  const social = /(^|\s)@[a-z0-9_.]{2,}/i;
+  const phone = /(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-]?)\d{3}[\s.-]?\d{4}\b/;
+  return email.test(text) || url.test(text) || domain.test(text) || social.test(text) || phone.test(text);
+}
