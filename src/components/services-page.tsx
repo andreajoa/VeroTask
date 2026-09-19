@@ -7,7 +7,7 @@ import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-searc
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
-import { publicProviderName, publicProviderSlug } from "@/lib/public-provider";
+import { publicProviderDescription, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
 
 export type ServiceSearchParams = {
   q?: string;
@@ -133,8 +133,8 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                       <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]">{publicProviderName(business.id, locale).replace(/^.*VT-/, "V").slice(0, 1)}</div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{publicProviderName(business.id, locale)}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500"><span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state} {business.postalCode ?? ""}</span>{Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}{business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}</div>
-                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{business.description ?? "Local service provider."}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500"><span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state}</span>{Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}{business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}</div>
+                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{publicProviderDescription(business.city, business.state, locale)}</p>
                         
                       </div>
                       <div className="flex flex-col gap-2 sm:self-center">
