@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { eq, isNull, and, desc, sql } from "drizzle-orm";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { BadgeCheck, Clock3, MailCheck, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AcceptedBookingPayment } from "@/components/accepted-booking-payment";
 import { BookingRequestDecision } from "@/components/booking-request-decision";
@@ -32,6 +32,36 @@ const ADDRESS_RELEASE_STATUSES = new Set([
   "paid_out",
   "disputed"
 ]);
+
+function requestWaitingCopy(locale: "en" | "pt-br" | "es", claimed: boolean) {
+  if (locale === "pt-br") return claimed ? {
+    title: "Pedido enviado. Estamos aguardando o PRO.",
+    body: "A VeroTask já avisou este PRO sobre o seu pedido. Muitos profissionais disponíveis respondem em cerca de 2 horas durante o horário comercial, mas o tempo pode variar. À noite, fins de semana e feriados, a resposta pode levar mais tempo.",
+    detail: "Você receberá um email assim que o PRO enviar o orçamento ou recusar. Nenhuma taxa de reserva foi cobrada enquanto você espera."
+  } : {
+    title: "Pedido enviado ao PRO.",
+    body: "A VeroTask enviou o pedido para o email comercial associado a este perfil. Como o profissional ainda precisa confirmar o acesso ao perfil antes de enviar o orçamento, a primeira resposta pode levar mais de 2 horas.",
+    detail: "Você receberá um email assim que houver resposta. Nenhuma taxa de reserva foi cobrada enquanto você espera."
+  };
+  if (locale === "es") return claimed ? {
+    title: "Solicitud enviada. Estamos esperando al Pro.",
+    body: "VeroTask ya notificó a este Pro. Muchos profesionales disponibles responden en aproximadamente 2 horas durante el horario comercial, aunque el tiempo puede variar. Por la noche, fines de semana y feriados puede tardar más.",
+    detail: "Recibirás un email cuando el Pro envíe una cotización o rechace la solicitud. No se ha cobrado ninguna tarifa de reserva mientras esperas."
+  } : {
+    title: "Solicitud enviada al Pro.",
+    body: "VeroTask envió la solicitud al email comercial asociado con este perfil. Como el profesional todavía debe confirmar el acceso al perfil antes de cotizar, la primera respuesta puede tardar más de 2 horas.",
+    detail: "Recibirás un email cuando haya una respuesta. No se ha cobrado ninguna tarifa de reserva mientras esperas."
+  };
+  return claimed ? {
+    title: "Request sent. We’re waiting for the Pro.",
+    body: "VeroTask has already notified this Pro. Many available Pros respond within about 2 hours during normal business hours, although response times can vary. Nights, weekends and holidays may take longer.",
+    detail: "We’ll email you as soon as the Pro sends a quote or declines. No VeroTask booking fee has been charged while you wait."
+  } : {
+    title: "Request sent to the Pro.",
+    body: "VeroTask emailed the business address associated with this profile. Because the professional must confirm access to the profile before sending a quote, the first response can take longer than 2 hours.",
+    detail: "We’ll email you as soon as there is a response. No VeroTask booking fee has been charged while you wait."
+  };
+}
 
 export default async function BookingPage({
   params,
@@ -114,6 +144,28 @@ export default async function BookingPage({
             <Link href={`/dashboard/providers/${access.business.id}/onboarding`} className="btn-secondary mt-4">Review or edit provider profile</Link>
           </div>
         )}
+
+        {access.isCustomer && access.booking.status === "requested" && (() => {
+          const waiting = requestWaitingCopy(locale, Boolean(access.business.ownerUserId));
+          return (
+            <div className={`card p-6 ${query.requested === "1" ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"}`}>
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-100 text-sky-800">
+                  {query.requested === "1" ? <MailCheck size={20} /> : <Clock3 size={20} />}
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-950">{waiting.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">{waiting.body}</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-slate-800">{waiting.detail}</p>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <Link href="/services" className="btn-secondary">Need someone sooner? Compare other Pros</Link>
+                    <span className="inline-flex items-center text-xs font-bold text-slate-500">You can keep this request open while you compare.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {brief && (
           <div className="card p-6">

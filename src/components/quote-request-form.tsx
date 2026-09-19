@@ -50,12 +50,16 @@ export function QuoteRequestForm({
       })
     });
 
-    const data = await response.json().catch(() => ({})) as { bookingId?: string; error?: string; distanceMiles?: number; serviceRadiusMiles?: number };
+    const data = await response.json().catch(() => ({})) as { bookingId?: string; error?: string; distanceMiles?: number; serviceRadiusMiles?: number; retryAfterMinutes?: number };
     if (!response.ok || !data.bookingId) {
       if (data.error === "provider_outside_service_radius") {
         setError(`This Pro is about ${data.distanceMiles ?? "too many"} miles from the service location and serves up to ${data.serviceRadiusMiles ?? "their selected radius"} miles. Choose a closer Pro.`);
       } else if (data.error === "provider_location_not_ready") {
         setError("This Pro must confirm a service base location before receiving new requests. Please choose another nearby Pro.");
+      } else if (data.error === "too_many_quote_requests") {
+        setError(`You have sent several requests recently. Please wait about ${data.retryAfterMinutes ?? 10} minutes before sending another one.`);
+      } else if (data.error === "too_many_requests_to_same_provider") {
+        setError(`This Pro already has recent requests from you. Please wait about ${data.retryAfterMinutes ?? 30} minutes before sending another request to the same Pro.`);
       } else {
         setError(data.error?.replaceAll("_", " ") ?? "Unable to send this request.");
       }

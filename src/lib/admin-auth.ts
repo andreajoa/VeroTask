@@ -2,12 +2,21 @@ import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypt
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "verotask_admin";
+const ATTEMPT_COOKIE = "verotask_admin_attempts";
 const SESSION_HOURS = 8;
+const ATTEMPT_WINDOW_MINUTES = 15;
+const MAX_ATTEMPTS = 5;
 
 type SessionPayload = {
   v: 1;
   exp: number;
   nonce: string;
+};
+
+type AttemptPayload = {
+  v: 1;
+  exp: number;
+  count: number;
 };
 
 function sessionSecret() {
@@ -40,6 +49,60 @@ function decode(value?: string | null): SessionPayload | null {
   } catch {
     return null;
   }
+}
+
+function encodeAttempt(payload: AttemptPayload) {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  return `${body}.${sign(body)}`;
+}
+
+function decodeAttempt(value?: string | null): AttemptPayload | null {
+  if (!value) return null;
+  const [body, signature] = value.split(".");
+  if (!body || !signature) return null;
+  const expected = sign(body);
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as AttemptPayload;
+    if (payload.v !== 1 || payload.exp <= Date.now() || payload.count < 0) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+export async function adminLoginRateLimitStatus() {
+  const cookieStore = await cookies();
+  const payload = decodeAttempt(cookieStore.get(ATTEMPT_COOKIE)?.value);
+  if (!payload) return { allowed: true, remaining: MAX_ATTEMPTS, retryAfterSeconds: 0 };
+  const remaining = Math.max(0, MAX_ATTEMPTS - payload.count);
+  return {
+    allowed: payload.count < MAX_ATTEMPTS,
+    remaining,
+    retryAfterSeconds: payload.count >= MAX_ATTEMPTS ? Math.max(1, Math.ceil((payload.exp - Date.now()) / 1000)) : 0
+  };
+}
+
+export async function recordAdminLoginFailure() {
+  const cookieStore = await cookies();
+  const existing = decodeAttempt(cookieStore.get(ATTEMPT_COOKIE)?.value);
+  const exp = existing?.exp ?? (Date.now() + ATTEMPT_WINDOW_MINUTES * 60 * 1000);
+  const count = Math.min(MAX_ATTEMPTS, (existing?.count ?? 0) + 1);
+  cookieStore.set(ATTEMPT_COOKIE, encodeAttempt({ v: 1, exp, count }), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    path: "/admin",
+    expires: new Date(exp)
+  });
+  return count;
+}
+
+export async function clearAdminLoginFailures() {
+  const cookieStore = await cookies();
+  cookieStore.delete(ATTEMPT_COOKIE);
 }
 
 export function verifyAdminPassword(input: string) {

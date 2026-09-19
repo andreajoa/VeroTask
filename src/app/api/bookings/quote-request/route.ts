@@ -1,5 +1,5 @@
 import { addMinutes } from "date-fns";
-import { and, eq } from "drizzle-orm";
+import { and, count, eq, gte } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -8,7 +8,7 @@ import { bookingEvents, bookings, businesses, services } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { createMagicLink, getCurrentUser } from "@/lib/auth";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
-import { sendProviderNewRequestNotification, sendUnclaimedProviderOpportunityNotification } from "@/lib/booking-notifications";
+import { sendCustomerRequestReceivedNotification, sendProviderNewRequestNotification, sendUnclaimedProviderOpportunityNotification } from "@/lib/booking-notifications";
 import { distanceMiles } from "@/lib/distance";
 import { geocodeUsAddress, geocodeUsPostalCode } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
@@ -46,6 +46,26 @@ export async function POST(request: NextRequest) {
   }
 
   const db = getDb();
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+  const [[recentTotal], [recentSameProvider]] = await Promise.all([
+    db.select({ value: count() }).from(bookings).where(and(
+      eq(bookings.customerId, user.id),
+      gte(bookings.createdAt, tenMinutesAgo)
+    )),
+    db.select({ value: count() }).from(bookings).where(and(
+      eq(bookings.customerId, user.id),
+      eq(bookings.businessId, parsed.data.businessId),
+      gte(bookings.createdAt, thirtyMinutesAgo)
+    ))
+  ]);
+  if (Number(recentTotal?.value ?? 0) >= 8) {
+    return NextResponse.json({ error: "too_many_quote_requests", retryAfterMinutes: 10 }, { status: 429 });
+  }
+  if (Number(recentSameProvider?.value ?? 0) >= 3) {
+    return NextResponse.json({ error: "too_many_requests_to_same_provider", retryAfterMinutes: 30 }, { status: 429 });
+  }
+
   const [business] = await db.select().from(businesses).where(eq(businesses.id, parsed.data.businessId)).limit(1);
   if (!business || !business.active || ["suspended", "paused"].includes(business.status)) {
     return NextResponse.json({ error: "provider_not_available" }, { status: 409 });
@@ -187,8 +207,19 @@ export async function POST(request: NextRequest) {
       await sendUnclaimedProviderOpportunityNotification(booking.id, business.publicEmail, magicLink);
     }
   } catch (error) {
-    console.error("[VeroTask quote request notification]", error);
+    console.error("[VeroTask provider quote request notification]", error);
   }
 
-  return NextResponse.json({ bookingId: booking.id, status: booking.status });
+  try {
+    await sendCustomerRequestReceivedNotification(booking.id);
+  } catch (error) {
+    console.error("[VeroTask customer request confirmation]", error);
+  }
+
+  return NextResponse.json({
+    bookingId: booking.id,
+    status: booking.status,
+    providerClaimed: Boolean(business.ownerUserId),
+    responseExpectation: business.ownerUserId ? "about_2_business_hours" : "first_response_may_take_longer"
+  });
 }

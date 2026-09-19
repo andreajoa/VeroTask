@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
 
 concurrency:
   group: production-smoke
@@ -57,7 +59,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for path in / /signin /security /services /locations/orlando-fl /protection /terms /robots.txt /sitemap.xml /llms.txt; do
+          for path in / /signin /security /privacy-request /services /locations/orlando-fl /protection /terms /robots.txt /sitemap.xml /llms.txt; do
             code=$(curl -LsS -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 25 "$PROD_URL${path}")
             echo "$path -> $code"
             test "$code" = "200"
@@ -107,3 +109,6 @@ jobs:
           cat /tmp/headers.txt
           grep -qi '^x-content-type-options: nosniff' /tmp/headers.txt
           grep -qi '^referrer-policy:' /tmp/headers.txt
+          grep -qi '^content-security-policy:' /tmp/headers.txt
+          grep -qi "object-src 'none'" /tmp/headers.txt
+          grep -qi "frame-ancestors 'self'" /tmp/headers.txt

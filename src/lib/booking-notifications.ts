@@ -53,7 +53,7 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
     subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
       "A customer wants a quote from you",
-      `<p><strong>New opportunity:</strong> a VeroTask customer is looking for <strong>${esc(task)}</strong>.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Customer reputation: <strong>${reputation.rating.toFixed(2)} ★</strong> · ${reputation.ratingCount === 0 ? "New" : `${reputation.ratingCount} ratings`} · ${reputation.completedJobs} completed services.</p><p>Open the request, review the protected job brief and send your price through VeroTask. The customer's exact street address, email and phone remain private until the booking fee is paid.</p>`,
+      `<p><strong>New opportunity:</strong> a VeroTask customer is looking for <strong>${esc(task)}</strong>.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Customer reputation: <strong>${reputation.rating.toFixed(2)} ★</strong> · ${reputation.ratingCount === 0 ? "New" : `${reputation.ratingCount} ratings`} · ${reputation.completedJobs} completed services.</p><p>Open the request, review the protected job brief and send your price through VeroTask. <strong>The customer is waiting for your response.</strong> When possible, please reply within about 2 hours during normal business hours. The customer's exact street address, email and phone remain private until the booking fee is paid.</p>`,
       url,
       "View job and send quote",
       `A VeroTask customer is waiting for your quote for ${task}.`
@@ -75,10 +75,35 @@ export async function sendUnclaimedProviderOpportunityNotification(bookingId: st
     subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
       "A customer wants a quote from your business",
-      `<p><strong>You have a new VeroTask opportunity.</strong> A customer selected your business for <strong>${esc(task)}</strong> and is waiting for a quote.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your VeroTask listing has not been claimed yet. This secure one-time link verifies access to the business email already associated with the listing and opens the exact profile selected by the customer.</p><p>On VeroTask, confirm that the listing is yours and enter the email you want to use going forward. We will send a second verification link to that address. After you verify it, the profile is unlocked and this customer request opens ready for your quote.</p><p>The customer's exact street address, email and phone remain private until the customer accepts your quote and pays the VeroTask booking fee. After the service is completed, the customer pays your service price directly to you.</p>`,
+      `<p><strong>You have a new VeroTask opportunity.</strong> A customer selected your business for <strong>${esc(task)}</strong> and is waiting for a quote.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your VeroTask listing has not been claimed yet. This secure one-time link verifies access to the business email already associated with the listing and opens the exact profile selected by the customer.</p><p>On VeroTask, confirm that the listing is yours and enter the email you want to use going forward. We will send a second verification link to that address. After you verify it, the profile is unlocked and this customer request opens ready for your quote.</p><p><strong>The customer is waiting for a response.</strong> Please complete verification and reply as soon as practical. When possible, VeroTask asks Pros to respond within about 2 hours during normal business hours.</p><p>The customer's exact street address, email and phone remain private until the customer accepts your quote and pays the VeroTask booking fee. After the service is completed, the customer pays your service price directly to you.</p>`,
       magicLink,
       "Confirm profile and view request",
       `A VeroTask customer selected ${ctx.business.name} and is waiting for a quote.`
+    )
+  });
+}
+
+export async function sendCustomerRequestReceivedNotification(bookingId: string) {
+  const ctx = await bookingContext(bookingId);
+  if (!ctx?.customer || !ctx.business) return false;
+  const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
+  const task = brief?.task ?? ctx.service?.name ?? "local service";
+  const providerLabel = publicProviderName(ctx.business.id, "en");
+  const url = `${appUrl()}/bookings/${ctx.booking.id}`;
+  const claimed = Boolean(ctx.business.ownerUserId);
+  const expectation = claimed
+    ? "We notified this Pro about your request. Many available Pros respond within about 2 hours during normal business hours, although response times can vary."
+    : "We emailed the business address associated with this public listing. Because this Pro must first confirm access to the profile before quoting, the first response can take longer than 2 hours.";
+
+  return sendTransactionalEmail({
+    to: ctx.customer.email,
+    subject: `VeroTask received your request · ${task}`,
+    html: emailShell(
+      "Your request was sent",
+      `<p>We sent your request for <strong>${esc(task)}</strong> to <strong>${esc(providerLabel)}</strong>.</p><p>${esc(expectation)}</p><p>You will receive another VeroTask email as soon as the Pro sends a quote or declines the request. <strong>You have not been charged a VeroTask booking fee.</strong> If you need someone sooner, you can keep this request open and compare other local Pros at any time.</p>`,
+      url,
+      "Track this request",
+      `Your VeroTask request for ${task} was sent to the Pro.`
     )
   });
 }
