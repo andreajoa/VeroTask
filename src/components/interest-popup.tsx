@@ -16,7 +16,7 @@ export function InterestPopup() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (excluded) return;
+    if (excluded || ["localhost", "127.0.0.1"].includes(window.location.hostname)) return;
     try {
       if (localStorage.getItem(DONE_KEY)) return;
       const dismissed = Number(localStorage.getItem(DISMISS_KEY) || 0);
