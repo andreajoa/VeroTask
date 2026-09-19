@@ -80,12 +80,14 @@ export async function GET() {
   let storageEndpointR2Host = false;
   let storageEndpointHasPath = false;
   let storageEndpointAccountIdLength = 0;
+  let storageEndpointAccountId: string | null = null;
   try {
     const parsedStorageEndpoint = new URL(rawStorageEndpoint);
     storageEndpointHttps = parsedStorageEndpoint.protocol === "https:";
     storageEndpointR2Host = parsedStorageEndpoint.hostname.endsWith(".r2.cloudflarestorage.com");
     storageEndpointHasPath = parsedStorageEndpoint.pathname !== "/" && parsedStorageEndpoint.pathname !== "";
-    storageEndpointAccountIdLength = parsedStorageEndpoint.hostname.split(".")[0]?.length ?? 0;
+    storageEndpointAccountId = parsedStorageEndpoint.hostname.split(".")[0] || null;
+    storageEndpointAccountIdLength = storageEndpointAccountId?.length ?? 0;
   } catch {}
   const storageBucketNameValid = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/.test(process.env.STORAGE_BUCKET?.trim() ?? "");
   const rawStorageAccessKeyId = process.env.STORAGE_ACCESS_KEY_ID ?? "";
@@ -122,6 +124,7 @@ export async function GET() {
       storageEndpointHttps,
       storageEndpointR2Host,
       storageEndpointHasPath,
+      storageEndpointAccountId,
       storageEndpointAccountIdLength,
       storageBucketNameValid,
       storageAccessKeyIdLength,
