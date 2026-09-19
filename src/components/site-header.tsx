@@ -1,22 +1,49 @@
 import Link from "next/link";
 import { BadgeCheck, Menu } from "lucide-react";
+import { getCurrentUser } from "@/lib/auth";
 import { localePath, publicCopy, type PublicLocale } from "@/lib/site-copy";
 
 const joinLabels: Record<PublicLocale, string> = {
-  en: "Join as a pro",
-  "pt-br": "Trabalhar na VeroTask",
-  es: "Trabajar en VeroTask"
+  en: "Join as a Pro",
+  "pt-br": "Quero ser Pro",
+  es: "Quiero ser Pro"
 };
 
-export function SiteHeader({ locale = "en", currentPath = "/" }: { locale?: PublicLocale; currentPath?: string }) {
+const accountLabels: Record<PublicLocale, string> = {
+  en: "My account",
+  "pt-br": "Minha conta",
+  es: "Mi cuenta"
+};
+
+const proDashboardLabels: Record<PublicLocale, string> = {
+  en: "Pro dashboard",
+  "pt-br": "Painel Pro",
+  es: "Panel Pro"
+};
+
+export async function SiteHeader({ locale = "en", currentPath = "/" }: { locale?: PublicLocale; currentPath?: string }) {
   const c = publicCopy[locale];
   const path = currentPath.startsWith("/") ? currentPath : `/${currentPath}`;
+
+  let user: Awaited<ReturnType<typeof getCurrentUser>> = null;
+  try {
+    user = await getCurrentUser();
+  } catch {
+    // Public navigation must remain usable even if auth lookup is temporarily unavailable.
+    user = null;
+  }
+
   const navItems = [
     [c.nav.find, "/services"],
     [c.nav.how, "/how-it-works"],
     [c.nav.protection, "/protection"],
     [c.nav.pricing, "/providers"]
   ] as const;
+
+  const accountHref = user ? "/dashboard" : "/signin";
+  const accountLabel = user ? accountLabels[locale] : c.nav.signIn;
+  const proHref = user?.role === "provider" ? "/dashboard" : "/providers/join";
+  const proLabel = user?.role === "provider" ? proDashboardLabels[locale] : joinLabels[locale];
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/90 bg-white/95 backdrop-blur-xl">
@@ -36,16 +63,16 @@ export function SiteHeader({ locale = "en", currentPath = "/" }: { locale?: Publ
             <Link className={`rounded-lg px-2.5 py-1.5 ${locale === "pt-br" ? "bg-white text-slate-950 shadow-sm" : "text-slate-700"}`} href={localePath("pt-br", path)}>PT</Link>
             <Link className={`rounded-lg px-2.5 py-1.5 ${locale === "es" ? "bg-white text-slate-950 shadow-sm" : "text-slate-700"}`} href={localePath("es", path)}>ES</Link>
           </div>
-          <Link href={localePath(locale, "/signin")} className="hidden px-3 text-sm font-black text-slate-700 hover:text-slate-950 md:inline-flex">{c.nav.signIn}</Link>
-          <Link href={localePath(locale, "/providers/join")} className="hidden min-h-10 items-center rounded-xl bg-[var(--brand)] px-4 text-sm font-black text-white transition hover:bg-[var(--brand-strong)] sm:inline-flex">{joinLabels[locale]}</Link>
+          <Link href={localePath(locale, accountHref)} className="hidden px-3 text-sm font-black text-slate-700 hover:text-slate-950 md:inline-flex">{accountLabel}</Link>
+          <Link href={localePath(locale, proHref)} className="hidden min-h-10 items-center rounded-xl bg-[var(--brand)] px-4 text-sm font-black text-white transition hover:bg-[var(--brand-strong)] sm:inline-flex">{proLabel}</Link>
 
           <details className="relative lg:hidden">
             <summary className="grid h-11 w-11 list-none place-items-center rounded-xl border border-slate-300 bg-white text-slate-950 hover:bg-slate-50" aria-label="Open navigation"><Menu size={20} /></summary>
             <div className="absolute right-0 top-13 w-[min(88vw,330px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_18px_55px_rgba(15,23,42,.16)]">
               <nav className="space-y-1" aria-label="Mobile navigation">
                 {navItems.map(([label, href]) => <Link key={href} href={localePath(locale, href)} className="block rounded-xl px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">{label}</Link>)}
-                <Link href={localePath(locale, "/signin")} className="block rounded-xl px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">{c.nav.signIn}</Link>
-                <Link href={localePath(locale, "/providers/join")} className="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-4 text-sm font-black text-white hover:bg-[var(--brand-strong)]">{joinLabels[locale]}</Link>
+                <Link href={localePath(locale, accountHref)} className="block rounded-xl px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">{accountLabel}</Link>
+                <Link href={localePath(locale, proHref)} className="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-4 text-sm font-black text-white hover:bg-[var(--brand-strong)]">{proLabel}</Link>
               </nav>
               <div className="mt-3 flex gap-1 border-t border-slate-200 pt-3 text-xs font-black">
                 <Link className="rounded-lg px-3 py-2 text-slate-800 hover:bg-slate-50" href={path}>EN</Link>
