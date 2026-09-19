@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { stat } from "node:fs/promises";
 import { localStorageEnabled, localObjectPath, signedLocalStorageUrl } from "@/lib/local-storage";
@@ -23,6 +23,18 @@ function clientFor(config: NonNullable<ReturnType<typeof storageConfig>>) {
 
 export function evidenceStorageReady() {
   return localStorageEnabled() || Boolean(storageConfig());
+}
+
+export async function verifyEvidenceStorageAccess() {
+  if (localStorageEnabled()) return true;
+  const config = storageConfig();
+  if (!config) return false;
+  try {
+    await clientFor(config).send(new HeadBucketCommand({ Bucket: config.bucket }));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function isEvidenceObjectRef(value: string) {
