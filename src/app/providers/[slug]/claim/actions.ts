@@ -4,6 +4,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { businessClaims, businesses, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { sendBusinessClaimVerificationEmail } from "@/lib/claim-email";
@@ -48,7 +49,7 @@ export async function startBusinessClaim(slug: string) {
       }
     }).returning();
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const baseUrl = canonicalAppUrl();
     const verificationUrl = `${baseUrl}/api/claims/verify-email?claim=${claim.id}&token=${rawToken}`;
     await sendBusinessClaimVerificationEmail({ to: business.publicEmail, businessName: business.name, verificationUrl });
     redirect(`/providers/${slug}/claim?claim=${claim.id}&sent=1`);
