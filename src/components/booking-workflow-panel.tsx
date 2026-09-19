@@ -31,6 +31,7 @@ type Props = {
   evidence: EvidenceItem[];
   openDispute: { id: string; reason: string; status: string } | null;
   locale: Locale;
+  addressReleased: boolean;
 };
 
 const COPY = {
@@ -185,9 +186,9 @@ export function BookingWorkflowPanel(props: Props) {
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <div><div className="text-xs font-bold text-[var(--muted)]">{c.scheduled}</div><div className="mt-1 text-sm font-black">{localDate(props.scheduledStart, props.locale)}</div></div>
-          <div><div className="text-xs font-bold text-[var(--muted)]">{c.address}</div><div className="mt-1 text-sm font-black">{props.serviceAddress}</div></div>
-          <div><div className="text-xs font-bold text-[var(--muted)]">{c.price}</div><div className="mt-1 text-sm font-black">{money(props.subtotalCents)}</div></div>
-          <div><div className="text-xs font-bold text-[var(--muted)]">{c.fee}</div><div className="mt-1 text-sm font-black">{money(props.marketplaceFeeCents)}</div></div>
+          <div><div className="text-xs font-bold text-[var(--muted)]">{props.addressReleased ? c.address : "Service area"}</div><div className="mt-1 text-sm font-black">{props.serviceAddress}</div></div>
+          <div><div className="text-xs font-bold text-[var(--muted)]">{c.price}</div><div className="mt-1 text-sm font-black">{props.subtotalCents > 0 ? money(props.subtotalCents) : "Awaiting quote"}</div></div>
+          <div><div className="text-xs font-bold text-[var(--muted)]">{c.fee}</div><div className="mt-1 text-sm font-black">{props.marketplaceFeeCents > 0 ? money(props.marketplaceFeeCents) : "Calculated after quote"}</div></div>
           <div><div className="text-xs font-bold text-[var(--muted)]">{c.evidenceScore}</div><div className="mt-1 text-sm font-black">{props.evidenceScore}/100 · {props.evidenceConfidence}</div></div>
         </div>
         <p className="mt-4 text-xs leading-5 text-[var(--muted)]">{c.directPayment}</p>
