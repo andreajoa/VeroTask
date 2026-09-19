@@ -1,0 +1,53 @@
+name: Production Journey E2E Rerun
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-journey-e2e-rerun.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: https://www.verotask.online
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: chrome
+        uses: browser-actions/setup-chrome@v1
+      - name: Install browser harness
+        run: npm install --no-save --package-lock=false playwright-core@1.55.0
+      - name: Extract and patch journey test
+        shell: bash
+        run: |
+          awk '
+            /cat > \.production-journey-e2e\.mjs <<.NODE./ {capture=1; next}
+            capture && /^          NODE$/ {capture=0; exit}
+            capture {sub(/^          /, ""); print}
+          ' .github/workflows/production-journey-e2e-once.yml > .production-journey-e2e.mjs
+          node <<'NODE'
+          const fs = require("fs");
+          const path = ".production-journey-e2e.mjs";
+          let source = fs.readFileSync(path, "utf8");
+          const needle = 'pass("Customer passwordless production login");';
+          const replacement = `pass("Customer passwordless production login");
+            const privacyButton = customer.getByRole("button", { name: "Essential only", exact: true });
+            if (await privacyButton.count()) {
+              await privacyButton.click();
+              pass("Customer privacy choice saved");
+            }`;
+          if (!source.includes(needle)) throw new Error("privacy_patch_anchor_missing");
+          source = source.replace(needle, replacement);
+          fs.writeFileSync(path, source);
+          NODE
+      - name: Run production journey without payment
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: node .production-journey-e2e.mjs
