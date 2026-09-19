@@ -14,8 +14,8 @@ const copy = {
     steps: [
       ["Describe the job", "Tell VeroTask what you need, where the work happens and when you need it. The guided flow turns that into a clearer brief."],
       ["Choose a professional", "Compare relevant local providers, ratings, service history and verification status."],
-      ["Provider reviews first", "The professional sees the request and your VeroTask rating before deciding whether to accept. You are not charged just for sending the request."],
-      ["Pay the VeroTask booking fee", "Once the professional accepts, Stripe securely charges only the VeroTask booking fee. VeroTask does not charge the service price."],
+      ["Professional reviews and quotes", "The professional sees the structured request, service area and your VeroTask rating, then decides whether to decline or send a price. Your exact address and contact details remain private."],
+      ["Accept the quote and pay the VeroTask fee", "If you accept the professional's price, Stripe securely charges only the VeroTask booking fee. After payment, the exact service address is released to the professional."],
       ["Verify the work", "Depending on the service, VeroTask can record check-in, service PIN, photos, checklist, timestamps and check-out."],
       ["Confirm or report a problem", "After the professional marks the job complete, the customer has the protection window to confirm or dispute it."],
       ["Pay the professional directly and rate", "The service price is paid directly to the professional under the booking arrangement. After a real completed booking, both sides can rate each other."],
@@ -33,8 +33,8 @@ const copy = {
     steps: [
       ["Descreva o serviço", "Informe o que precisa, onde será feito e para quando. O fluxo guiado transforma isso em um briefing mais claro."],
       ["Escolha um profissional", "Compare profissionais locais relevantes, avaliações, histórico e status de verificação."],
-      ["O profissional analisa primeiro", "Ele vê o pedido e sua nota VeroTask antes de aceitar. Você não é cobrado apenas por enviar a solicitação."],
-      ["Pague a taxa de reserva da VeroTask", "Depois que o profissional aceita, o Stripe cobra com segurança somente a taxa de reserva da VeroTask. O valor do serviço não é cobrado pela plataforma."],
+      ["O profissional analisa e envia o orçamento", "Ele vê o briefing estruturado, a área do serviço e sua nota VeroTask, então decide se recusa ou envia um preço. Endereço exato e contatos permanecem privados."],
+      ["Aceite o orçamento e pague a taxa da VeroTask", "Se aceitar o preço informado, o Stripe cobra com segurança somente a taxa de reserva da VeroTask. Depois do pagamento, o endereço exato é liberado ao profissional."],
       ["Comprove a execução", "Dependendo do serviço, a VeroTask pode registrar check-in, PIN, fotos, checklist, horários e check-out."],
       ["Confirme ou informe um problema", "Após a conclusão marcada pelo profissional, o cliente tem a janela de proteção para confirmar ou abrir disputa."],
       ["Pague o profissional diretamente e avalie", "O valor do serviço é pago diretamente ao profissional conforme a contratação. Depois de uma reserva concluída, os dois lados podem se avaliar."],
@@ -52,8 +52,8 @@ const copy = {
     steps: [
       ["Describe el trabajo", "Indica qué necesitas, dónde y para cuándo. El flujo guiado lo convierte en un brief más claro."],
       ["Elige un profesional", "Compara proveedores locales relevantes, calificaciones, historial y verificación."],
-      ["El profesional revisa primero", "Ve la solicitud y tu calificación VeroTask antes de aceptar. No se te cobra por enviar la solicitud."],
-      ["Paga la tarifa de reserva de VeroTask", "Cuando el profesional acepta, Stripe cobra de forma segura únicamente la tarifa de reserva de VeroTask. El precio del servicio no lo cobra la plataforma."],
+      ["El profesional revisa y cotiza", "Ve la solicitud estructurada, el área del servicio y tu calificación VeroTask, y decide si rechaza o envía un precio. La dirección exacta y los contactos permanecen privados."],
+      ["Acepta la cotización y paga la tarifa de VeroTask", "Si aceptas el precio, Stripe cobra únicamente la tarifa de reserva de VeroTask. Después del pago, la dirección exacta se libera al profesional."],
       ["Verifica el trabajo", "Según el servicio, VeroTask puede registrar check-in, PIN, fotos, checklist, horarios y check-out."],
       ["Confirma o reporta un problema", "Tras la finalización marcada por el profesional, el cliente dispone de la ventana de protección."],
       ["Paga directamente al profesional y califica", "El precio del servicio se paga directamente al profesional según la reserva. Después de un servicio completado, ambas partes pueden calificarse."],
