@@ -40,6 +40,42 @@ export async function verifyEvidenceStorageAccess(): Promise<{ ok: boolean; erro
   }
 }
 
+export async function diagnoseEvidenceStorageEndpoints() {
+  const config = storageConfig();
+  if (!config) return [] as Array<{ kind: string; ok: boolean; errorCode: string | null; httpStatusCode: number | null }>;
+
+  let accountId = "";
+  try {
+    accountId = new URL(config.endpoint).hostname.split(".")[0] ?? "";
+  } catch {}
+
+  const candidates = [
+    { kind: "configured", endpoint: config.endpoint },
+    ...(accountId ? [
+      { kind: "default", endpoint: `https://${accountId}.r2.cloudflarestorage.com` },
+      { kind: "us", endpoint: `https://${accountId}.us.r2.cloudflarestorage.com` },
+      { kind: "eu", endpoint: `https://${accountId}.eu.r2.cloudflarestorage.com` }
+    ] : [])
+  ].filter((item, index, all) => all.findIndex(other => other.endpoint === item.endpoint) === index);
+
+  const results: Array<{ kind: string; ok: boolean; errorCode: string | null; httpStatusCode: number | null }> = [];
+  for (const candidate of candidates) {
+    try {
+      await clientFor({ ...config, endpoint: candidate.endpoint }).send(new ListObjectsV2Command({ Bucket: config.bucket, MaxKeys: 1 }));
+      results.push({ kind: candidate.kind, ok: true, errorCode: null, httpStatusCode: 200 });
+    } catch (error) {
+      const value = error && typeof error === "object" ? error as { name?: unknown; $metadata?: { httpStatusCode?: unknown } } : null;
+      results.push({
+        kind: candidate.kind,
+        ok: false,
+        errorCode: typeof value?.name === "string" ? value.name.slice(0, 80) : "storage_access_failed",
+        httpStatusCode: typeof value?.$metadata?.httpStatusCode === "number" ? value.$metadata.httpStatusCode : null
+      });
+    }
+  }
+  return results;
+}
+
 export function isEvidenceObjectRef(value: string) {
   return /^r2:\/\/booking-evidence\/[0-9a-f-]+\/(before|after)\/[0-9a-f-]+\.(jpg|png|webp)$/i.test(value);
 }
