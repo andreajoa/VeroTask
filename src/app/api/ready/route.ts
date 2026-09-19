@@ -86,6 +86,15 @@ export async function GET() {
     storageEndpointAccountIdLength = parsedStorageEndpoint.hostname.split(".")[0]?.length ?? 0;
   } catch {}
   const storageBucketNameValid = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/.test(process.env.STORAGE_BUCKET?.trim() ?? "");
+  const rawStorageAccessKeyId = process.env.STORAGE_ACCESS_KEY_ID ?? "";
+  const rawStorageSecretAccessKey = process.env.STORAGE_SECRET_ACCESS_KEY ?? "";
+  const storageAccessKeyIdLength = rawStorageAccessKeyId.length;
+  const storageSecretAccessKeyLength = rawStorageSecretAccessKey.length;
+  const storageAccessKeyIdLooksLikeR2 = /^[a-f0-9]{32}$/i.test(rawStorageAccessKeyId);
+  const storageSecretAccessKeyLooksLikeR2 = /^[a-f0-9]{64}$/i.test(rawStorageSecretAccessKey);
+  const storageCredentialsHaveOuterWhitespace =
+    rawStorageAccessKeyId !== rawStorageAccessKeyId.trim() ||
+    rawStorageSecretAccessKey !== rawStorageSecretAccessKey.trim();
   const ready = missing.length === 0
     && database
     && storage
@@ -112,6 +121,11 @@ export async function GET() {
       storageEndpointHasPath,
       storageEndpointAccountIdLength,
       storageBucketNameValid,
+      storageAccessKeyIdLength,
+      storageSecretAccessKeyLength,
+      storageAccessKeyIdLooksLikeR2,
+      storageSecretAccessKeyLooksLikeR2,
+      storageCredentialsHaveOuterWhitespace,
       productionUrlValid,
       configuredAppUrlValid,
       canonicalUrlResolved: Boolean(appUrl),
