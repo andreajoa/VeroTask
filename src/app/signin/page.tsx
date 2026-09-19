@@ -1,9 +1,15 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BadgeCheck, Mail, ShieldCheck } from "lucide-react";
+import { getCurrentUser, safeRedirectPath } from "@/lib/auth";
 import { requestMagicLink } from "./actions";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string; next?: string }> }) {
   const params = await searchParams;
+  const nextPath = safeRedirectPath(params.next);
+  const currentUser = await getCurrentUser();
+  if (currentUser) redirect(nextPath);
+
   const errorMessage = params.error === "rate-limited"
     ? "Too many sign-in links were requested for this email. Please wait a few minutes and try again."
     : params.error === "email-unavailable"
@@ -30,7 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
           {errorMessage && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">{errorMessage}</div>}
 
           <form action={requestMagicLink} className="mt-6 space-y-4">
-            <input type="hidden" name="next" value={params.next ?? "/dashboard"} />
+            <input type="hidden" name="next" value={nextPath} />
             <label className="block">
               <span className="mb-2 block text-sm font-bold">Email address</span>
               <input name="email" type="email" required autoComplete="email" className="min-h-12 w-full rounded-xl border border-[var(--line)] bg-white px-4 outline-none focus:border-[var(--brand)]" placeholder="you@example.com" />

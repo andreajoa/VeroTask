@@ -6,13 +6,12 @@ import { authTokens, sessions } from "@/db/auth-schema";
 import { users } from "@/db/schema";
 import { analyticsEvents, crmContacts, visitorSessions } from "@/db/analytics-schema";
 import { requestAppUrl } from "@/lib/app-url";
+import { clearSessionCookieOptions, SESSION_COOKIE, SESSION_DAYS, sessionCookieOptions } from "@/lib/auth-session-cookie";
 import { sessionKeyHash } from "@/lib/visitor-privacy";
 import { ensureCrmContactForUser } from "@/lib/crm-automation";
 import { sendCrmEmail } from "@/lib/crm-email";
 import { claimAnonymousPersonalizationForUser } from "@/lib/personalization";
 
-const SESSION_COOKIE = "verotask_session";
-const SESSION_DAYS = 30;
 const MAGIC_LINK_WINDOW_MS = 15 * 60 * 1000;
 const MAGIC_LINK_MAX_PER_WINDOW = 5;
 
@@ -20,7 +19,7 @@ function hashToken(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function safeRedirectPath(value?: string | null) {
+export function safeRedirectPath(value?: string | null) {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return "/dashboard";
   return value.slice(0, 500);
 }
@@ -67,13 +66,7 @@ export async function consumeMagicLink(rawToken: string) {
   await db.insert(sessions).values({ userId: user.id, tokenHash: sessionHash, expiresAt });
 
   const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, rawSession, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    expires: expiresAt
-  });
+  cookieStore.set(SESSION_COOKIE, rawSession, sessionCookieOptions(expiresAt, process.env.NODE_ENV === "production"));
 
   await claimAnonymousPersonalizationForUser(user.id);
   try {
@@ -121,5 +114,5 @@ export async function signOut() {
     const db = getDb();
     await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(rawSession)));
   }
-  cookieStore.delete(SESSION_COOKIE);
+  cookieStore.set(SESSION_COOKIE, "", clearSessionCookieOptions(process.env.NODE_ENV === "production"));
 }
