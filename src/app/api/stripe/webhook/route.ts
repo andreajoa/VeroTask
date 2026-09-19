@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, disputes, providerSubscriptions, refunds } from "@/db/schema";
 import { sendBookingThankYou, sendProviderPlanThankYou } from "@/lib/crm-automation";
+import { refundBookingPayment } from "@/lib/booking-workflow";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
 import { validateBookingPayment, canSchedulePaidBooking } from "@/lib/payment-policy";
@@ -54,10 +55,48 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
   const invalid = validateBookingPayment(booking, paymentIntent);
   if (invalid) throw new Error(invalid);
   const shouldSchedule = canSchedulePaidBooking(booking.status);
-  if (booking.stripePaymentIntentId === paymentIntent.id && !shouldSchedule) {
-    await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
+
+  if (booking.stripePaymentIntentId === paymentIntent.id) {
+    if (shouldSchedule) {
+      const [scheduled] = await db.update(bookings).set({
+        status: "scheduled",
+        stripeChargeId: chargeId ?? booking.stripeChargeId,
+        updatedAt: new Date()
+      }).where(and(eq(bookings.id, bookingId), eq(bookings.status, booking.status), eq(bookings.stripePaymentIntentId, paymentIntent.id))).returning();
+      if (scheduled) {
+        await db.insert(bookingEvents).values({
+          bookingId,
+          eventType: "payment_succeeded_recovered",
+          previousStatus: booking.status,
+          nextStatus: "scheduled",
+          metadata: { paymentIntentId: paymentIntent.id, chargeId: chargeId ?? null }
+        });
+        await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
+      }
+      return;
+    }
+
+    if (booking.status !== "refunded") {
+      await refundBookingPayment({
+        bookingId,
+        amountCents: booking.marketplaceFeeCents,
+        reason: "booking_fee_paid_after_booking_became_ineligible"
+      });
+      await db.update(bookings).set({ status: "refunded", updatedAt: new Date() }).where(and(
+        eq(bookings.id, bookingId),
+        eq(bookings.stripePaymentIntentId, paymentIntent.id)
+      ));
+      await db.insert(bookingEvents).values({
+        bookingId,
+        eventType: "unexpected_booking_fee_refunded",
+        previousStatus: booking.status,
+        nextStatus: "refunded",
+        metadata: { paymentIntentId: paymentIntent.id, amountCents: booking.marketplaceFeeCents }
+      });
+    }
     return;
   }
+
   const [claimed] = await db.update(bookings).set({
     status: shouldSchedule ? "scheduled" : booking.status,
     stripePaymentIntentId: paymentIntent.id,
@@ -65,17 +104,39 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
     updatedAt: new Date()
   }).where(and(eq(bookings.id, bookingId), eq(bookings.status, booking.status), isNull(bookings.stripePaymentIntentId))).returning();
   if (!claimed) return;
+
   await db.update(bookingCheckoutSessions).set({ status: "complete", updatedAt: new Date() })
     .where(eq(bookingCheckoutSessions.bookingId, bookingId));
 
-    await db.insert(bookingEvents).values({
-      bookingId,
-      eventType: shouldSchedule ? "payment_succeeded" : "payment_requires_review",
-      previousStatus: booking.status,
-      nextStatus: claimed.status,
-      metadata: { paymentIntentId: paymentIntent.id, chargeId: chargeId ?? null }
-    });
-  if (shouldSchedule) await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
+  await db.insert(bookingEvents).values({
+    bookingId,
+    eventType: shouldSchedule ? "payment_succeeded" : "payment_requires_refund",
+    previousStatus: booking.status,
+    nextStatus: claimed.status,
+    metadata: { paymentIntentId: paymentIntent.id, chargeId: chargeId ?? null }
+  });
+
+  if (shouldSchedule) {
+    await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
+    return;
+  }
+
+  await refundBookingPayment({
+    bookingId,
+    amountCents: booking.marketplaceFeeCents,
+    reason: "booking_fee_paid_after_booking_became_ineligible"
+  });
+  await db.update(bookings).set({ status: "refunded", updatedAt: new Date() }).where(and(
+    eq(bookings.id, bookingId),
+    eq(bookings.stripePaymentIntentId, paymentIntent.id)
+  ));
+  await db.insert(bookingEvents).values({
+    bookingId,
+    eventType: "unexpected_booking_fee_refunded",
+    previousStatus: claimed.status,
+    nextStatus: "refunded",
+    metadata: { paymentIntentId: paymentIntent.id, amountCents: booking.marketplaceFeeCents }
+  });
 }
 
 async function markCheckoutExpired(session: Stripe.Checkout.Session) {
