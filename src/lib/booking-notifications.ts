@@ -104,10 +104,10 @@ export async function sendCustomerDeclinedNotification(bookingId: string) {
   if (!ctx?.customer || !ctx.business) return false;
   return sendTransactionalEmail({
     to: ctx.customer.email,
-    subject: `VeroTask request update · ${ctx.business.name}`,
+    subject: `VeroTask request update · ${publicProviderName(ctx.business.id, "en")}`,
     html: emailShell(
       "The provider declined this request",
-      `<p><strong>${esc(ctx.business.name)}</strong> is not taking this booking. You were not charged a VeroTask booking fee.</p><p>You can return to VeroTask and choose another provider.</p>`,
+      `<p><strong>${esc(publicProviderName(ctx.business.id, "en"))}</strong> is not taking this booking. You were not charged a VeroTask booking fee.</p><p>You can return to VeroTask and choose another provider.</p>`,
       `${appUrl()}/services`,
       "Find another provider"
     )
