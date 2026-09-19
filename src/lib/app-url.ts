@@ -1,6 +1,7 @@
-const VERIFIED_VERCEL_FALLBACK = "https://www.verotask.online";
+const VERIFIED_PRODUCTION_ORIGIN = "https://www.verotask.online";
 const KNOWN_INVALID_ORIGINS = new Set([
-  "https://vero-task.vercel.app"
+  "https://vero-task.vercel.app",
+  "https://vero-task-andres-projects-bbfd1881.vercel.app"
 ]);
 
 type HeaderReader = { get(name: string): string | null };
@@ -23,10 +24,15 @@ function normalizeOrigin(value?: string | null) {
 function usableOrigin(value?: string | null) {
   const origin = normalizeOrigin(value);
   if (!origin || KNOWN_INVALID_ORIGINS.has(origin)) return null;
+  if (process.env.NODE_ENV === "production" && origin.endsWith(".vercel.app")) return null;
   return origin;
 }
 
 export function canonicalAppUrl() {
+  // Production auth, email and payment callbacks are deliberately pinned to the
+  // public custom domain. Preview/deployment aliases must never escape to users.
+  if (process.env.NODE_ENV === "production") return VERIFIED_PRODUCTION_ORIGIN;
+
   const candidates = [
     process.env.NEXT_PUBLIC_APP_URL,
     process.env.VERCEL_PROJECT_PRODUCTION_URL,
@@ -36,7 +42,7 @@ export function canonicalAppUrl() {
     const origin = usableOrigin(candidate);
     if (origin) return origin;
   }
-  return process.env.NODE_ENV === "production" ? VERIFIED_VERCEL_FALLBACK : "http://localhost:3000";
+  return "http://localhost:3000";
 }
 
 export function requestAppUrl(requestOrigin?: string | null) {
@@ -47,10 +53,12 @@ export function requestAppUrl(requestOrigin?: string | null) {
 }
 
 export function appUrlFromHeaders(headers: HeaderReader) {
+  if (process.env.NODE_ENV === "production") return canonicalAppUrl();
+
   const forwardedHost = headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   const host = forwardedHost || headers.get("host")?.split(",")[0]?.trim();
   if (!host) return canonicalAppUrl();
   const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const protocol = forwardedProto || (process.env.NODE_ENV === "production" ? "https" : "http");
+  const protocol = forwardedProto || "http";
   return requestAppUrl(`${protocol}://${host}`);
 }
