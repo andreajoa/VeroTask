@@ -2,11 +2,11 @@ import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
+import { verifyEvidenceStorageAccess } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Diagnostic redeploy marker: refresh production environment bindings.
 const REQUIRED_ENV = [
   "NEXT_PUBLIC_APP_URL",
   "NEXT_PUBLIC_SUPPORT_EMAIL",
@@ -33,6 +33,8 @@ export async function GET() {
   const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
   let database = false;
   let databaseError = false;
+  let storage = false;
+  let storageError = false;
 
   if (process.env.DATABASE_URL) {
     try {
@@ -40,6 +42,20 @@ export async function GET() {
       database = true;
     } catch {
       databaseError = true;
+    }
+  }
+
+  if (
+    process.env.STORAGE_ENDPOINT &&
+    process.env.STORAGE_BUCKET &&
+    process.env.STORAGE_ACCESS_KEY_ID &&
+    process.env.STORAGE_SECRET_ACCESS_KEY
+  ) {
+    try {
+      storage = await verifyEvidenceStorageAccess();
+      storageError = !storage;
+    } catch {
+      storageError = true;
     }
   }
 
@@ -53,6 +69,7 @@ export async function GET() {
   const supportEmailConfigured = Boolean(process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim());
   const ready = missing.length === 0
     && database
+    && storage
     && productionUrlValid
     && configuredAppUrlValid
     && !staleConfiguredAppUrl
@@ -67,6 +84,8 @@ export async function GET() {
     checks: {
       database,
       databaseError,
+      storage,
+      storageError,
       productionUrlValid,
       configuredAppUrlValid,
       canonicalUrlResolved: Boolean(appUrl),
