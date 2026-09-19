@@ -8,6 +8,7 @@ import { canonicalAppUrl } from "@/lib/app-url";
 import { businessClaims, businesses, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { sendBusinessClaimVerificationEmail } from "@/lib/claim-email";
+import { publicProviderId } from "@/lib/public-provider";
 
 function hash(value: string) {
   return createHash("sha256").update(value).digest("hex");
@@ -26,7 +27,8 @@ export async function startBusinessClaim(slug: string) {
   if (!user) redirect(`/signin?next=${encodeURIComponent(`/providers/${slug}/claim`)}`);
 
   const db = getDb();
-  const [business] = await db.select().from(businesses).where(eq(businesses.slug, slug)).limit(1);
+  const publicId = publicProviderId(slug);
+  const [business] = await db.select().from(businesses).where(publicId ? eq(businesses.id, publicId) : eq(businesses.slug, slug)).limit(1);
   if (!business) redirect("/services");
   if (business.ownerUserId) redirect(`/providers/${slug}?claim=already-owned`);
 
