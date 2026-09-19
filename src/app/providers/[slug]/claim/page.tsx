@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { getDb } from "@/db";
 import { businessClaims, businesses } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { publicProviderId, publicProviderName } from "@/lib/public-provider";
 import { startBusinessClaim, verifyWebsiteClaim } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +14,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const { slug } = await params;
   const query = await searchParams;
   const db = getDb();
-  const [business] = await db.select().from(businesses).where(eq(businesses.slug, slug)).limit(1);
+  const publicId = publicProviderId(slug);
+  const [business] = await db.select().from(businesses).where(publicId ? eq(businesses.id, publicId) : eq(businesses.slug, slug)).limit(1);
   if (!business) notFound();
 
   const user = await getCurrentUser();
@@ -31,7 +33,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       <section className="container-shell max-w-3xl py-12">
         <div className="card p-7 sm:p-9">
           <div className="badge bg-[var(--brand-soft)] text-[var(--brand)]">BUSINESS OWNERSHIP</div>
-          <h1 className="mt-5 text-3xl font-black tracking-tight">Claim {business.name}</h1>
+          <h1 className="mt-5 text-3xl font-black tracking-tight">Claim {publicProviderName(business.id, "en")}</h1>
           <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Claiming a public listing gives you control of the profile. VeroTask bookings remain disabled until business ownership is verified and your provider profile, services and availability are ready.</p>
 
           {!user ? (
