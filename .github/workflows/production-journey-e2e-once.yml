@@ -142,6 +142,31 @@ jobs:
             report.businessId = businessId;
             pass("Provider profile created", { businessId });
 
+            const photoUpload = await provider.evaluate(async (id) => {
+              const canvas = document.createElement("canvas");
+              canvas.width = 900;
+              canvas.height = 900;
+              const ctx = canvas.getContext("2d");
+              if (!ctx) throw new Error("qa_canvas_unavailable");
+              const image = ctx.createImageData(900, 900);
+              for (let i = 0; i < image.data.length; i += 4) {
+                const n = (i / 4) % 251;
+                image.data[i] = n;
+                image.data[i + 1] = (n * 7) % 255;
+                image.data[i + 2] = (n * 13) % 255;
+                image.data[i + 3] = 255;
+              }
+              ctx.putImageData(image, 0, 0);
+              const blob = await new Promise((resolve, reject) => canvas.toBlob(value => value ? resolve(value) : reject(new Error("qa_photo_encode_failed")), "image/jpeg", 0.82));
+              const form = new FormData();
+              form.set("photo", new File([blob], "qa-profile.jpg", { type: "image/jpeg" }));
+              form.set("attestedRecent", "true");
+              const response = await fetch(`/api/providers/${id}/photo`, { method: "POST", body: form });
+              return { status: response.status, body: await response.json().catch(() => ({})) };
+            }, businessId);
+            assert.equal(photoUpload.status, 200, "provider profile photo upload failed: " + JSON.stringify(photoUpload.body));
+            pass("Provider recent profile photo uploaded");
+
             const servicesResponse = await provider.goto(`${BASE}/dashboard/providers/${businessId}/services`, { waitUntil: "domcontentloaded" });
             console.log("SERVICES_ROUTE", servicesResponse?.status(), provider.url());
             await provider.locator('select[name="categoryId"]').waitFor({ state: "visible", timeout: 60000 });
