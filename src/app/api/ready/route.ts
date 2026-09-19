@@ -73,6 +73,19 @@ export async function GET() {
   );
   const staleConfiguredAppUrl = configuredAppUrl === "https://vero-task.vercel.app";
   const supportEmailConfigured = Boolean(process.env.NEXT_PUBLIC_SUPPORT_EMAIL?.trim());
+  const rawStorageEndpoint = process.env.STORAGE_ENDPOINT?.trim() ?? "";
+  let storageEndpointHttps = false;
+  let storageEndpointR2Host = false;
+  let storageEndpointHasPath = false;
+  let storageEndpointAccountIdLength = 0;
+  try {
+    const parsedStorageEndpoint = new URL(rawStorageEndpoint);
+    storageEndpointHttps = parsedStorageEndpoint.protocol === "https:";
+    storageEndpointR2Host = parsedStorageEndpoint.hostname.endsWith(".r2.cloudflarestorage.com");
+    storageEndpointHasPath = parsedStorageEndpoint.pathname !== "/" && parsedStorageEndpoint.pathname !== "";
+    storageEndpointAccountIdLength = parsedStorageEndpoint.hostname.split(".")[0]?.length ?? 0;
+  } catch {}
+  const storageBucketNameValid = /^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$/.test(process.env.STORAGE_BUCKET?.trim() ?? "");
   const ready = missing.length === 0
     && database
     && storage
@@ -94,6 +107,11 @@ export async function GET() {
       storageError,
       storageErrorCode,
       storageHttpStatusCode,
+      storageEndpointHttps,
+      storageEndpointR2Host,
+      storageEndpointHasPath,
+      storageEndpointAccountIdLength,
+      storageBucketNameValid,
       productionUrlValid,
       configuredAppUrlValid,
       canonicalUrlResolved: Boolean(appUrl),
