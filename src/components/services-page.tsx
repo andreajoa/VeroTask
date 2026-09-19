@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { and, eq, ilike, inArray, or, notInArray } from "drizzle-orm";
-import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Phone, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Search, ShieldCheck } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
+import { publicProviderName, publicProviderSlug } from "@/lib/public-provider";
 
 export type ServiceSearchParams = {
   q?: string;
@@ -53,7 +54,6 @@ async function findBusinesses(q: string, location: string) {
     city: businesses.city,
     state: businesses.state,
     postalCode: businesses.postalCode,
-    publicPhone: businesses.publicPhone,
     averageRating: businesses.averageRating,
     reviewCount: businesses.reviewCount,
     completedJobs: businesses.completedJobs,
@@ -130,14 +130,20 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                 {rows.map((business) => (
                   <article key={business.id} className="rounded-[18px] border border-slate-200 bg-white p-5 shadow-[0_8px_25px_rgba(15,23,42,.04)] transition hover:border-slate-300 hover:shadow-[0_14px_36px_rgba(15,23,42,.07)] sm:p-6">
                     <div className="grid gap-5 sm:grid-cols-[72px_1fr_auto] sm:items-start">
-                      <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]">{business.name.slice(0, 1)}</div>
+                      <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]">{publicProviderName(business.id, locale).replace(/^.*VT-/, "V").slice(0, 1)}</div>
                       <div>
-                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{business.name}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
+                        <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{publicProviderName(business.id, locale)}</h2>{business.status === "unclaimed" ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
                         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500"><span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state} {business.postalCode ?? ""}</span>{Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}{business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}</div>
                         <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{business.description ?? "Local service provider."}</p>
-                        {business.publicPhone && <a className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[var(--brand)]" href={`tel:${business.publicPhone}`}><Phone size={15} /> {business.publicPhone}</a>}
+                        
                       </div>
-                      <Link href={localePath(locale, `/providers/${business.slug}`)} className="btn-secondary whitespace-nowrap sm:self-center">View profile <ArrowRight size={16} className="ml-2" /></Link>
+                      <div className="flex flex-col gap-2 sm:self-center">
+                        <Link
+                          href={`${localePath(locale, `/book/${publicProviderSlug(business.id)}`)}?${new URLSearchParams(Object.entries(searchParams).filter(([, value]) => Boolean(value)) as Array<[string, string]>).toString()}`}
+                          className="btn-primary whitespace-nowrap"
+                        >Request quote <ArrowRight size={16} className="ml-2" /></Link>
+                        <Link href={localePath(locale, `/providers/${publicProviderSlug(business.id)}`)} className="text-center text-xs font-black text-[var(--brand)]">View profile</Link>
+                      </div>
                     </div>
                   </article>
                 ))}
