@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { GetObjectCommand, HeadBucketCommand, HeadObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { stat } from "node:fs/promises";
 import { localStorageEnabled, localObjectPath, signedLocalStorageUrl } from "@/lib/local-storage";
@@ -30,7 +30,7 @@ export async function verifyEvidenceStorageAccess(): Promise<{ ok: boolean; erro
   const config = storageConfig();
   if (!config) return { ok: false, errorCode: "storage_not_configured", httpStatusCode: null };
   try {
-    await clientFor(config).send(new HeadBucketCommand({ Bucket: config.bucket }));
+    await clientFor(config).send(new ListObjectsV2Command({ Bucket: config.bucket, MaxKeys: 1 }));
     return { ok: true, errorCode: null, httpStatusCode: 200 };
   } catch (error) {
     const candidate = error && typeof error === "object" ? error as { name?: unknown; $metadata?: { httpStatusCode?: unknown } } : null;
