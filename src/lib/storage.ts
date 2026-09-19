@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { stat } from "node:fs/promises";
 import { localStorageEnabled, localObjectPath, signedLocalStorageUrl } from "@/lib/local-storage";
@@ -29,10 +29,22 @@ export async function verifyEvidenceStorageAccess(): Promise<{ ok: boolean; erro
   if (localStorageEnabled()) return { ok: true, errorCode: null, httpStatusCode: 200 };
   const config = storageConfig();
   if (!config) return { ok: false, errorCode: "storage_not_configured", httpStatusCode: null };
+  const client = clientFor(config);
+  const probeKey = `.verotask-readiness/${randomUUID()}.txt`;
   try {
-    await clientFor(config).send(new ListObjectsV2Command({ Bucket: config.bucket, MaxKeys: 1 }));
+    await client.send(new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: probeKey,
+      Body: "verotask-ready",
+      ContentType: "text/plain",
+      CacheControl: "private, max-age=0, no-store"
+    }));
+    const head = await client.send(new HeadObjectCommand({ Bucket: config.bucket, Key: probeKey }));
+    if (!head.ContentLength) return { ok: false, errorCode: "storage_probe_empty", httpStatusCode: 502 };
+    await client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: probeKey }));
     return { ok: true, errorCode: null, httpStatusCode: 200 };
   } catch (error) {
+    try { await client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: probeKey })); } catch {}
     const candidate = error && typeof error === "object" ? error as { name?: unknown; $metadata?: { httpStatusCode?: unknown } } : null;
     const errorCode = typeof candidate?.name === "string" ? candidate.name.slice(0, 80) : "storage_access_failed";
     const status = candidate?.$metadata?.httpStatusCode;
