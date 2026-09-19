@@ -57,8 +57,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
 
   const businessLabel = publicProviderName(business.id, "en");
   const serviceName = service ? publicServiceText(service.name, business.name) : null;
-  const postalCode = /^\d{5}(?:-\d{4})?$/.test(query.location ?? "") ? query.location : business.postalCode ?? "";
+  const postalCode = /^\d{5}(?:-\d{4})?$/.test(query.location ?? "") ? query.location : "";
   const preferredDate = query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? `${query.date}T09:00` : "";
+  const normalizedScope = query.size === "not-sure" ? "unsure" : query.size;
+  const normalizedTimeline = query.timeline === "specific" ? "specific-date" : query.timeline;
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -75,8 +77,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
           serviceId={service?.id}
           initial={{
             task: serviceName ?? query.q ?? "",
-            scope: query.size,
-            timeline: query.timeline,
+            scope: normalizedScope,
+            timeline: normalizedTimeline,
             date: preferredDate,
             details: query.details,
             postalCode
