@@ -160,12 +160,14 @@ jobs:
             report.businessId = businessId;
             pass("Provider profile created", { businessId });
 
-            await provider.goto(`${BASE}/dashboard/providers/${businessId}/services`, { waitUntil: "domcontentloaded" });
-            await provider.getByLabel("Category", { exact: true }).selectOption({ label: "Furniture Assembly" });
-            await provider.getByLabel("Service name", { exact: true }).fill("QA Furniture Assembly");
-            await provider.getByLabel("Description", { exact: true }).fill("Automated QA fixed-price service. No real appointment will occur.");
+            const servicesResponse = await provider.goto(`${BASE}/dashboard/providers/${businessId}/services`, { waitUntil: "domcontentloaded" });
+            console.log("SERVICES_ROUTE", servicesResponse?.status(), provider.url());
+            await provider.locator('select[name="categoryId"]').waitFor({ state: "visible", timeout: 60000 });
+            await provider.locator('select[name="categoryId"]').selectOption({ label: "Furniture Assembly" });
+            await provider.locator('input[name="name"]').fill("QA Furniture Assembly");
+            await provider.locator('textarea[name="description"]').fill("Automated QA fixed-price service. No real appointment will occur.");
             await provider.locator('input[name="price"]').fill("85.00");
-            await provider.getByLabel("Minutes", { exact: true }).fill("60");
+            await provider.locator('input[name="durationMinutes"]').fill("60");
             await provider.getByRole("button", { name: "Add service", exact: true }).click();
             await provider.waitForURL(/\/services\?notice=created/, { timeout: 60000 });
             pass("Fixed-price service created");
