@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { businessClaims, businesses, users } from "@/db/schema";
 
 function hash(value: string) {
@@ -17,7 +18,7 @@ function equalHash(a: string, b: string) {
 export async function GET(request: NextRequest) {
   const claimId = request.nextUrl.searchParams.get("claim");
   const rawToken = request.nextUrl.searchParams.get("token");
-  if (!claimId || !rawToken) return NextResponse.redirect(new URL("/signin?error=invalid-claim-link", request.url));
+  if (!claimId || !rawToken) return NextResponse.redirect(new URL("/signin?error=invalid-claim-link", canonicalAppUrl()));
 
   const db = getDb();
   const [row] = await db.select({ claim: businessClaims, business: businesses })
@@ -27,20 +28,20 @@ export async function GET(request: NextRequest) {
     .limit(1);
 
   if (!row || row.claim.status !== "pending" || row.claim.verificationMethod !== "public_email") {
-    return NextResponse.redirect(new URL("/signin?error=invalid-claim-link", request.url));
+    return NextResponse.redirect(new URL("/signin?error=invalid-claim-link", canonicalAppUrl()));
   }
 
   const ageMs = Date.now() - row.claim.createdAt.getTime();
   if (ageMs > 24 * 60 * 60 * 1000) {
     await db.update(businessClaims).set({ status: "rejected", resolvedAt: new Date() }).where(eq(businessClaims.id, row.claim.id));
-    return NextResponse.redirect(new URL(`/providers/${row.business.slug}/claim?error=expired-claim`, request.url));
+    return NextResponse.redirect(new URL(`/providers/${row.business.slug}/claim?error=expired-claim`, canonicalAppUrl()));
   }
 
   const metadata = row.claim.verificationMetadata as { tokenHash?: string };
   const expected = metadata.tokenHash;
   const supplied = hash(rawToken);
   if (!expected || !equalHash(expected, supplied)) {
-    return NextResponse.redirect(new URL(`/providers/${row.business.slug}/claim?claim=${claimId}&error=invalid-token`, request.url));
+    return NextResponse.redirect(new URL(`/providers/${row.business.slug}/claim?claim=${claimId}&error=invalid-token`, canonicalAppUrl()));
   }
 
   const now = new Date();
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
   if (claimed.length === 0) {
     await db.update(businessClaims).set({ status: "rejected", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));
-    return NextResponse.redirect(new URL(`/providers/${row.business.slug}?claim=already-owned`, request.url));
+    return NextResponse.redirect(new URL(`/providers/${row.business.slug}?claim=already-owned`, canonicalAppUrl()));
   }
 
   await db.update(businessClaims).set({ status: "verified", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));
@@ -63,5 +64,5 @@ export async function GET(request: NextRequest) {
   ));
   await db.update(users).set({ role: "provider", updatedAt: now }).where(eq(users.id, row.claim.claimantUserId));
 
-  return NextResponse.redirect(new URL("/dashboard?claimed=1", request.url));
+  return NextResponse.redirect(new URL("/dashboard?claimed=1", canonicalAppUrl()));
 }
