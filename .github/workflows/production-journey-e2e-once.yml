@@ -152,6 +152,8 @@ jobs:
             await provider.getByLabel("ZIP code", { exact: true }).fill("32801");
             await provider.getByLabel("Primary city").fill("Orlando");
             await provider.getByLabel("Primary service").selectOption("furniture-assembly");
+            await provider.getByLabel("Private service base address").fill("400 South Orange Avenue");
+            await provider.getByLabel("How far are you willing to travel?").selectOption("15");
             await provider.getByLabel("What kind of work do you do?").fill("Automated VeroTask production QA profile used only to validate the request, acceptance and booking-fee checkout flow.");
             await provider.getByRole("button", { name: "Create provider profile" }).click();
             await provider.waitForURL(/\/dashboard\/providers\/[0-9a-f-]+\/onboarding/, { timeout: 60000 });

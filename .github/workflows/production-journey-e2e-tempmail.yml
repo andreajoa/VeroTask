@@ -5,12 +5,18 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/production-journey-e2e-tempmail.yml'
+      - '.github/workflows/production-journey-e2e-once.yml'
       - 'src/lib/auth.ts'
       - 'src/lib/auth-session-cookie.ts'
       - 'src/app/signin/**'
       - 'src/app/api/auth/**'
       - 'src/app/book/**'
       - 'src/app/bookings/**'
+      - 'src/app/providers/join/**'
+      - 'src/components/provider-join-page.tsx'
+      - 'src/components/services-page.tsx'
+      - 'src/lib/distance.ts'
+      - 'src/lib/geocoding.ts'
       - 'src/app/api/bookings/**'
       - 'src/lib/booking-notifications.ts'
       - 'src/lib/quote-request.ts'
