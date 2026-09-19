@@ -12,6 +12,7 @@ type LiveData = {
     city: string | null;
     region: string | null;
     countryCode: string | null;
+    postalCode: string | null;
     deviceCategory: string | null;
     exitPath: string | null;
     activeSeconds: number;
@@ -78,7 +79,7 @@ export function AdminLiveFeed() {
                 <a key={session.id} href={`/admin/analytics/${session.id}`} className="grid grid-cols-[1fr_auto] gap-3 p-4 hover:bg-white/[0.025]">
                   <div>
                     <div className="flex flex-wrap items-center gap-2 text-sm font-bold"><UserRound size={14} className="text-emerald-300" />{session.email || "Anonymous visitor"}</div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-400"><span><Globe2 size={12} className="mr-1 inline" />{[session.city, session.region, session.countryCode].filter(Boolean).join(", ") || "Location unavailable"}</span><span>{session.deviceCategory || "unknown"}</span></div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-slate-400"><span><Globe2 size={12} className="mr-1 inline" />{[session.city, session.region, session.countryCode].filter(Boolean).join(", ") || "Location unavailable"}{session.postalCode ? ` · ZIP ${session.postalCode}` : ""}</span><span>{session.deviceCategory || "unknown"}</span></div>
                     <div className="mt-2 max-w-[620px] truncate text-xs text-slate-300">{session.exitPath || "/"}</div>
                   </div>
                   <div className="text-right text-xs"><div className="font-black text-white">{elapsed(session.activeSeconds)}</div><div className="mt-1 text-slate-500">active</div></div>

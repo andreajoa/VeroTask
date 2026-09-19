@@ -35,6 +35,7 @@ const noIndexHeaders = [
   "/bookings/:path*",
   "/opportunities/:path*",
   "/dashboard/:path*",
+  "/painel",
   "/admin/:path*",
   "/providers/:slug/claim",
   "/unsubscribe"

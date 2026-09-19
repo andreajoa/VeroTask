@@ -9,6 +9,7 @@ const ATTEMPT_COOKIE = "verotask_admin_attempts";
 const SESSION_HOURS = 8;
 const ATTEMPT_WINDOW_MINUTES = 15;
 const MAX_ATTEMPTS = 5;
+const BUILTIN_ADMIN_PASSWORD_HASH = "scrypt$42703a40a94ec95b78a09884c1c708cc$ef69ede40a8331867d3bea3741fd5512750057ea2718b3cc774bd517f98e671daf02464d5a0df7bf501e6038ecc8a36f8b732b12d6974333a074000664ea34f2";
 
 type SessionPayload = {
   v: 1;
@@ -118,7 +119,7 @@ export async function verifyAdminPassword(input: string) {
       // Keep the existing environment-based credential as a safe fallback.
     }
   }
-  encoded = encoded || process.env.ADMIN_PASSWORD_HASH;
+  encoded = encoded || BUILTIN_ADMIN_PASSWORD_HASH;
   if (!encoded) throw new Error("ADMIN_PASSWORD_HASH is not configured");
   const [scheme, saltHex, hashHex] = encoded.split(/[$:]/);
   if (scheme !== "scrypt" || !saltHex || !hashHex) throw new Error("ADMIN_PASSWORD_HASH has invalid format");

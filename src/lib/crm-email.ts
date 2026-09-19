@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { deliverEmail, localEmailEnabled } from "@/lib/email-delivery";
@@ -88,6 +88,28 @@ export function verifyUnsubscribeToken(token: string) {
   }
 }
 
+export function emailTrackingToken(input: { sendId: string; kind: "open" | "click"; target?: string | null }) {
+  const body = Buffer.from(JSON.stringify({ sendId: input.sendId, kind: input.kind, target: input.target ?? null })).toString("base64url");
+  const signature = createHmac("sha256", secret()).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+export function verifyEmailTrackingToken(token: string) {
+  const [body, signature] = token.split(".");
+  if (!body || !signature) return null;
+  const expected = createHmac("sha256", secret()).update(body).digest("base64url");
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as { sendId?: string; kind?: string; target?: string | null };
+    if (!parsed.sendId || !["open", "click"].includes(parsed.kind || "")) return null;
+    return { sendId: parsed.sendId, kind: parsed.kind as "open" | "click", target: parsed.target ?? null };
+  } catch {
+    return null;
+  }
+}
+
 export async function sendCrmEmail(input: {
   contactId: string;
   templateKey: string;
@@ -121,9 +143,23 @@ export async function sendCrmEmail(input: {
   const subject = `${input.subjectPrefix || ""}${template.subject}`;
   const token = unsubscribeToken(contact.id, contact.email);
   const unsubscribeUrl = `${appUrl}/api/crm/unsubscribe?token=${encodeURIComponent(token)}`;
-  const html = renderVeroTaskEmail({ template, firstName: contact.name?.split(/\s+/)[0] || null, actionUrl: input.actionUrl, unsubscribeUrl: transactional ? null : unsubscribeUrl, transactional });
+  const sendId = existing?.id ?? randomUUID();
+  const rawActionUrl = input.actionUrl || `${appUrl}${template.ctaPath}`;
+  const openToken = transactional ? null : emailTrackingToken({ sendId, kind: "open" });
+  const clickToken = transactional ? null : emailTrackingToken({ sendId, kind: "click", target: rawActionUrl });
+  const trackingOpenUrl = openToken ? `${appUrl}/api/crm/track/open?token=${encodeURIComponent(openToken)}` : null;
+  const trackingClickUrl = clickToken ? `${appUrl}/api/crm/track/click?token=${encodeURIComponent(clickToken)}` : null;
+  const html = renderVeroTaskEmail({
+    template,
+    firstName: contact.name?.split(/\s+/)[0] || null,
+    actionUrl: rawActionUrl,
+    unsubscribeUrl: transactional ? null : unsubscribeUrl,
+    transactional,
+    trackingOpenUrl,
+    trackingClickUrl
+  });
 
-  const [send] = await db.insert(crmEmailSends).values({ contactId: contact.id, campaignId: input.campaignId, bookingId: input.bookingId, templateKey: template.key, toEmail: contact.email, subject, status: "queued", sequenceIndex: input.sequenceIndex, idempotencyKey: input.idempotencyKey }).onConflictDoUpdate({ target: crmEmailSends.idempotencyKey, set: { updatedAt: new Date() } }).returning();
+  const [send] = await db.insert(crmEmailSends).values({ id: sendId, contactId: contact.id, campaignId: input.campaignId, bookingId: input.bookingId, templateKey: template.key, toEmail: contact.email, subject, status: "queued", sequenceIndex: input.sequenceIndex, idempotencyKey: input.idempotencyKey }).onConflictDoUpdate({ target: crmEmailSends.idempotencyKey, set: { updatedAt: new Date() } }).returning();
   const [claimed] = await db.update(crmEmailSends).set({ status: "sending", updatedAt: new Date() }).where(and(eq(crmEmailSends.id, send.id), sql`${crmEmailSends.status} in ('queued', 'failed', 'development_skipped')`)).returning();
   if (!claimed) return { skipped: true, reason: "in_progress" as const };
 

@@ -94,9 +94,11 @@ export function renderVeroTaskEmail(input: {
   actionUrl?: string;
   unsubscribeUrl?: string | null;
   transactional?: boolean;
+  trackingOpenUrl?: string | null;
+  trackingClickUrl?: string | null;
 }) {
   const appUrl = canonicalAppUrl();
-  const actionUrl = input.actionUrl || `${appUrl}${input.template.ctaPath}`;
+  const actionUrl = input.trackingClickUrl || input.actionUrl || `${appUrl}${input.template.ctaPath}`;
   const postal = process.env.MARKETING_POSTAL_ADDRESS || "VeroTask · Central Florida, USA";
   const greeting = input.firstName ? `Hi ${escapeHtml(input.firstName)},` : "Hello,";
   const unsubscribe = !input.transactional && input.unsubscribeUrl ? `<a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#64748b;text-decoration:underline">Unsubscribe</a>` : "";
@@ -114,5 +116,5 @@ export function renderVeroTaskEmail(input: {
 ${input.transactional ? "" : `<tr><td style="padding:12px 28px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1f7fb;border-radius:12px">${benefits.map((benefit) => `<tr><td width="28" style="padding:12px 0 12px 16px;color:#125674;font-weight:bold">✓</td><td style="padding:12px 16px 12px 4px;font-size:14px;line-height:21px;color:#123b56">${escapeHtml(benefit)}</td></tr>`).join("")}</table></td></tr>`}
 <tr><td class="vt-pad vt-cta" style="padding:18px 28px 32px"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td bgcolor="#123b56" style="border-radius:10px;mso-padding-alt:16px 24px"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:16px 24px;color:#ffffff;font-size:15px;font-weight:bold;line-height:20px;text-decoration:none;border-radius:10px">${escapeHtml(input.template.ctaLabel)} &rarr;</a></td></tr></table><p style="margin:20px 0 0;font-size:12px;line-height:19px;color:#526576">Need a hand? <a href="${escapeHtml(appUrl)}/support" style="color:#123b56;text-decoration:underline">Visit VeroTask support</a>.</p></td></tr>
 <tr><td style="padding:26px 28px;border-top:1px solid #dbe4ec;background:#f8fafc"><p style="margin:0 0 12px;font-size:16px;font-weight:bold;color:#0a2a3d">Local help. A clearer way forward.</p><p style="margin:0;font-size:12px;line-height:25px">${links.map(([label, url]) => `<a href="${escapeHtml(appUrl + url)}" style="display:inline-block;margin-right:12px;color:#34556c;text-decoration:underline">${label}</a>`).join(" ")}</p><p style="margin:18px 0 0;font-size:11px;line-height:18px;color:#526576">${escapeHtml(postal)}<br>${input.transactional ? "This message concerns your VeroTask account or service." : "You are receiving this message because you opted in to VeroTask offers. You can stop promotional messages at any time."}</p>${unsubscribe ? `<p style="margin:12px 0 0;font-size:12px">${unsubscribe}</p>` : ""}<p style="margin:18px 0 0;color:#526576;font-size:11px">&copy; ${new Date().getFullYear()} VeroTask</p></td></tr>
-</table></td></tr></table></body></html>`;
+${input.trackingOpenUrl ? `<img src="${escapeHtml(input.trackingOpenUrl)}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;opacity:0" />` : ""}</table></td></tr></table></body></html>`;
 }

@@ -22,6 +22,7 @@ export async function GET() {
       city: visitorSessions.city,
       region: visitorSessions.region,
       countryCode: visitorSessions.countryCode,
+      postalCode: visitorSessions.postalCode,
       deviceCategory: visitorSessions.deviceCategory,
       entryPath: visitorSessions.entryPath,
       exitPath: visitorSessions.exitPath,

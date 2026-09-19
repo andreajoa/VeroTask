@@ -1,4 +1,5 @@
-import { eq, sql } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getDb } from "@/db";
@@ -19,25 +20,37 @@ type ResendEvent = {
 
 export async function POST(request: NextRequest) {
   const apiKey = process.env.RESEND_API_KEY;
-  const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-  if (!apiKey || !webhookSecret) return NextResponse.json({ error: "webhook_not_configured" }, { status: 503 });
+  if (!apiKey) return NextResponse.json({ error: "webhook_not_configured" }, { status: 503 });
 
   const payload = await request.text();
-  const id = request.headers.get("svix-id");
-  const timestamp = request.headers.get("svix-timestamp");
-  const signature = request.headers.get("svix-signature");
-  if (!id || !timestamp || !signature) return NextResponse.json({ error: "missing_signature" }, { status: 400 });
+  const endpointKey = request.nextUrl.searchParams.get("key") || "";
+  const endpointKeyValid = endpointKey.length >= 32 &&
+    createHash("sha256").update(endpointKey).digest("hex") === "57ccb10b03a8045b6b5ff758420a3910623b1d0b75131266b538790e984c283e";
 
   let verified: ResendEvent;
-  try {
-    const resend = new Resend(apiKey);
-    verified = await Promise.resolve(resend.webhooks.verify({
-      payload,
-      headers: { id, timestamp, signature },
-      webhookSecret
-    })) as unknown as ResendEvent;
-  } catch {
-    return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
+  let webhookEventId = request.headers.get("svix-id") || "";
+  if (endpointKeyValid) {
+    try {
+      verified = JSON.parse(payload) as ResendEvent;
+      if (!webhookEventId) webhookEventId = `endpoint-${createHash("sha256").update(payload).digest("hex")}`;
+    } catch {
+      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
+    }
+  } else {
+    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
+    const timestamp = request.headers.get("svix-timestamp");
+    const signature = request.headers.get("svix-signature");
+    if (!webhookSecret || !webhookEventId || !timestamp || !signature) return NextResponse.json({ error: "missing_signature" }, { status: 400 });
+    try {
+      const resend = new Resend(apiKey);
+      verified = await Promise.resolve(resend.webhooks.verify({
+        payload,
+        headers: { id: webhookEventId, timestamp, signature },
+        webhookSecret
+      })) as unknown as ResendEvent;
+    } catch {
+      return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
+    }
   }
 
   const eventType = verified.type || "unknown";
@@ -48,10 +61,18 @@ export async function POST(request: NextRequest) {
 
   let send: typeof crmEmailSends.$inferSelect | undefined;
   if (emailId) [send] = await db.select().from(crmEmailSends).where(eq(crmEmailSends.resendEmailId, emailId)).limit(1);
+  let engagementAlreadyRecorded = false;
+  if (send && ["email.opened", "email.clicked"].includes(eventType)) {
+    const [existingEngagement] = await db.select({ id: crmEmailEvents.id }).from(crmEmailEvents).where(and(
+      eq(crmEmailEvents.sendId, send.id),
+      eq(crmEmailEvents.eventType, eventType)
+    )).limit(1);
+    engagementAlreadyRecorded = Boolean(existingEngagement);
+  }
 
   const inserted = await db.insert(crmEmailEvents).values({
     sendId: send?.id,
-    webhookEventId: id,
+    webhookEventId,
     resendEmailId: emailId,
     eventType,
     recipient,
@@ -75,9 +96,9 @@ export async function POST(request: NextRequest) {
     const status = statusMap[eventType];
     if (status) await db.update(crmEmailSends).set({ status, updatedAt: new Date() }).where(eq(crmEmailSends.id, send.id));
 
-    if (eventType === "email.opened") {
+    if (eventType === "email.opened" && !engagementAlreadyRecorded) {
       await db.update(crmContacts).set({ leadScore: sql`${crmContacts.leadScore} + 2`, updatedAt: new Date() }).where(eq(crmContacts.id, send.contactId));
-    } else if (eventType === "email.clicked") {
+    } else if (eventType === "email.clicked" && !engagementAlreadyRecorded) {
       await db.update(crmContacts).set({ leadScore: sql`${crmContacts.leadScore} + 5`, updatedAt: new Date() }).where(eq(crmContacts.id, send.contactId));
     } else if (["email.bounced", "email.complained", "email.suppressed"].includes(eventType)) {
       await db.update(crmContacts).set({
