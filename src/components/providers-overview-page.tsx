@@ -9,7 +9,7 @@ const copy = {
   en: {
     eyebrow: "For local professionals",
     title: "Get local jobs without paying to join.",
-    body: "Create your profile, choose the services you offer, set your availability and decide which customer requests you want to accept. VeroTask charges the customer only a booking fee after you accept; the customer pays your service price directly to you.",
+    body: "Create your profile, review structured local requests and send your price through VeroTask. The customer confirms by paying the VeroTask booking fee; the service price is paid directly to you.",
     primary: "Join VeroTask free",
     secondary: "See how jobs work",
     trust: [
@@ -21,9 +21,9 @@ const copy = {
     flowTitle: "A clearer way to receive work",
     flow: [
       ["1. Create your profile", "Add your services, service area, experience and availability."],
-      ["2. Set services and prices", "Publish fixed-price services of at least $10 so customers know the service price before requesting."],
-      ["3. Review requests", "See the requested service, time and the customer's VeroTask rating before deciding."],
-      ["4. Accept and work", "After you accept, the customer pays the VeroTask booking fee to confirm. The service price is paid directly to you."],
+      ["2. Review structured requests", "Customers describe the job, scope, timing and service area before you decide whether to quote."],
+      ["3. Send your price", "If the job fits, submit your service price through VeroTask. Direct contact details stay private before confirmation."],
+      ["4. Customer confirms", "The customer accepts your quote by paying the VeroTask booking fee. The exact service address is then released for the confirmed job."],
     ],
     plansTitle: "Paid plans are optional",
     plansBody: "You never need a monthly subscription just to receive work. Pro and Elite lower the booking fee charged to your customers and add business tools as your VeroTask volume grows.",
@@ -34,7 +34,7 @@ const copy = {
   "pt-br": {
     eyebrow: "Para profissionais locais",
     title: "Receba trabalhos locais sem pagar para entrar.",
-    body: "Crie seu perfil, escolha os serviços, defina sua disponibilidade e decida quais pedidos deseja aceitar. A VeroTask cobra do cliente somente a taxa de reserva após seu aceite; o valor do serviço é pago diretamente a você.",
+    body: "Crie seu perfil, analise solicitações estruturadas e envie seu preço pela VeroTask. O cliente confirma pagando a taxa de reserva da VeroTask; o valor do serviço é pago diretamente a você.",
     primary: "Entrar grátis na VeroTask",
     secondary: "Ver como os serviços funcionam",
     trust: [
@@ -46,9 +46,9 @@ const copy = {
     flowTitle: "Uma forma mais clara de receber trabalho",
     flow: [
       ["1. Crie seu perfil", "Adicione serviços, área de atendimento, experiência e disponibilidade."],
-      ["2. Defina serviços e preços", "Cadastre serviços de preço fixo a partir de US$10 para que o cliente saiba o valor antes de solicitar."],
-      ["3. Analise os pedidos", "Veja serviço, horário e nota VeroTask do cliente antes de decidir."],
-      ["4. Aceite e trabalhe", "Depois do aceite, o cliente paga a taxa de reserva da VeroTask para confirmar. O valor do serviço é pago diretamente a você."],
+      ["2. Analise pedidos estruturados", "O cliente informa serviço, escopo, prazo e área de atendimento antes de você decidir se enviará orçamento."],
+      ["3. Envie seu preço", "Se o trabalho fizer sentido, informe o valor do serviço pela VeroTask. Dados de contato permanecem privados antes da confirmação."],
+      ["4. O cliente confirma", "O cliente aceita seu orçamento pagando a taxa de reserva da VeroTask. O endereço exato é liberado para o serviço confirmado."],
     ],
     plansTitle: "Os planos pagos são opcionais",
     plansBody: "Você não precisa de mensalidade para receber trabalho. Pro e Elite reduzem a taxa de reserva cobrada do seu cliente e adicionam ferramentas conforme seu volume cresce.",
@@ -59,7 +59,7 @@ const copy = {
   es: {
     eyebrow: "Para profesionales locales",
     title: "Recibe trabajos locales sin pagar para unirte.",
-    body: "Crea tu perfil, elige tus servicios, define tu disponibilidad y decide qué solicitudes aceptar. VeroTask cobra al cliente únicamente su tarifa de reserva después de tu aceptación; el precio del servicio se paga directamente a ti.",
+    body: "Crea tu perfil, revisa solicitudes estructuradas y envía tu precio por VeroTask. El cliente confirma pagando la tarifa de reserva de VeroTask; el precio del servicio se paga directamente a ti.",
     primary: "Únete gratis a VeroTask",
     secondary: "Ver cómo funcionan los trabajos",
     trust: [
@@ -71,9 +71,9 @@ const copy = {
     flowTitle: "Una forma más clara de recibir trabajo",
     flow: [
       ["1. Crea tu perfil", "Añade servicios, área, experiencia y disponibilidad."],
-      ["2. Define servicios y precios", "Publica servicios de precio fijo desde US$10 para que el cliente conozca el precio antes de solicitar."],
-      ["3. Revisa solicitudes", "Ve el servicio, horario y calificación VeroTask del cliente antes de decidir."],
-      ["4. Acepta y trabaja", "Tras aceptar, el cliente paga la tarifa de reserva de VeroTask para confirmar. El precio del servicio se paga directamente a ti."],
+      ["2. Revisa solicitudes estructuradas", "El cliente informa trabajo, alcance, plazo y área antes de que decidas si cotizar."],
+      ["3. Envía tu precio", "Si el trabajo encaja, envía el precio del servicio por VeroTask. Los datos de contacto siguen privados antes de confirmar."],
+      ["4. El cliente confirma", "El cliente acepta tu cotización pagando la tarifa de reserva de VeroTask. La dirección exacta se libera para el trabajo confirmado."],
     ],
     plansTitle: "Los planes pagos son opcionales",
     plansBody: "No necesitas una suscripción mensual para recibir trabajo. Pro y Elite reducen la tarifa de reserva del cliente y añaden herramientas de negocio.",
