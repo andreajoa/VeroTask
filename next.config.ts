@@ -8,7 +8,7 @@ const contentSecurityPolicy = [
   "form-action 'self' https://checkout.stripe.com",
   "script-src 'self' 'unsafe-inline' https://js.stripe.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://images.unsplash.com https://lh3.googleusercontent.com",
+  "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://lh3.googleusercontent.com",
   "font-src 'self' data:",
   "connect-src 'self' https://*.stripe.com https://*.stripe.network",
   "frame-src https://*.stripe.com",
@@ -49,6 +49,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "images.pexels.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" }
     ]
   },
