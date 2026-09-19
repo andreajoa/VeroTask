@@ -57,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for path in / /signin /services /protection /terms; do
+          for path in / /signin /services /locations/orlando-fl /protection /terms /robots.txt /sitemap.xml /llms.txt; do
             code=$(curl -LsS -o /dev/null -w "%{http_code}" --connect-timeout 10 --max-time 25 "$PROD_URL${path}")
             echo "$path -> $code"
             test "$code" = "200"
@@ -71,6 +71,20 @@ jobs:
           grep -Fq 'name="google-site-verification"' /tmp/home.html
           grep -Fq 'content="g7DcEyI2I4ao2UQTEm5pvalz7vB3sIWIyJ8urKACCf0"' /tmp/home.html
           echo "Google Search Console verification tag is present."
+
+      - name: Verify Orlando SEO and GEO signals
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -LsS --connect-timeout 10 --max-time 25 "$PROD_URL/locations/orlando-fl" > /tmp/orlando.html
+          grep -qi 'Orlando' /tmp/orlando.html
+          grep -qi 'Central Florida' /tmp/orlando.html
+          curl -LsS --connect-timeout 10 --max-time 25 "$PROD_URL/llms.txt" > /tmp/llms.txt
+          grep -Fqi 'Primary market: Orlando, Florida, United States' /tmp/llms.txt
+          grep -Fqi 'It is not positioned as a global marketplace' /tmp/llms.txt
+          curl -LsS --connect-timeout 10 --max-time 25 "$PROD_URL/sitemap.xml" > /tmp/sitemap.xml
+          grep -Fq '/locations/orlando-fl' /tmp/sitemap.xml
+          echo "Orlando-local SEO/GEO signals are present."
 
       - name: Verify security and cache headers
         shell: bash
