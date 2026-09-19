@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { geocodeUsAddress } from "@/lib/geocoding";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 
 const launchCities = new Set(LAUNCH_LOCATIONS.map((location) => location.city.toLowerCase()));
@@ -16,6 +17,8 @@ const providerSchema = z.object({
   phone: z.string().trim().min(7).max(32),
   city: z.string().trim().min(2).max(120),
   postalCode: z.string().trim().regex(/^\d{5}(?:-\d{4})?$/),
+  addressLine1: z.string().trim().min(5).max(220),
+  serviceRadiusMiles: z.coerce.number().int().min(5).max(50),
   categorySlug: z.string().trim().min(2).max(120),
   description: z.string().trim().min(20).max(1200),
   plan: z.enum(["free", "pro", "elite"]).default("free")
@@ -31,6 +34,7 @@ export async function createProviderProfile(formData: FormData) {
 
   const parsed = providerSchema.safeParse({
     name: formData.get("name"), phone: formData.get("phone"), city: formData.get("city"), postalCode: formData.get("postalCode"),
+    addressLine1: formData.get("addressLine1"), serviceRadiusMiles: formData.get("serviceRadiusMiles"),
     categorySlug: formData.get("categorySlug"), description: formData.get("description"), plan: formData.get("plan") || "free"
   });
   if (!parsed.success) redirect("/providers/join?error=invalid-details");
@@ -46,6 +50,9 @@ export async function createProviderProfile(formData: FormData) {
   const [category] = await db.select({ id: categories.id }).from(categories).where(eq(categories.slug, parsed.data.categorySlug)).limit(1);
   if (!category) redirect("/providers/join?error=invalid-category");
 
+  const geocodedBase = await geocodeUsAddress(`${parsed.data.addressLine1}, ${parsed.data.city}, FL ${parsed.data.postalCode}`);
+  if (!geocodedBase) redirect("/providers/join?error=location-not-found");
+
   const slug = `${slugify(parsed.data.name)}-${randomBytes(3).toString("hex")}`;
   const [business] = await db.insert(businesses).values({
     ownerUserId: user.id,
@@ -54,10 +61,14 @@ export async function createProviderProfile(formData: FormData) {
     description: parsed.data.description,
     publicPhone: parsed.data.phone,
     publicEmail: user.email,
+    addressLine1: parsed.data.addressLine1,
     city: parsed.data.city,
     state: "FL",
     postalCode: parsed.data.postalCode,
     country: "US",
+    latitude: geocodedBase.latitude,
+    longitude: geocodedBase.longitude,
+    serviceRadiusMiles: parsed.data.serviceRadiusMiles,
     status: "active",
     plan: "free",
     importedFromPublicSource: false,

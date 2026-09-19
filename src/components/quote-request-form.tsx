@@ -50,9 +50,15 @@ export function QuoteRequestForm({
       })
     });
 
-    const data = await response.json().catch(() => ({})) as { bookingId?: string; error?: string };
+    const data = await response.json().catch(() => ({})) as { bookingId?: string; error?: string; distanceMiles?: number; serviceRadiusMiles?: number };
     if (!response.ok || !data.bookingId) {
-      setError(data.error?.replaceAll("_", " ") ?? "Unable to send this request.");
+      if (data.error === "provider_outside_service_radius") {
+        setError(`This Pro is about ${data.distanceMiles ?? "too many"} miles from the service location and serves up to ${data.serviceRadiusMiles ?? "their selected radius"} miles. Choose a closer Pro.`);
+      } else if (data.error === "provider_location_not_ready") {
+        setError("This Pro must confirm a service base location before receiving new requests. Please choose another nearby Pro.");
+      } else {
+        setError(data.error?.replaceAll("_", " ") ?? "Unable to send this request.");
+      }
       setSubmitting(false);
       return;
     }

@@ -3,11 +3,13 @@ import { and, eq, ilike, inArray, or, notInArray } from "drizzle-orm";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Search, ShieldCheck } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
-import { localePath, type PublicLocale } from "@/lib/site-copy";
+import { distanceMiles } from "@/lib/distance";
+import { geocodeUsPostalCode } from "@/lib/geocoding";
 import { publicProviderDescription, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
+import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
+import { localePath, type PublicLocale } from "@/lib/site-copy";
 
 export type ServiceSearchParams = {
   q?: string;
@@ -25,6 +27,7 @@ function humanize(value?: string) {
 
 async function findBusinesses(q: string, location: string) {
   const db = getDb();
+  const place = parseSearchLocation(location);
   const conditions = [eq(businesses.active, true), notInArray(businesses.status, ["suspended", "paused"])];
   const matchedCategories = classifyServiceRequest(q);
 
@@ -39,14 +42,12 @@ async function findBusinesses(q: string, location: string) {
     )!);
   }
 
-  if (location) {
-    const place = parseSearchLocation(location);
-    if (place.postalCode) conditions.push(eq(businesses.postalCode, place.postalCode));
+  if (location && !place.postalCode) {
     if (place.city) conditions.push(ilike(businesses.city, place.city));
     if (place.state) conditions.push(eq(businesses.state, place.state));
   }
 
-  return db.selectDistinct({
+  const rows = await db.selectDistinct({
     id: businesses.id,
     ownerUserId: businesses.ownerUserId,
     name: businesses.name,
@@ -55,6 +56,9 @@ async function findBusinesses(q: string, location: string) {
     city: businesses.city,
     state: businesses.state,
     postalCode: businesses.postalCode,
+    latitude: businesses.latitude,
+    longitude: businesses.longitude,
+    serviceRadiusMiles: businesses.serviceRadiusMiles,
     averageRating: businesses.averageRating,
     reviewCount: businesses.reviewCount,
     completedJobs: businesses.completedJobs,
@@ -66,6 +70,41 @@ async function findBusinesses(q: string, location: string) {
     .leftJoin(categories, eq(categories.id, businessCategories.categoryId))
     .where(and(...conditions))
     .limit(80);
+
+  if (!place.postalCode) {
+    return rows.map((row) => ({ ...row, distanceMilesFromSearch: null as number | null }));
+  }
+
+  const customerPoint = await geocodeUsPostalCode(place.postalCode);
+  if (!customerPoint) {
+    return rows
+      .filter((row) => row.postalCode?.slice(0, 5) === place.postalCode)
+      .map((row) => ({ ...row, distanceMilesFromSearch: null as number | null }));
+  }
+
+  const uniquePostalCodes = Array.from(new Set(
+    rows.map((row) => row.postalCode?.slice(0, 5)).filter((value): value is string => Boolean(value))
+  ));
+  const postalPoints = new Map<string, Awaited<ReturnType<typeof geocodeUsPostalCode>>>();
+  const resolved = await Promise.all(uniquePostalCodes.map(async (zip) => [zip, await geocodeUsPostalCode(zip)] as const));
+  for (const [zip, point] of resolved) postalPoints.set(zip, point);
+
+  return rows
+    .map((row) => {
+      const providerPoint =
+        typeof row.latitude === "number" && typeof row.longitude === "number"
+          ? { latitude: row.latitude, longitude: row.longitude }
+          : row.postalCode
+            ? postalPoints.get(row.postalCode.slice(0, 5)) ?? null
+            : null;
+
+      if (!providerPoint) return null;
+      const miles = distanceMiles(providerPoint, customerPoint);
+      if (miles > row.serviceRadiusMiles) return null;
+      return { ...row, distanceMilesFromSearch: miles };
+    })
+    .filter((row): row is NonNullable<typeof row> => row !== null)
+    .sort((a, b) => a.distanceMilesFromSearch - b.distanceMilesFromSearch);
 }
 
 export async function ServicesPage({ locale, searchParams }: { locale: PublicLocale; searchParams: ServiceSearchParams }) {
@@ -113,19 +152,19 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
               {hasBrief && <Link href={localePath(locale, "/")} className="mt-5 inline-flex text-sm font-black text-[var(--brand)]">Start a new request</Link>}
             </div>
 
-            <div className="rounded-[18px] border border-slate-200 bg-[var(--brand-soft)] p-5 text-sm leading-6 text-slate-700"><div className="flex items-center gap-2 font-black text-[var(--brand-strong)]"><ShieldCheck size={17} /> Clear listing status</div><p className="mt-2">Imported public listings remain marked <strong>Unclaimed</strong> until the professional verifies and takes control of the profile.</p></div>
+            <div className="rounded-[18px] border border-slate-200 bg-[var(--brand-soft)] p-5 text-sm leading-6 text-slate-700"><div className="flex items-center gap-2 font-black text-[var(--brand-strong)]"><ShieldCheck size={17} /> Local matching</div><p className="mt-2">ZIP searches prioritize nearby professionals and respect each Pro&apos;s service radius.</p></div>
           </aside>
 
           <div>
             <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
               <div><p className="text-xs font-black uppercase tracking-[0.15em] text-[var(--accent)]">Local matches</p><h1 className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">Professionals for {q || "your task"}</h1><p className="mt-2 text-sm text-slate-600">{searchUnavailable ? "Search is temporarily unavailable" : `${rows.length} result${rows.length === 1 ? "" : "s"}${location ? ` near ${location}` : ""}`}</p></div>
-              <div className="text-sm font-bold text-slate-500">Compare profiles, experience and verification status.</div>
+              <div className="text-sm font-bold text-slate-500">Closest eligible Pros appear first when you search by ZIP.</div>
             </div>
 
             {searchUnavailable ? (
               <div className="rounded-[20px] border border-amber-200 bg-amber-50 p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">We could not load local matches right now</h2><p className="mx-auto mt-2 max-w-lg text-slate-700">Your request is intact. Please try the search again in a moment.</p><Link href={localePath(locale, "/services")} className="btn-secondary mt-6">Try again</Link></div>
             ) : rows.length === 0 ? (
-              <div className="rounded-[20px] border border-slate-200 bg-white p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">No exact match yet</h2><p className="mx-auto mt-2 max-w-lg text-slate-600">Try a broader service name or a nearby Central Florida city. New providers can also join VeroTask for these task categories.</p><Link href={localePath(locale, "/providers/join")} className="btn-secondary mt-6">Offer this service</Link></div>
+              <div className="rounded-[20px] border border-slate-200 bg-white p-10 text-center shadow-[0_10px_30px_rgba(15,23,42,.04)]"><h2 className="text-xl font-black text-slate-950">No Pro within this service area yet</h2><p className="mx-auto mt-2 max-w-lg text-slate-600">Try a nearby ZIP code or broader service name.</p></div>
             ) : (
               <div className="space-y-4">
                 {rows.map((business) => (
@@ -134,9 +173,13 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                       <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-[var(--brand-soft)] text-2xl font-black text-[var(--brand)]">{publicProviderName(business.id, locale).replace(/^.*VT-/, "V").slice(0, 1)}</div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2"><h2 className="text-xl font-black tracking-tight text-slate-950">{publicProviderName(business.id, locale)}</h2>{!business.ownerUserId ? <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600">Unclaimed</span> : business.status === "active" && business.ownerUserId ? <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-black text-[var(--brand)]"><BadgeCheck size={13} /> Verified</span> : <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-800">Verification pending</span>}</div>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500"><span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state}</span>{Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}{business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                          <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> {business.city}, {business.state}</span>
+                          {business.distanceMilesFromSearch !== null && <span>{business.distanceMilesFromSearch.toFixed(1)} mi away · serves up to {business.serviceRadiusMiles} mi</span>}
+                          {Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}
+                          {business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}
+                        </div>
                         <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{publicProviderDescription(business.city, business.state, locale)}</p>
-                        
                       </div>
                       <div className="flex flex-col gap-2 sm:self-center">
                         <Link

@@ -9,7 +9,8 @@ import { canonicalAppUrl } from "@/lib/app-url";
 import { createMagicLink, getCurrentUser } from "@/lib/auth";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
 import { sendProviderNewRequestNotification, sendUnclaimedProviderOpportunityNotification } from "@/lib/booking-notifications";
-import { geocodeUsAddress } from "@/lib/geocoding";
+import { distanceMiles } from "@/lib/distance";
+import { geocodeUsAddress, geocodeUsPostalCode } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { containsDirectContactInfo, containsExactServiceAddress, serializeQuoteRequestBrief } from "@/lib/quote-request";
 
@@ -88,6 +89,45 @@ export async function POST(request: NextRequest) {
   );
   const scheduledEnd = addMinutes(scheduledStart, durationMinutes);
   const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
+  const customerPoint = geocoded ?? await geocodeUsPostalCode(parsed.data.postalCode);
+
+  let providerPoint =
+    typeof business.latitude === "number" && typeof business.longitude === "number"
+      ? { latitude: business.latitude, longitude: business.longitude }
+      : null;
+
+  if (!providerPoint && business.addressLine1) {
+    const geocodedProvider = await geocodeUsAddress(
+      `${business.addressLine1}, ${business.city}, ${business.state} ${business.postalCode ?? ""}`
+    );
+    if (geocodedProvider) {
+      providerPoint = geocodedProvider;
+      await db.update(businesses).set({
+        latitude: geocodedProvider.latitude,
+        longitude: geocodedProvider.longitude,
+        updatedAt: new Date()
+      }).where(eq(businesses.id, business.id));
+    }
+  }
+
+  if (!providerPoint && business.postalCode) {
+    providerPoint = await geocodeUsPostalCode(business.postalCode);
+  }
+
+  let serviceDistanceMiles: number | null = null;
+  if (customerPoint && providerPoint) {
+    serviceDistanceMiles = distanceMiles(providerPoint, customerPoint);
+    if (serviceDistanceMiles > business.serviceRadiusMiles) {
+      return NextResponse.json({
+        error: "provider_outside_service_radius",
+        distanceMiles: Number(serviceDistanceMiles.toFixed(1)),
+        serviceRadiusMiles: business.serviceRadiusMiles
+      }, { status: 409 });
+    }
+  } else if (business.ownerUserId) {
+    return NextResponse.json({ error: "provider_location_not_ready" }, { status: 409 });
+  }
+
   const plan = business.plan as PlanKey;
   const commissionBps = PROVIDER_PLANS[plan].commissionBps;
 
@@ -132,6 +172,8 @@ export async function POST(request: NextRequest) {
       exactAddressWithheldFromProvider: true,
       customerContactWithheld: true,
       providerClaimedAtRequest: Boolean(business.ownerUserId),
+      serviceDistanceMiles: serviceDistanceMiles === null ? null : Number(serviceDistanceMiles.toFixed(2)),
+      providerServiceRadiusMiles: business.serviceRadiusMiles,
       paymentModel: "booking_fee_only"
     }
   });

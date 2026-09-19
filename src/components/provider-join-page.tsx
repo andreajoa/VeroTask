@@ -57,7 +57,7 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
                 <p className="mt-2 text-sm leading-6 text-slate-600">Signed in as <strong>{user.email}</strong>. Complete your Orlando-area profile, then add services and availability.</p>
               </div>
 
-              {error && <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-800">Please review the information and try again.</div>}
+              {error && <div className="mb-5 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-bold text-red-800">{error === "location-not-found" ? "We could not verify that service base address. Check the street, city and ZIP code and try again." : "Please review the information and try again."}</div>}
 
               <form action={createProviderProfile} className="space-y-5">
                 <input type="hidden" name="plan" value={selectedPlan} />
@@ -74,6 +74,26 @@ export async function ProviderJoinPage({ locale = "en", plan = "free", error }: 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div><label className="text-sm font-black text-slate-800" htmlFor="city">Primary city</label><input id="city" name="city" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Orlando" /></div>
                   <div><label className="text-sm font-black text-slate-800" htmlFor="categorySlug">Primary service</label><select id="categorySlug" name="categorySlug" required className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" defaultValue=""><option value="" disabled>Select a service</option>{categoryRows.map((category) => <option value={category.slug} key={category.slug}>{category.name}</option>)}</select></div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-black text-slate-800" htmlFor="addressLine1">Private service base address</label>
+                  <input id="addressLine1" name="addressLine1" required minLength={5} maxLength={220} className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Street address used only for distance matching" />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">This address is not shown publicly. VeroTask uses it to avoid sending you jobs outside your travel area.</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-black text-slate-800" htmlFor="serviceRadiusMiles">How far are you willing to travel?</label>
+                  <select id="serviceRadiusMiles" name="serviceRadiusMiles" defaultValue="15" className="mt-2 min-h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]">
+                    <option value="5">Up to 5 miles</option>
+                    <option value="10">Up to 10 miles</option>
+                    <option value="15">Up to 15 miles</option>
+                    <option value="20">Up to 20 miles</option>
+                    <option value="25">Up to 25 miles</option>
+                    <option value="30">Up to 30 miles</option>
+                    <option value="40">Up to 40 miles</option>
+                    <option value="50">Up to 50 miles</option>
+                  </select>
                 </div>
 
                 <div><label className="text-sm font-black text-slate-800" htmlFor="description">What kind of work do you do?</label><textarea id="description" name="description" required minLength={20} maxLength={1200} rows={5} className="mt-2 w-full resize-none rounded-xl border border-slate-300 bg-white p-4 leading-6 text-slate-950 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Describe your experience, the tasks you accept, areas you serve and anything customers should know." /></div>
