@@ -6,7 +6,9 @@ import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
+import { canonicalAppUrl } from "@/lib/app-url";
 import { businessCategories, businesses, categories, providerProfilePhotos, services } from "@/db/schema";
+import { LAUNCH_LOCATIONS } from "@/lib/locations";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
 import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 
@@ -40,9 +42,49 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
       description: publicServiceText(service.description, business.name, "")
     }));
   const displayRating = business.reviewCount === 0 ? 5 : Number(business.averageRating);
+  const base = canonicalAppUrl();
+  const location = LAUNCH_LOCATIONS.find((item) => item.city === business.city && item.state === business.state);
+  const providerPath = localePath(locale, `/providers/${publicSlug}`);
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    name: displayName,
+    url: `${base}${providerPath}`,
+    image: photoReady ? `${base}/api/providers/${business.id}/photo` : undefined,
+    areaServed: {
+      "@type": "City",
+      name: business.city,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: business.city,
+        addressRegion: business.state,
+        addressCountry: "US"
+      }
+    },
+    knowsAbout: categoryRows.map((category) => category.name),
+    aggregateRating: business.reviewCount > 0 ? {
+      "@type": "AggregateRating",
+      ratingValue: Number(business.averageRating),
+      reviewCount: business.reviewCount
+    } : undefined,
+    makesOffer: activeServices.map((service) => ({
+      "@type": "Offer",
+      itemOffered: {
+        "@type": "Service",
+        name: service.name,
+        description: service.description || undefined,
+        areaServed: {
+          "@type": "City",
+          name: business.city,
+          address: { "@type": "PostalAddress", addressRegion: business.state, addressCountry: "US" }
+        }
+      }
+    }))
+  };
 
   return (
     <main className="min-h-screen bg-white">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <SiteHeader locale={locale} currentPath={`/providers/${publicSlug}`} />
 
       <section className="border-b border-[var(--line)] bg-white py-10">
@@ -51,7 +93,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
             {photoReady && <Image src={`/api/providers/${business.id}/photo`} alt="Recent profile photo of this professional" width={128} height={128} unoptimized className="mb-5 h-32 w-32 rounded-3xl border border-slate-200 object-cover shadow-sm" />}
             <div className="flex flex-wrap items-center gap-2">
               {verified ? (
-                <span className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><BadgeCheck size={14} /> Verified provider</span>
+                <span className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><BadgeCheck size={14} /> Claimed provider</span>
               ) : (
                 <span className="badge bg-slate-100 text-slate-700">Unclaimed public listing</span>
               )}
@@ -73,7 +115,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
 
             <div className="mt-6 flex flex-wrap gap-2">
               {categoryRows.map((category) => (
-                <Link key={category.slug} href={`${localePath(locale, "/services")}?q=${encodeURIComponent(category.name)}`} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 transition hover:border-slate-500 hover:bg-slate-50">
+                <Link key={category.slug} href={location ? localePath(locale, `/services/${category.slug}/${location.slug}`) : `${localePath(locale, "/services")}?q=${encodeURIComponent(category.name)}`} className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-bold text-slate-800 transition hover:border-slate-500 hover:bg-slate-50">
                   {category.name}
                 </Link>
               ))}

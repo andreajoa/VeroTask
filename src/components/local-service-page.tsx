@@ -14,7 +14,7 @@ const copy = {
     title: (service: string, place: string) => `${service} in ${place}`,
     body: (service: string, place: string) => `Compare local ${service.toLowerCase()} professionals serving ${place}. Direct contact details remain private so requests, quotes and confirmation stay inside VeroTask.`,
     providers: "Available local professionals",
-    verified: "Verified provider",
+    verified: "Claimed provider",
     unclaimed: "Unclaimed public listing",
     protection: "VeroTask keeps direct contact details private while customers request quotes and professionals respond through the protected workflow.",
     view: "View profile"
@@ -24,7 +24,7 @@ const copy = {
     title: (service: string, place: string) => `${service} em ${place}`,
     body: (service: string, place: string) => `Compare profissionais locais de ${service.toLowerCase()} que atendem ${place}. Os dados de contato permanecem privados para que solicitação, orçamento e confirmação aconteçam pela VeroTask.`,
     providers: "Profissionais locais disponíveis",
-    verified: "Prestador verificado",
+    verified: "Perfil reivindicado",
     unclaimed: "Perfil público não reivindicado",
     protection: "A VeroTask mantém os dados de contato privados enquanto clientes solicitam orçamentos e profissionais respondem pelo fluxo protegido.",
     view: "Ver perfil"
@@ -34,7 +34,7 @@ const copy = {
     title: (service: string, place: string) => `${service} en ${place}`,
     body: (service: string, place: string) => `Compara profesionales locales de ${service.toLowerCase()} que atienden ${place}. Los datos de contacto permanecen privados para que la solicitud, cotización y confirmación ocurran dentro de VeroTask.`,
     providers: "Profesionales locales disponibles",
-    verified: "Proveedor verificado",
+    verified: "Perfil reclamado",
     unclaimed: "Perfil público no reclamado",
     protection: "VeroTask mantiene privados los datos de contacto mientras clientes solicitan cotizaciones y profesionales responden mediante el flujo protegido.",
     view: "Ver perfil"

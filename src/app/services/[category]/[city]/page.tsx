@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const path = `/services/${category}/${city}`;
   return {
     title: `${data.categoryName} in ${data.location.label}`,
-    description: `Compare local ${data.categoryName.toLowerCase()} providers serving ${data.location.label}. View transparent listings and book verified providers with VeroTask payment protection.`,
+    description: `Compare local ${data.categoryName.toLowerCase()} professionals serving ${data.location.label}, United States. View local profiles and request quotes through VeroTask.`,
     alternates: {
       canonical: path,
       languages: {
