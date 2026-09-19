@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq, isNull, and, desc, gte } from "drizzle-orm";
+import { eq, isNull, and, desc, sql } from "drizzle-orm";
 import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AcceptedBookingPayment } from "@/components/accepted-booking-payment";
@@ -50,7 +50,6 @@ export default async function BookingPage({
   if (!access?.allowed) notFound();
 
   const db = getDb();
-  const arrivalSince = new Date(Date.now() - 30 * 60 * 1000);
   const [service, evidence, openDispute, evidenceSummary, counterpartReputation, providerCustomerRating, latestArrivalRequest, latestArrivalVerified, providerActivePhoto] = await Promise.all([
     access.booking.serviceId ? db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1).then((rows) => rows[0] ?? null) : Promise.resolve(null),
     db.select().from(bookingEvidence).where(eq(bookingEvidence.bookingId, id)),
@@ -61,7 +60,7 @@ export default async function BookingPage({
     db.select({ id: bookingEvents.id, createdAt: bookingEvents.createdAt }).from(bookingEvents).where(and(
       eq(bookingEvents.bookingId, id),
       eq(bookingEvents.eventType, "provider_arrival_confirmation_requested"),
-      gte(bookingEvents.createdAt, arrivalSince)
+      sql`${bookingEvents.createdAt} >= now() - interval '30 minutes'`
     )).orderBy(desc(bookingEvents.createdAt)).limit(1).then((rows) => rows[0] ?? null),
     db.select({ id: bookingEvents.id, createdAt: bookingEvents.createdAt }).from(bookingEvents).where(and(
       eq(bookingEvents.bookingId, id),
