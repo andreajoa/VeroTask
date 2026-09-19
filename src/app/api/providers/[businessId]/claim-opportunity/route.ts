@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { bookingEvents, bookings, businesses, users } from "@/db/schema";
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       updatedAt: new Date()
     }).where(and(
       eq(businesses.id, business.id),
-      eq(businesses.status, "unclaimed")
+      isNull(businesses.ownerUserId)
     )).returning();
 
     if (claimed) {
