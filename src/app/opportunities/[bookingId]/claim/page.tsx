@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { BadgeCheck, BriefcaseBusiness, MailCheck, MapPin, Phone, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { getDb } from "@/db";
@@ -66,7 +66,7 @@ export default async function Page({
             </div>
 
             {query.sent === "1" && <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900">Verification link sent. Open the email and click the secure button. You will return directly to this customer request, already unlocked.</div>}
-            {query.error === "email-in-use" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">That email is already connected to another VeroTask account. Use that account's email sign-in first or choose another email.</div>}
+            {query.error === "email-in-use" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">That email is already connected to another VeroTask account. Use that account&apos;s email sign-in first or choose another email.</div>}
             {query.error === "send-failed" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900">We could not send the verification email. Please try again.</div>}
 
             <form action={requestOpportunityEmailVerification.bind(null, bookingId)} className="mt-6">
@@ -89,7 +89,7 @@ export default async function Page({
               <div className="rounded-xl bg-[var(--background)] p-4"><span className="text-[var(--muted)]">Timing</span><div className="mt-1 font-black">{quoteRequestLabel(brief.timeline)}</div></div>
             </div>}
             <div className="mt-6 rounded-2xl border border-sky-200 bg-sky-50 p-5 text-sm leading-6 text-sky-950">
-              <strong>Privacy before confirmation:</strong> you can see the task and service area needed to price the job, but not the customer's exact street address, email or phone. The exact address is released only after the customer accepts your quote and pays the VeroTask booking fee.
+              <strong>Privacy before confirmation:</strong> you can see the task and service area needed to price the job, but not the customer&apos;s exact street address, email or phone. The exact address is released only after the customer accepts your quote and pays the VeroTask booking fee.
             </div>
             <p className="mt-5 text-sm leading-6 text-[var(--muted)]">After the service is completed, the customer pays your service price directly to you. VeroTask connects Clients and Pros and manages the protected booking flow.</p>
           </aside>
