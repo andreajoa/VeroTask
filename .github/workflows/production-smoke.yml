@@ -63,6 +63,15 @@ jobs:
             test "$code" = "200"
           done
 
+      - name: Verify Google Search Console tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -LsS --connect-timeout 10 --max-time 25 "$PROD_URL/" > /tmp/home.html
+          grep -Fq 'name="google-site-verification"' /tmp/home.html
+          grep -Fq 'content="g7DcEyI2I4ao2UQTEm5pvalz7vB3sIWIyJ8urKACCf0"' /tmp/home.html
+          echo "Google Search Console verification tag is present."
+
       - name: Verify security and cache headers
         shell: bash
         run: |
