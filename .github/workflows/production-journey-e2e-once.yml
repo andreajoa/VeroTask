@@ -39,7 +39,6 @@ jobs:
           cat > .production-journey-e2e.mjs <<'NODE'
           import { chromium } from "playwright-core";
           import assert from "node:assert/strict";
-          import { randomBytes } from "node:crypto";
 
           const BASE = process.env.BASE_URL.replace(/\/$/, "");
           const report = {
@@ -54,44 +53,25 @@ jobs:
           };
           const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-          async function mailApi(path, options={}) {
-            const response = await fetch("https://api.mail.tm" + path, {
-              ...options,
-              headers: {
-                "content-type": "application/json",
-                ...(options.token ? { authorization: `Bearer ${options.token}` } : {}),
-                ...(options.headers || {})
-              }
-            });
-            if (!response.ok) throw new Error(`mail_api_${response.status}_${path}`);
-            return response.json();
-          }
-
           async function createMailbox(label) {
-            const domains = await mailApi("/domains?page=1");
-            const domain = domains["hydra:member"]?.find(d => d.isActive)?.domain;
-            if (!domain) throw new Error("mail_tm_no_domain");
-            const address = `${label}-${Date.now()}-${randomBytes(3).toString("hex")}@${domain}`;
-            const password = randomBytes(24).toString("base64url") + "A1!";
-            await mailApi("/accounts", {
+            const response = await fetch("https://api.tempmail.lol/v2/inbox/create", {
               method: "POST",
-              body: JSON.stringify({ address, password })
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ prefix: label + "-" + Date.now().toString(36) })
             });
-            const auth = await mailApi("/token", {
-              method: "POST",
-              body: JSON.stringify({ address, password })
-            });
-            return { address, token: auth.token };
+            if (!response.ok) throw new Error("tempmail_create_" + response.status);
+            return response.json();
           }
 
           async function waitMagicLink(mailbox) {
             const deadline = Date.now() + 120000;
             while (Date.now() < deadline) {
-              const list = await mailApi("/messages?page=1", { token: mailbox.token });
-              const item = list["hydra:member"]?.find(m => m.subject === "Your secure VeroTask sign-in link");
+              const response = await fetch("https://api.tempmail.lol/v2/inbox?token=" + encodeURIComponent(mailbox.token));
+              if (!response.ok) throw new Error("tempmail_inbox_" + response.status);
+              const data = await response.json();
+              const item = data.emails?.find(m => m.subject === "Your secure VeroTask sign-in link");
               if (item) {
-                const detail = await mailApi(`/messages/${item.id}`, { token: mailbox.token });
-                const source = [detail.text, detail.html?.join?.("\n"), detail.html].filter(Boolean).join("\n");
+                const source = [item.body, item.html].filter(Boolean).join("\n");
                 const link = source.match(/https:\/\/www\.verotask\.online\/api\/auth\/verify\?token=[a-f0-9]+/i)?.[0];
                 if (link) return link;
               }
