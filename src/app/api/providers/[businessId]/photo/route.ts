@@ -85,7 +85,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     imageBase64: bytes.toString("base64"),
     attestedRecent: true,
     active: true
-  }).returning({ id: providerProfilePhotos.id });
+  }).returning();
 
   return NextResponse.json({
     ok: true,
