@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
-import { verifyEvidenceStorageAccess } from "@/lib/storage";
+import { diagnoseEvidenceStorageEndpoints, verifyEvidenceStorageAccess } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,6 +37,7 @@ export async function GET() {
   let storageError = false;
   let storageErrorCode: string | null = null;
   let storageHttpStatusCode: number | null = null;
+  let storageEndpointDiagnostics: Awaited<ReturnType<typeof diagnoseEvidenceStorageEndpoints>> = [];
 
   if (process.env.DATABASE_URL) {
     try {
@@ -59,6 +60,7 @@ export async function GET() {
       storageError = !result.ok;
       storageErrorCode = result.errorCode;
       storageHttpStatusCode = result.httpStatusCode;
+      if (!result.ok) storageEndpointDiagnostics = await diagnoseEvidenceStorageEndpoints();
     } catch {
       storageError = true;
       storageErrorCode = "storage_access_failed";
@@ -116,6 +118,7 @@ export async function GET() {
       storageError,
       storageErrorCode,
       storageHttpStatusCode,
+      storageEndpointDiagnostics,
       storageEndpointHttps,
       storageEndpointR2Host,
       storageEndpointHasPath,
