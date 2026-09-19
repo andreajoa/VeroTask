@@ -12,8 +12,7 @@ import { getCustomerReputationSummary } from "@/lib/reputation";
 import { algorithmReputationScore } from "@/lib/reputation-score";
 
 const schema = z.object({
-  quoteCents: z.number().int().min(1000).max(5_000_000),
-  note: z.string().trim().max(1000).optional()
+  quoteCents: z.number().int().min(1000).max(5_000_000)
 });
 
 function postgresErrorCode(error: unknown) {
@@ -82,7 +81,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     metadata: {
       quoteCents: amounts.totalCents,
       bookingFeeCents: amounts.marketplaceFeeCents,
-      quoteNote: parsed.data.note ?? null,
       customerRating: reputation.rating,
       customerRatingCount: reputation.ratingCount,
       customerCompletedJobs: reputation.completedJobs,
