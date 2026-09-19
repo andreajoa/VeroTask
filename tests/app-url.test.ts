@@ -19,27 +19,29 @@ function restoreEnv() {
 
 afterEach(restoreEnv);
 
-test("production redirects stay pinned to the configured canonical origin", () => {
+test("production callbacks are always pinned to the public VeroTask domain", () => {
   env.NODE_ENV = "production";
-  env.NEXT_PUBLIC_APP_URL = "https://app.verotask.example";
+  env.NEXT_PUBLIC_APP_URL = "https://attacker.example";
   env.VERCEL_PROJECT_PRODUCTION_URL = "vero-task-andres-projects-bbfd1881.vercel.app";
+  env.VERCEL_URL = "preview-abc.vercel.app";
 
-  assert.equal(canonicalAppUrl(), "https://app.verotask.example");
-  assert.equal(requestAppUrl("https://attacker.example"), "https://app.verotask.example");
+  assert.equal(canonicalAppUrl(), "https://www.verotask.online");
+  assert.equal(requestAppUrl("https://preview-abc.vercel.app"), "https://www.verotask.online");
 
   const headers = new Headers({
-    "x-forwarded-host": "attacker.example",
+    "x-forwarded-host": "preview-abc.vercel.app",
     "x-forwarded-proto": "https"
   });
-  assert.equal(appUrlFromHeaders(headers), "https://app.verotask.example");
+  assert.equal(appUrlFromHeaders(headers), "https://www.verotask.online");
 });
 
-test("a retired production alias is ignored", () => {
+test("retired or preview Vercel aliases can never become production callback origins", () => {
   env.NODE_ENV = "production";
   env.NEXT_PUBLIC_APP_URL = "https://vero-task.vercel.app";
   env.VERCEL_PROJECT_PRODUCTION_URL = "vero-task-andres-projects-bbfd1881.vercel.app";
+  env.VERCEL_URL = "some-preview.vercel.app";
 
-  assert.equal(canonicalAppUrl(), "https://vero-task-andres-projects-bbfd1881.vercel.app");
+  assert.equal(canonicalAppUrl(), "https://www.verotask.online");
 });
 
 test("local development may use the request origin", () => {
