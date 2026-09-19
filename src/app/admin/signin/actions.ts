@@ -16,7 +16,7 @@ export async function adminSignIn(formData: FormData) {
   const password = String(formData.get("password") ?? "");
   let valid = false;
   try {
-    valid = verifyAdminPassword(password);
+    valid = await verifyAdminPassword(password);
   } catch {
     redirect("/admin/signin?error=configuration");
   }

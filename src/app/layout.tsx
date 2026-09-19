@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PrivacyAnalytics } from "@/components/privacy-analytics";
+import { InterestPopup } from "@/components/interest-popup";
 import { canonicalAppUrl } from "@/lib/app-url";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body>
         {children}
+        <InterestPopup />
         <PrivacyAnalytics />
       </body>
     </html>

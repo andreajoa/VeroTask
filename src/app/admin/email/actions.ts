@@ -1,6 +1,8 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { addHours } from "date-fns";
+import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { sendCrmEmail } from "@/lib/crm-email";
 import { getDb } from "@/db";
@@ -73,4 +75,31 @@ export async function seedMarketingCampaigns() {
     }).onConflictDoNothing();
   }
   redirect("/admin/email?notice=library-seeded");
+}
+export async function scheduleNonOpenerFollowUp(formData: FormData) {
+  await requireAdmin();
+  const campaignId = String(formData.get("campaignId") || "");
+  const templateKey = String(formData.get("templateKey") || "");
+  const hours = Number(formData.get("hours") || 48);
+  const template = getEmailTemplate(templateKey);
+  if (!/^[0-9a-f-]{36}$/i.test(campaignId) || !template || template.kind !== "marketing" || ![24, 48, 72, 120, 168].includes(hours)) {
+    redirect("/admin/email?error=invalid-follow-up");
+  }
+
+  const db = getDb();
+  const [source] = await db.select().from(crmCampaigns).where(eq(crmCampaigns.id, campaignId)).limit(1);
+  if (!source || !["sent", "sending"].includes(source.status)) redirect(`/admin/email/campaigns/${campaignId}?error=campaign-not-sent`);
+
+  await db.insert(crmCampaigns).values({
+    key: `follow-up-${campaignId}-${template.key}-${randomUUID()}`,
+    name: `Follow-up · ${template.heading}`,
+    subject: template.subject,
+    previewText: template.preview,
+    templateKey: template.key,
+    segment: `non_openers:${campaignId}`,
+    status: "scheduled",
+    scheduledAt: addHours(new Date(), hours),
+    createdBy: "password-admin"
+  });
+  redirect(`/admin/email/campaigns/${campaignId}?notice=follow-up-scheduled`);
 }

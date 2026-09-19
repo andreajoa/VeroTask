@@ -1,5 +1,8 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { adminCredentials } from "@/db/analytics-schema";
 
 const COOKIE_NAME = "verotask_admin";
 const ATTEMPT_COOKIE = "verotask_admin_attempts";
@@ -105,8 +108,17 @@ export async function clearAdminLoginFailures() {
   cookieStore.delete(ATTEMPT_COOKIE);
 }
 
-export function verifyAdminPassword(input: string) {
-  const encoded = process.env.ADMIN_PASSWORD_HASH;
+export async function verifyAdminPassword(input: string) {
+  let encoded: string | undefined;
+  if (process.env.DATABASE_URL) {
+    try {
+      const [credential] = await getDb().select().from(adminCredentials).where(eq(adminCredentials.id, "primary")).limit(1);
+      encoded = credential?.passwordHash || undefined;
+    } catch {
+      // Keep the existing environment-based credential as a safe fallback.
+    }
+  }
+  encoded = encoded || process.env.ADMIN_PASSWORD_HASH;
   if (!encoded) throw new Error("ADMIN_PASSWORD_HASH is not configured");
   const [scheme, saltHex, hashHex] = encoded.split(/[$:]/);
   if (scheme !== "scrypt" || !saltHex || !hashHex) throw new Error("ADMIN_PASSWORD_HASH has invalid format");

@@ -253,3 +253,18 @@ export const adminAuditEvents = pgTable("admin_audit_events", {
   index("admin_audit_events_resource_idx").on(t.resourceType, t.resourceId, t.occurredAt),
   index("admin_audit_events_time_idx").on(t.occurredAt)
 ]);
+
+
+export const adminCredentials = pgTable("admin_credentials", {
+  id: varchar("id", { length: 80 }).primaryKey(),
+  passwordHash: text("password_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const platformSecrets = pgTable("platform_secrets", {
+  id: varchar("id", { length: 120 }).primaryKey(),
+  secretValue: text("secret_value").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});

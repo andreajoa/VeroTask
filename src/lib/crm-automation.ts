@@ -2,7 +2,7 @@ import { addDays, addHours, addMinutes } from "date-fns";
 import { and, asc, desc, eq, gt, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
-import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, crmEmailSends, visitorSessions } from "@/db/analytics-schema";
+import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, crmEmailEvents, crmEmailSends, visitorSessions } from "@/db/analytics-schema";
 import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
 import { bookings, businesses, providerSubscriptions, users } from "@/db/schema";
 import { sendCrmEmail } from "@/lib/crm-email";
@@ -323,10 +323,36 @@ async function runScheduledCampaigns(limitCampaigns = 5) {
     if (!claimed) continue;
     let failed = false;
     let cursor: string | undefined;
+    const nonOpenersSource = campaign.segment.startsWith("non_openers:") ? campaign.segment.slice("non_openers:".length) : null;
     while (true) {
-      const contacts = await db.select().from(crmContacts).where(and(eq(crmContacts.marketingConsent, true), sql`${crmContacts.unsubscribedAt} is null`, sql`${crmContacts.suppressionReason} is null`, lte(crmContacts.createdAt, campaign.scheduledAt || new Date()), cursor ? gt(crmContacts.id, cursor) : undefined)).orderBy(asc(crmContacts.id)).limit(100);
+      const contacts = nonOpenersSource && /^[0-9a-f-]{36}$/i.test(nonOpenersSource)
+        ? await db.select({ contact: crmContacts })
+            .from(crmEmailSends)
+            .innerJoin(crmContacts, eq(crmContacts.id, crmEmailSends.contactId))
+            .where(and(
+              eq(crmEmailSends.campaignId, nonOpenersSource),
+              eq(crmContacts.marketingConsent, true),
+              sql`${crmContacts.unsubscribedAt} is null`,
+              sql`${crmContacts.suppressionReason} is null`,
+              sql`not exists (select 1 from ${crmEmailEvents} e where e.send_id = ${crmEmailSends.id} and e.event_type = 'email.opened')`,
+              cursor ? gt(crmContacts.id, cursor) : undefined
+            ))
+            .orderBy(asc(crmContacts.id))
+            .limit(100)
+            .then((rows) => rows.map((row) => row.contact))
+        : await db.select().from(crmContacts)
+            .where(and(
+              eq(crmContacts.marketingConsent, true),
+              sql`${crmContacts.unsubscribedAt} is null`,
+              sql`${crmContacts.suppressionReason} is null`,
+              lte(crmContacts.createdAt, campaign.scheduledAt || new Date()),
+              cursor ? gt(crmContacts.id, cursor) : undefined
+            ))
+            .orderBy(asc(crmContacts.id))
+            .limit(100);
       if (!contacts.length) break;
-      for (const contact of contacts.filter((value) => matchesSegment(value, campaign.segment))) {
+      const eligible = nonOpenersSource ? contacts : contacts.filter((value) => matchesSegment(value, campaign.segment));
+      for (const contact of eligible) {
         try {
           const result = await sendCrmEmail({ contactId: contact.id, templateKey: campaign.templateKey, campaignId: campaign.id, idempotencyKey: `campaign:${campaign.id}:${contact.id}` });
           if (!result.skipped) emailsSent += 1;
