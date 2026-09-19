@@ -50,23 +50,43 @@ export async function LocalServicePage({ locale, categorySlug, locationSlug }: {
 
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "ItemList",
+    "@type": "CollectionPage",
     name: c.title(data.categoryName, data.location.label),
+    inLanguage: locale === "en" ? "en-US" : locale === "pt-br" ? "pt-US" : "es-US",
+    spatialCoverage: {
+      "@type": "City",
+      name: data.location.city,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: data.location.city,
+        addressRegion: data.location.state,
+        addressCountry: "US"
+      }
+    },
+    mainEntity: {
+      "@type": "ItemList",
     url: `${base}${path}`,
-    numberOfItems: data.providers.length,
-    itemListElement: data.providers.map((business, index) => ({
+      numberOfItems: data.providers.length,
+      itemListElement: data.providers.map((business, index) => ({
       "@type": "ListItem",
       position: index + 1,
       item: {
         "@type": "ProfessionalService",
         name: publicProviderName(business.id, locale),
         url: `${base}${localePath(locale, `/providers/${publicProviderSlug(business.id)}`)}`,
-        areaServed: {
-          "@type": "City",
-          name: `${business.city}, ${business.state}`
+          areaServed: {
+            "@type": "City",
+            name: business.city,
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: business.city,
+              addressRegion: business.state,
+              addressCountry: "US"
+            }
+          }
         }
-      }
-    }))
+      }))
+    }
   };
 
   return (

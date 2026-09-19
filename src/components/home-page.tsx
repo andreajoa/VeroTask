@@ -3,15 +3,50 @@ import { ArrowRight, BadgeCheck, Clock3, ShieldCheck, Star, UserRoundCheck, Wren
 import { GuidedMarketplaceHero } from "@/components/guided-match";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { canonicalAppUrl } from "@/lib/app-url";
+import { LAUNCH_LOCATIONS } from "@/lib/locations";
 import { localePath, publicCopy, type PublicLocale } from "@/lib/site-copy";
-
-const cityLinks = ["Orlando", "Kissimmee", "Davenport", "Winter Garden", "Clermont", "St. Cloud"];
 
 export function HomePage({ locale }: { locale: PublicLocale }) {
   const c = publicCopy[locale];
+  const base = canonicalAppUrl();
+  const jsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: "VeroTask",
+      url: base,
+      description: "Local services marketplace focused on Orlando and Central Florida, United States."
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "VeroTask",
+      url: base,
+      inLanguage: ["en-US", "pt-US", "es-US"]
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: "VeroTask local services marketplace",
+      serviceType: "Local service discovery, quote requests and booking coordination",
+      provider: { "@type": "Organization", name: "VeroTask", url: base },
+      areaServed: LAUNCH_LOCATIONS.map((location) => ({
+        "@type": "City",
+        name: location.city,
+        address: {
+          "@type": "PostalAddress",
+          addressLocality: location.city,
+          addressRegion: location.state,
+          addressCountry: "US"
+        }
+      }))
+    }
+  ];
 
   return (
     <main>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       <SiteHeader locale={locale} currentPath="/" />
       <GuidedMarketplaceHero locale={locale} />
 
@@ -90,7 +125,7 @@ export function HomePage({ locale }: { locale: PublicLocale }) {
         <div className="container-shell">
           <div className="mb-5 flex items-center justify-center gap-2 text-sm font-black text-slate-500"><Star size={15} className="text-[var(--accent)]" fill="currentColor" /> Find help across Central Florida</div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-bold text-slate-700">
-            {cityLinks.map((city) => <Link href={`${localePath(locale, "/services")}?location=${encodeURIComponent(`${city}, FL`)}`} key={city} className="hover:text-[var(--brand)]">{city}, FL</Link>)}
+            {LAUNCH_LOCATIONS.map((location) => <Link href={localePath(locale, `/locations/${location.slug}`)} key={location.slug} className="hover:text-[var(--brand)]">{location.label}</Link>)}
           </div>
         </div>
       </section>

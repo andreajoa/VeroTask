@@ -13,10 +13,10 @@ export const publicCopy = {
     searchButton: "Find professionals",
     popular: "Popular services",
     trustTitle: "Built to protect both sides",
-    trustBody: "VeroTask documents the booking and service workflow without holding the professional's service payment. Completion can be supported by timestamps, location evidence, photos, checklists or customer PIN when required.",
+    trustBody: "VeroTask documents the booking workflow without holding the professional's service payment. Provider arrival can be verified using geolocation plus the customer's service PIN or direct customer confirmation.",
     trustItems: [
       ["24-hour protection window", "After completion, customers have 24 hours to report a problem before an eligible booking auto-completes."],
-      ["Proof of service", "Check-in, check-out, photos, service checklist and other evidence can be tied to the booking."],
+      ["Verified arrival", "Provider arrival can be tied to the booking using geolocation plus the customer's PIN or direct customer confirmation."],
       ["Dispute review", "If a dispute is opened, normal booking completion pauses while the booking record and evidence are reviewed."],
       ["Transparent fee refunds", "Any approved VeroTask booking-fee refund is recorded against the booking with a clear reason and audit history."]
     ],
@@ -46,10 +46,10 @@ export const publicCopy = {
     searchButton: "Encontrar profissionais",
     popular: "Serviços populares",
     trustTitle: "Proteção para os dois lados",
-    trustBody: "A VeroTask documenta a reserva e a execução sem receber o pagamento do serviço do profissional. A conclusão pode ser comprovada por horário, localização, fotos, checklist ou PIN do cliente, conforme o serviço.",
+    trustBody: "A VeroTask documenta a reserva sem receber o pagamento do serviço do profissional. A chegada do PRO pode ser validada por geolocalização junto com o PIN da cliente ou confirmação direta da cliente.",
     trustItems: [
       ["Janela de proteção de 24 horas", "Depois da conclusão, o cliente tem 24 horas para informar um problema antes da conclusão automática de uma reserva elegível."],
-      ["Prova do serviço", "Check-in, check-out, fotos, checklist e outras evidências podem ficar vinculadas à reserva."],
+      ["Chegada validada", "A chegada do PRO pode ficar vinculada à reserva por geolocalização junto com o PIN da cliente ou confirmação direta da cliente."],
       ["Análise de disputa", "Se houver disputa, a conclusão normal da reserva fica pausada enquanto o registro e as evidências são analisados."],
       ["Reembolso transparente da taxa", "Qualquer reembolso aprovado da taxa de reserva da VeroTask fica registrado com motivo e histórico de auditoria."]
     ],
@@ -79,10 +79,10 @@ export const publicCopy = {
     searchButton: "Buscar profesionales",
     popular: "Servicios populares",
     trustTitle: "Protección para ambas partes",
-    trustBody: "VeroTask documenta la reserva y el servicio sin recibir el pago del servicio del profesional. La finalización puede respaldarse con horarios, ubicación, fotos, checklist o PIN del cliente.",
+    trustBody: "VeroTask documenta la reserva sin recibir el pago del servicio del profesional. La llegada del Pro puede verificarse con geolocalización junto con el PIN del cliente o confirmación directa del cliente.",
     trustItems: [
       ["Ventana de protección de 24 horas", "Después de completar el servicio, el cliente tiene 24 horas para reportar un problema antes del cierre automático de una reserva elegible."],
-      ["Prueba de servicio", "Check-in, check-out, fotos, checklist y otras evidencias pueden quedar vinculadas a la reserva."],
+      ["Llegada verificada", "La llegada del Pro puede quedar vinculada a la reserva mediante geolocalización junto con el PIN del cliente o confirmación directa del cliente."],
       ["Revisión de disputas", "Si se abre una disputa, la finalización normal de la reserva se pausa mientras se revisan el registro y la evidencia."],
       ["Reembolsos transparentes de la tarifa", "Cualquier reembolso aprobado de la tarifa de reserva de VeroTask queda registrado con motivo e historial de auditoría."]
     ],

@@ -46,10 +46,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     const combinations = new Set<string>();
+    const activeLocations = new Set<string>();
     for (const row of combinationRows) {
       const location = LAUNCH_LOCATIONS.find((item) => item.city === row.city && item.state === row.state);
-      if (location) combinations.add(`${row.categorySlug}|${location.slug}`);
+      if (location) {
+        combinations.add(`${row.categorySlug}|${location.slug}`);
+        activeLocations.add(location.slug);
+      }
     }
+    for (const locationSlug of activeLocations) {
+      for (const prefix of ["", "/pt-br", "/es"]) {
+        entries.push({ url: `${base}${prefix}/locations/${locationSlug}`, lastModified: now, changeFrequency: "daily", priority: prefix ? 0.72 : 0.88 });
+      }
+    }
+
     for (const key of combinations) {
       const [category, city] = key.split("|");
       for (const prefix of ["", "/pt-br", "/es"]) {

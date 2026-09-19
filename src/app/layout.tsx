@@ -10,34 +10,27 @@ if (process.env.AHREFS_SITE_VERIFICATION) verificationOther["ahrefs-site-verific
 export const metadata: Metadata = {
   metadataBase: new URL(canonicalAppUrl()),
   title: {
-    default: "VeroTask | Trusted Local Services",
-    template: "%s | VeroTask"
+    default: "VeroTask | Local Services in Orlando, FL",
+    template: "%s | VeroTask Orlando"
   },
-  description: "Find trusted local professionals in Orlando and Central Florida with a separate VeroTask booking fee, verified service evidence, transparent disputes and customer reviews.",
+  description: "Find local professionals in Orlando, Florida and Central Florida. Request quotes, compare local Pros and book through VeroTask's protected local marketplace.",
   applicationName: "VeroTask",
   verification: {
     google: "g7DcEyI2I4ao2UQTEm5pvalz7vB3sIWIyJ8urKACCf0",
     other: Object.keys(verificationOther).length ? verificationOther : undefined
   },
-  alternates: {
-    canonical: "/",
-    languages: {
-      "en-US": "/",
-      "pt-BR": "/pt-br",
-      "es": "/es",
-      "x-default": "/"
-    }
-  },
   openGraph: {
     type: "website",
     siteName: "VeroTask",
-    title: "VeroTask | Trusted Local Services",
-    description: "Book local services with clear rules, a separate VeroTask booking fee and verified work."
+    title: "VeroTask | Local Services in Orlando, FL",
+    description: "Find and book local professionals serving Orlando and Central Florida, United States.",
+    locale: "en_US",
+    alternateLocale: ["es_US", "pt_US"]
   },
   twitter: {
     card: "summary_large_image",
-    title: "VeroTask | Trusted Local Services",
-    description: "Book local services with clear rules, a separate VeroTask booking fee and verified work."
+    title: "VeroTask | Local Services in Orlando, FL",
+    description: "Find and book local professionals serving Orlando and Central Florida, United States."
   }
 };
 
