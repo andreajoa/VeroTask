@@ -4,7 +4,7 @@ import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Search, ShieldCheck 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
-import { businessCategories, businesses, categories } from "@/db/schema";
+import { businessCategories, businesses, categories, providerProfilePhotos } from "@/db/schema";
 import { distanceMiles } from "@/lib/distance";
 import { geocodeUsPostalCode } from "@/lib/geocoding";
 import { publicProviderDescription, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
@@ -71,8 +71,13 @@ async function findBusinesses(q: string, location: string) {
     .where(and(...conditions))
     .limit(80);
 
+  const photoRows = await db.select({ businessId: providerProfilePhotos.businessId }).from(providerProfilePhotos)
+    .where(eq(providerProfilePhotos.active, true));
+  const photoBusinessIds = new Set(photoRows.map((photo) => photo.businessId));
+  const bookableRows = rows.filter((row) => !row.ownerUserId || photoBusinessIds.has(row.id));
+
   if (!place.postalCode) {
-    return rows.map((row) => ({ ...row, distanceMilesFromSearch: null as number | null }));
+    return bookableRows.map((row) => ({ ...row, distanceMilesFromSearch: null as number | null }));
   }
 
   const customerPoint = await geocodeUsPostalCode(place.postalCode);
@@ -83,13 +88,13 @@ async function findBusinesses(q: string, location: string) {
   }
 
   const uniquePostalCodes = Array.from(new Set(
-    rows.map((row) => row.postalCode?.slice(0, 5)).filter((value): value is string => Boolean(value))
+    bookableRows.map((row) => row.postalCode?.slice(0, 5)).filter((value): value is string => Boolean(value))
   ));
   const postalPoints = new Map<string, Awaited<ReturnType<typeof geocodeUsPostalCode>>>();
   const resolved = await Promise.all(uniquePostalCodes.map(async (zip) => [zip, await geocodeUsPostalCode(zip)] as const));
   for (const [zip, point] of resolved) postalPoints.set(zip, point);
 
-  return rows
+  return bookableRows
     .map((row) => {
       const providerPoint =
         typeof row.latitude === "number" && typeof row.longitude === "number"

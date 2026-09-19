@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { bookingEvents, bookings } from "@/db/schema";
+import { bookingEvents, bookings, providerProfilePhotos } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { requireProviderBooking } from "@/lib/booking-access";
 import { sendCustomerAcceptedNotification } from "@/lib/booking-notifications";
@@ -45,8 +45,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "booking_time_expired" }, { status: 409 });
   }
 
-  const amounts = calculateBookingAmounts(parsed.data.quoteCents, access.business.plan as PlanKey);
   const db = getDb();
+  const [activePhoto] = await db.select({ id: providerProfilePhotos.id }).from(providerProfilePhotos).where(and(
+    eq(providerProfilePhotos.businessId, access.business.id),
+    eq(providerProfilePhotos.active, true)
+  )).limit(1);
+  if (!activePhoto) {
+    return NextResponse.json({ error: "provider_photo_required" }, { status: 409 });
+  }
+
+  const amounts = calculateBookingAmounts(parsed.data.quoteCents, access.business.plan as PlanKey);
   let claimed;
   try {
     [claimed] = await db.update(bookings).set({

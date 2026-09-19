@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { CheckCircle2, Clock3, DollarSign, ShieldCheck, XCircle } from "lucide-react";
 
@@ -10,7 +11,9 @@ export function BookingRequestDecision({
   customerRating,
   customerRatingCount,
   customerCompletedJobs,
-  customerLabel
+  customerLabel,
+  providerPhotoReady,
+  providerSetupHref
 }: {
   bookingId: string;
   role: "customer" | "provider";
@@ -19,6 +22,8 @@ export function BookingRequestDecision({
   customerRatingCount: number;
   customerCompletedJobs: number;
   customerLabel: string;
+  providerPhotoReady: boolean;
+  providerSetupHref: string;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +80,16 @@ export function BookingRequestDecision({
       <div className="card p-6">
         <div className="flex items-center gap-2 font-black"><Clock3 size={19} /> Waiting for the professional&apos;s quote</div>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">Your structured request was sent successfully. The professional can review the job scope, service area and preferred schedule, then decline or send a price. Your exact street address and direct contact details remain private.</p>
+      </div>
+    );
+  }
+
+  if (!providerPhotoReady) {
+    return (
+      <div className="card border-amber-200 bg-amber-50 p-6">
+        <div className="flex items-center gap-2 font-black text-amber-950"><ShieldCheck size={19} /> Add your required recent photo first</div>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-amber-900">Customers must be able to recognize the professional who will arrive. Upload a recent, clear face photo before sending this quote.</p>
+        <Link href={providerSetupHref} className="btn-primary mt-5">Add profile photo</Link>
       </div>
     );
   }

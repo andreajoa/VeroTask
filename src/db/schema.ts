@@ -126,6 +126,23 @@ export const businesses = pgTable("businesses", {
   index("businesses_status_idx").on(t.status)
 ]);
 
+export const providerProfilePhotos = pgTable("provider_profile_photos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  businessId: uuid("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
+  uploadedByUserId: uuid("uploaded_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  contentType: varchar("content_type", { length: 40 }).notNull(),
+  byteSize: integer("byte_size").notNull(),
+  sha256: varchar("sha256", { length: 64 }).notNull(),
+  imageBase64: text("image_base64").notNull(),
+  attestedRecent: boolean("attested_recent").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  deactivatedAt: timestamp("deactivated_at", { withTimezone: true })
+}, (t) => [
+  index("provider_profile_photos_business_idx").on(t.businessId, t.active),
+  index("provider_profile_photos_sha_idx").on(t.sha256)
+]);
+
 export const businessCategories = pgTable("business_categories", {
   businessId: uuid("business_id").notNull().references(() => businesses.id, { onDelete: "cascade" }),
   categoryId: uuid("category_id").notNull().references(() => categories.id, { onDelete: "cascade" }),

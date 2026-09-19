@@ -1,11 +1,12 @@
+import Image from "next/image";
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { BadgeCheck, MapPin, ShieldAlert, ShieldCheck, Star } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
-import { businessCategories, businesses, categories, services } from "@/db/schema";
+import { businessCategories, businesses, categories, providerProfilePhotos, services } from "@/db/schema";
 import { localePath, type PublicLocale } from "@/lib/site-copy";
 import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 
@@ -19,13 +20,18 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
   if (slug !== publicSlug) redirect(localePath(locale, `/providers/${publicSlug}`));
 
   const displayName = publicProviderName(business.id, locale);
-  const [categoryRows, serviceRows] = await Promise.all([
+  const [categoryRows, serviceRows, activePhoto] = await Promise.all([
     db.select({ slug: categories.slug, name: categories.nameEn }).from(businessCategories).innerJoin(categories, eq(categories.id, businessCategories.categoryId)).where(eq(businessCategories.businessId, business.id)),
-    db.select().from(services).where(eq(services.businessId, business.id))
+    db.select().from(services).where(eq(services.businessId, business.id)),
+    db.select({ id: providerProfilePhotos.id }).from(providerProfilePhotos).where(and(
+      eq(providerProfilePhotos.businessId, business.id),
+      eq(providerProfilePhotos.active, true)
+    )).limit(1).then((rows) => rows[0] ?? null)
   ]);
 
   const verified = business.status === "active" && Boolean(business.ownerUserId);
-  const canRequest = Boolean(business.ownerUserId || business.publicEmail);
+  const photoReady = Boolean(activePhoto);
+  const canRequest = business.ownerUserId ? photoReady : Boolean(business.publicEmail);
   const activeServices = serviceRows
     .filter((service) => service.active)
     .map((service) => ({
@@ -42,6 +48,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
       <section className="border-b border-[var(--line)] bg-white py-10">
         <div className="container-shell grid gap-8 lg:grid-cols-[1fr_340px]">
           <div>
+            {photoReady && <Image src={`/api/providers/${business.id}/photo`} alt="Recent profile photo of this professional" width={128} height={128} unoptimized className="mb-5 h-32 w-32 rounded-3xl border border-slate-200 object-cover shadow-sm" />}
             <div className="flex flex-wrap items-center gap-2">
               {verified ? (
                 <span className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><BadgeCheck size={14} /> Verified provider</span>
@@ -86,7 +93,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
             ) : (
               <>
                 <div className="flex items-center gap-2 font-black text-slate-950"><ShieldAlert size={20} /> Requests unavailable</div>
-                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">VeroTask does not currently have a secure business email for this listing.</p>
+                <p className="mt-3 text-sm leading-6 text-[var(--muted)]">{business.ownerUserId && !photoReady ? "This claimed professional must add a recent face photo before accepting new customer requests." : "VeroTask does not currently have a secure business email for this listing."}</p>
                 <Link href={localePath(locale, "/services")} className="btn-secondary mt-6 w-full">Browse other professionals</Link>
               </>
             )}

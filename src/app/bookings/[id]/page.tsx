@@ -8,7 +8,7 @@ import { BookingWorkflowPanel } from "@/components/booking-workflow-panel";
 import { MutualReputationPanel } from "@/components/mutual-reputation-panel";
 import { getDb } from "@/db";
 import { bilateralRatings } from "@/db/reputation-schema";
-import { bookingEvidence, bookingEvents, disputes, services } from "@/db/schema";
+import { bookingEvidence, bookingEvents, disputes, providerProfilePhotos, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { servicePinForBooking } from "@/lib/booking";
@@ -51,7 +51,7 @@ export default async function BookingPage({
 
   const db = getDb();
   const arrivalSince = new Date(Date.now() - 30 * 60 * 1000);
-  const [service, evidence, openDispute, evidenceSummary, counterpartReputation, providerCustomerRating, latestArrivalRequest, latestArrivalVerified] = await Promise.all([
+  const [service, evidence, openDispute, evidenceSummary, counterpartReputation, providerCustomerRating, latestArrivalRequest, latestArrivalVerified, providerActivePhoto] = await Promise.all([
     access.booking.serviceId ? db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1).then((rows) => rows[0] ?? null) : Promise.resolve(null),
     db.select().from(bookingEvidence).where(eq(bookingEvidence.bookingId, id)),
     db.select({ id: disputes.id, reason: disputes.reason, status: disputes.status }).from(disputes).where(and(eq(disputes.bookingId, id), isNull(disputes.resolvedAt))).limit(1).then((rows) => rows[0] ?? null),
@@ -66,7 +66,11 @@ export default async function BookingPage({
     db.select({ id: bookingEvents.id, createdAt: bookingEvents.createdAt }).from(bookingEvents).where(and(
       eq(bookingEvents.bookingId, id),
       eq(bookingEvents.eventType, "provider_arrival_verified")
-    )).orderBy(desc(bookingEvents.createdAt)).limit(1).then((rows) => rows[0] ?? null)
+    )).orderBy(desc(bookingEvents.createdAt)).limit(1).then((rows) => rows[0] ?? null),
+    db.select({ id: providerProfilePhotos.id }).from(providerProfilePhotos).where(and(
+      eq(providerProfilePhotos.businessId, access.business.id),
+      eq(providerProfilePhotos.active, true)
+    )).limit(1).then((rows) => rows[0] ?? null)
   ]);
 
   const role = access.isProvider ? "provider" as const : "customer" as const;
@@ -127,7 +131,7 @@ export default async function BookingPage({
           </div>
         )}
 
-        <BookingRequestDecision bookingId={id} role={role} status={access.booking.status} customerRating={access.isProvider ? counterpartReputation.rating : 5} customerRatingCount={access.isProvider ? counterpartReputation.ratingCount : 0} customerCompletedJobs={access.isProvider ? counterpartReputation.completedJobs : 0} customerLabel={access.isProvider ? counterpartReputation.label : "New"} />
+        <BookingRequestDecision bookingId={id} role={role} status={access.booking.status} customerRating={access.isProvider ? counterpartReputation.rating : 5} customerRatingCount={access.isProvider ? counterpartReputation.ratingCount : 0} customerCompletedJobs={access.isProvider ? counterpartReputation.completedJobs : 0} customerLabel={access.isProvider ? counterpartReputation.label : "New"} providerPhotoReady={Boolean(providerActivePhoto)} providerSetupHref={`/dashboard/providers/${access.business.id}/onboarding`} />
 
         {showPayment && <AcceptedBookingPayment bookingId={id} publishableKey={publishableKey} bookingFeeCents={access.booking.marketplaceFeeCents} servicePriceCents={access.booking.subtotalCents} />}
 
