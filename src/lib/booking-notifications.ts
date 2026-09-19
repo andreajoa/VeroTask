@@ -6,6 +6,7 @@ import { sendTransactionalEmail } from "@/lib/email";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 import { parseQuoteRequestBrief, quoteRequestLabel } from "@/lib/quote-request";
 import { publicProviderName } from "@/lib/public-provider";
+import { VEROTASK_TAGLINE } from "@/lib/brand";
 
 function esc(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
@@ -19,8 +20,8 @@ function money(cents: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 }
 
-function emailShell(heading: string, body: string, actionUrl: string, actionLabel: string) {
-  return `<div style="font-family:Arial,sans-serif;max-width:580px;margin:auto;color:#13231d;line-height:1.55"><h1 style="font-size:24px">${esc(heading)}</h1><div>${body}</div><p style="margin:28px 0"><a href="${esc(actionUrl)}" style="background:#126a4b;color:white;padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:700">${esc(actionLabel)}</a></p><p style="font-size:12px;color:#617069">This is a transactional VeroTask booking notification.</p></div>`;
+function emailShell(heading: string, body: string, actionUrl: string, actionLabel: string, preheader?: string) {
+  return `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${esc(preheader ?? heading)}</div><div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#13231d;line-height:1.55"><div style="padding:22px 0 18px;border-bottom:1px solid #e7ece9"><div style="font-size:22px;font-weight:800;color:#126a4b">VeroTask</div><div style="margin-top:4px;font-size:13px;color:#617069">${esc(VEROTASK_TAGLINE)}</div></div><h1 style="margin:26px 0 12px;font-size:26px;line-height:1.2">${esc(heading)}</h1><div>${body}</div><p style="margin:30px 0"><a href="${esc(actionUrl)}" style="display:inline-block;background:#126a4b;color:white;padding:14px 20px;border-radius:10px;text-decoration:none;font-weight:700">${esc(actionLabel)}</a></p><div style="border-top:1px solid #e7ece9;padding-top:18px;font-size:12px;color:#617069"><strong style="color:#13231d">VeroTask</strong><br/>${esc(VEROTASK_TAGLINE)}<br/><span style="display:inline-block;margin-top:6px">Transactional marketplace notification for Orlando &amp; Central Florida.</span></div></div>`;
 }
 
 async function bookingContext(bookingId: string) {
@@ -49,12 +50,13 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   return sendTransactionalEmail({
     to: owner.email,
-    subject: `New VeroTask quote request · ${task}`,
+    subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
-      "New service opportunity",
-      `<p>A customer requested <strong>${esc(task)}</strong> for ${esc(when)}.</p><p>Service area: <strong>${esc(location)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Customer reputation: <strong>${reputation.rating.toFixed(2)} ★</strong> · ${reputation.ratingCount === 0 ? "New" : `${reputation.ratingCount} ratings`} · ${reputation.completedJobs} completed services.</p><p>Review the structured job brief, decide whether you want the job and send your price through VeroTask. The customer's exact street address, email and phone remain private before the booking fee is paid.</p>`,
+      "A customer wants a quote from you",
+      `<p><strong>New opportunity:</strong> a VeroTask customer is looking for <strong>${esc(task)}</strong>.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Customer reputation: <strong>${reputation.rating.toFixed(2)} ★</strong> · ${reputation.ratingCount === 0 ? "New" : `${reputation.ratingCount} ratings`} · ${reputation.completedJobs} completed services.</p><p>Open the request, review the protected job brief and send your price through VeroTask. The customer's exact street address, email and phone remain private until the booking fee is paid.</p>`,
       url,
-      "Review and quote"
+      "View job and send quote",
+      `A VeroTask customer is waiting for your quote for ${task}.`
     )
   });
 }
@@ -70,12 +72,13 @@ export async function sendUnclaimedProviderOpportunityNotification(bookingId: st
 
   return sendTransactionalEmail({
     to,
-    subject: `New VeroTask opportunity near ${brief?.postalCode ?? ctx.business.city}`,
+    subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
-      `A customer selected ${ctx.business.name}`,
-      `<p>There is a new VeroTask request for <strong>${esc(task)}</strong>.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your public listing is not claimed yet. This secure one-time link verifies control of this business email, signs you in, claims the profile automatically and opens the request.</p><p>You can review or edit your provider details before deciding. The customer's exact street address, email and phone remain private until the VeroTask booking fee is paid.</p>`,
+      "A customer wants a quote from your business",
+      `<p><strong>You have a new VeroTask opportunity.</strong> A customer selected your business for <strong>${esc(task)}</strong> and is waiting for a quote.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your VeroTask listing has not been claimed yet. This secure one-time link verifies that you control this business email, signs you in, claims the profile automatically and opens the real customer request.</p><p>Review the job first. You can update your provider information before deciding whether to accept and send a price. The customer's exact street address, email and phone remain private until the VeroTask booking fee is paid.</p>`,
       magicLink,
-      "Claim profile and review request"
+      "View request and send quote",
+      `A VeroTask customer selected ${ctx.business.name} and is waiting for a quote.`
     )
   });
 }
