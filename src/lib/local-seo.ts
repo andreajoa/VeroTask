@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
-import { locationBySlug } from "@/lib/locations";
+import { LAUNCH_LOCATIONS, locationBySlug } from "@/lib/locations";
 import type { PublicLocale } from "@/lib/site-copy";
 
 export async function loadLocalServicePage(categorySlug: string, locationSlug: string, locale: PublicLocale) {
