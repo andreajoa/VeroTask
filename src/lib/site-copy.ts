@@ -7,7 +7,7 @@ export const publicCopy = {
     nav: { find: "Find services", how: "How it works", pricing: "For providers", protection: "Protection", signIn: "Sign in" },
     heroEyebrow: "Orlando & Central Florida",
     heroTitle: "Trusted local services. Verified work.",
-    heroBody: "Find and book local professionals with clear service rules and evidence-based resolution. VeroTask charges only its booking fee after provider acceptance; the service price is paid directly to the professional.",
+    heroBody: "Find local professionals, send a structured request and receive a quote without exposing direct contact details. If you accept the quote, VeroTask charges only its booking fee; the service price is paid directly to the professional.",
     searchPlaceholder: "What service do you need?",
     locationPlaceholder: "ZIP code or city",
     searchButton: "Find professionals",
@@ -25,8 +25,8 @@ export const publicCopy = {
     howTitle: "How VeroTask works",
     howSteps: [
       ["1. Find", "Search by service and location, then compare qualified local providers."],
-      ["2. Request", "Choose a service, date and provider. The provider reviews the request before any VeroTask booking fee is charged."],
-      ["3. Verify", "After acceptance, pay the VeroTask booking fee; the professional records service evidence appropriate to the job."],
+      ["2. Request a quote", "Choose a professional and send the job scope, timing and service area. Direct contact details and the exact address remain private."],
+      ["3. Confirm", "The professional sends a price. If you accept, pay the VeroTask booking fee and the exact service address is released for the confirmed booking."],
       ["4. Complete", "Pay the service price directly to the professional, then confirm the service or report a problem through the booking record."]
     ],
     pricingTitle: "Provider plans",
@@ -40,7 +40,7 @@ export const publicCopy = {
     nav: { find: "Encontrar serviços", how: "Como funciona", pricing: "Para profissionais", protection: "Proteção", signIn: "Entrar" },
     heroEyebrow: "Orlando e Flórida Central",
     heroTitle: "Serviços locais confiáveis. Trabalho comprovado.",
-    heroBody: "Encontre e contrate profissionais locais com regras claras e resolução baseada em evidências. A VeroTask cobra somente a taxa de reserva após o aceite; o valor do serviço é pago diretamente ao profissional.",
+    heroBody: "Encontre profissionais locais, envie uma solicitação estruturada e receba orçamento sem expor contatos diretos. Se aceitar o orçamento, a VeroTask cobra somente a taxa de reserva; o valor do serviço é pago diretamente ao profissional.",
     searchPlaceholder: "Qual serviço você precisa?",
     locationPlaceholder: "ZIP code ou cidade",
     searchButton: "Encontrar profissionais",
@@ -58,8 +58,8 @@ export const publicCopy = {
     howTitle: "Como a VeroTask funciona",
     howSteps: [
       ["1. Encontre", "Pesquise por serviço e localização e compare profissionais locais qualificados."],
-      ["2. Solicite", "Escolha serviço, data e profissional. O profissional analisa antes de qualquer cobrança da taxa da VeroTask."],
-      ["3. Comprove", "Após o aceite, pague a taxa de reserva da VeroTask; o profissional registra as evidências adequadas ao serviço."],
+      ["2. Solicite orçamento", "Escolha um profissional e envie escopo, prazo e área do serviço. Contatos diretos e endereço exato permanecem privados."],
+      ["3. Confirme", "O profissional envia o preço. Se aceitar, pague a taxa de reserva da VeroTask e o endereço exato é liberado para a reserva confirmada."],
       ["4. Conclua", "Pague o valor do serviço diretamente ao profissional e confirme a conclusão ou informe um problema pela reserva."]
     ],
     pricingTitle: "Planos para profissionais",
@@ -73,7 +73,7 @@ export const publicCopy = {
     nav: { find: "Buscar servicios", how: "Cómo funciona", pricing: "Para proveedores", protection: "Protección", signIn: "Ingresar" },
     heroEyebrow: "Orlando y Florida Central",
     heroTitle: "Servicios locales confiables. Trabajo verificado.",
-    heroBody: "Encuentra y contrata profesionales locales con reglas claras y resolución basada en evidencia. VeroTask cobra únicamente su tarifa de reserva después de la aceptación; el precio del servicio se paga directamente al profesional.",
+    heroBody: "Encuentra profesionales locales, envía una solicitud estructurada y recibe una cotización sin exponer contactos directos. Si aceptas la cotización, VeroTask cobra únicamente su tarifa de reserva; el precio del servicio se paga directamente al profesional.",
     searchPlaceholder: "¿Qué servicio necesitas?",
     locationPlaceholder: "Código postal o ciudad",
     searchButton: "Buscar profesionales",
@@ -91,8 +91,8 @@ export const publicCopy = {
     howTitle: "Cómo funciona VeroTask",
     howSteps: [
       ["1. Encuentra", "Busca por servicio y ubicación y compara proveedores locales calificados."],
-      ["2. Solicita", "Elige servicio, fecha y proveedor. El profesional revisa antes de que VeroTask cobre su tarifa."],
-      ["3. Verifica", "Tras la aceptación, paga la tarifa de reserva de VeroTask; el profesional registra la evidencia adecuada."],
+      ["2. Solicita una cotización", "Elige un profesional y envía alcance, plazo y área del servicio. Los contactos directos y la dirección exacta permanecen privados."],
+      ["3. Confirma", "El profesional envía el precio. Si lo aceptas, paga la tarifa de reserva de VeroTask y la dirección exacta se libera para la reserva confirmada."],
       ["4. Completa", "Paga el precio del servicio directamente al profesional y confirma la finalización o reporta un problema desde la reserva."]
     ],
     pricingTitle: "Planes para proveedores",
