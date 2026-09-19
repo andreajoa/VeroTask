@@ -35,6 +35,8 @@ export async function GET() {
   let databaseError = false;
   let storage = false;
   let storageError = false;
+  let storageErrorCode: string | null = null;
+  let storageHttpStatusCode: number | null = null;
 
   if (process.env.DATABASE_URL) {
     try {
@@ -52,10 +54,14 @@ export async function GET() {
     process.env.STORAGE_SECRET_ACCESS_KEY
   ) {
     try {
-      storage = await verifyEvidenceStorageAccess();
-      storageError = !storage;
+      const result = await verifyEvidenceStorageAccess();
+      storage = result.ok;
+      storageError = !result.ok;
+      storageErrorCode = result.errorCode;
+      storageHttpStatusCode = result.httpStatusCode;
     } catch {
       storageError = true;
+      storageErrorCode = "storage_access_failed";
     }
   }
 
@@ -86,6 +92,8 @@ export async function GET() {
       databaseError,
       storage,
       storageError,
+      storageErrorCode,
+      storageHttpStatusCode,
       productionUrlValid,
       configuredAppUrlValid,
       canonicalUrlResolved: Boolean(appUrl),
