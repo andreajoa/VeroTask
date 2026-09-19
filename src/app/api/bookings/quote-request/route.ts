@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     if (business.ownerUserId) {
       await sendProviderNewRequestNotification(booking.id);
     } else if (business.publicEmail) {
-      const next = `/api/providers/${business.id}/claim-opportunity?booking=${booking.id}`;
+      const next = `/opportunities/${booking.id}/claim`;
       const magicLink = await createMagicLink(business.publicEmail, next, canonicalAppUrl());
       await sendUnclaimedProviderOpportunityNotification(booking.id, business.publicEmail, magicLink);
     }

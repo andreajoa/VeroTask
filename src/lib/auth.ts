@@ -44,6 +44,18 @@ export async function createMagicLink(emailInput: string, redirectPath?: string 
   return `${baseUrl}/api/auth/verify?token=${encodeURIComponent(rawToken)}`;
 }
 
+export async function createSessionForUser(userId: string) {
+  const db = getDb();
+  const rawSession = randomBytes(32).toString("hex");
+  const sessionHash = hashToken(rawSession);
+  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
+  await db.insert(sessions).values({ userId, tokenHash: sessionHash, expiresAt });
+
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE, rawSession, sessionCookieOptions(expiresAt, process.env.NODE_ENV === "production"));
+  return cookieStore;
+}
+
 export async function consumeMagicLink(rawToken: string) {
   const db = getDb();
   const tokenHash = hashToken(rawToken);
@@ -60,13 +72,7 @@ export async function consumeMagicLink(rawToken: string) {
     [user] = await db.select().from(users).where(eq(users.email, record.email)).limit(1);
   }
 
-  const rawSession = randomBytes(32).toString("hex");
-  const sessionHash = hashToken(rawSession);
-  const expiresAt = new Date(Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000);
-  await db.insert(sessions).values({ userId: user.id, tokenHash: sessionHash, expiresAt });
-
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE, rawSession, sessionCookieOptions(expiresAt, process.env.NODE_ENV === "production"));
+  const cookieStore = await createSessionForUser(user.id);
 
   await claimAnonymousPersonalizationForUser(user.id);
   try {

@@ -1,7 +1,7 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
-import { bookingEvents, bookings, businesses, users } from "@/db/schema";
+import { bookings, businesses } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -11,11 +11,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const bookingId = request.nextUrl.searchParams.get("booking");
   const base = canonicalAppUrl();
 
+  if (!bookingId) return NextResponse.redirect(new URL("/dashboard?error=missing-opportunity", base));
+
   if (!user) {
-    const next = `/api/providers/${businessId}/claim-opportunity${bookingId ? `?booking=${encodeURIComponent(bookingId)}` : ""}`;
+    const next = `/api/providers/${businessId}/claim-opportunity?booking=${encodeURIComponent(bookingId)}`;
     return NextResponse.redirect(new URL(`/signin?next=${encodeURIComponent(next)}`, base));
   }
-  if (!bookingId) return NextResponse.redirect(new URL("/dashboard?error=missing-opportunity", base));
 
   const db = getDb();
   const [[business], [booking]] = await Promise.all([
@@ -24,6 +25,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   ]);
 
   if (!business || !booking) return NextResponse.redirect(new URL("/dashboard?error=opportunity-not-found", base));
+
+  if (business.ownerUserId === user.id) {
+    return NextResponse.redirect(new URL(`/bookings/${booking.id}`, base));
+  }
 
   const businessEmail = business.publicEmail?.trim().toLowerCase();
   const userEmail = user.email.trim().toLowerCase();
@@ -35,30 +40,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.redirect(new URL("/dashboard?error=profile-already-claimed", base));
   }
 
-  let claimedNow = false;
-  if (!business.ownerUserId) {
-    const [claimed] = await db.update(businesses).set({
-      ownerUserId: user.id,
-      status: "active",
-      active: true,
-      updatedAt: new Date()
-    }).where(and(
-      eq(businesses.id, business.id),
-      isNull(businesses.ownerUserId)
-    )).returning();
-
-    if (claimed) {
-      claimedNow = true;
-      await db.update(users).set({ role: "provider", updatedAt: new Date() }).where(eq(users.id, user.id));
-      await db.insert(bookingEvents).values({
-        bookingId: booking.id,
-        actorUserId: user.id,
-        eventType: "provider_profile_claimed_from_opportunity",
-        metadata: { businessId: business.id, verifiedBy: "public_business_email" }
-      });
-    }
-  }
-
-  const target = `/bookings/${booking.id}?claimed=${claimedNow ? "1" : "0"}`;
-  return NextResponse.redirect(new URL(target, base));
+  return NextResponse.redirect(new URL(`/opportunities/${booking.id}/claim`, base));
 }

@@ -75,9 +75,9 @@ export async function sendUnclaimedProviderOpportunityNotification(bookingId: st
     subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
       "A customer wants a quote from your business",
-      `<p><strong>You have a new VeroTask opportunity.</strong> A customer selected your business for <strong>${esc(task)}</strong> and is waiting for a quote.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your VeroTask listing has not been claimed yet. This secure one-time link verifies that you control this business email, signs you in, claims the profile automatically and opens the real customer request.</p><p>Review the job first. You can update your provider information before deciding whether to accept and send a price. The customer's exact street address, email and phone remain private until the VeroTask booking fee is paid.</p>`,
+      `<p><strong>You have a new VeroTask opportunity.</strong> A customer selected your business for <strong>${esc(task)}</strong> and is waiting for a quote.</p><p>Service area: <strong>${esc(location)}</strong>. Preferred time: <strong>${esc(when)}</strong>. Scope: <strong>${esc(scope)}</strong>.</p><p>Your VeroTask listing has not been claimed yet. This secure one-time link verifies access to the business email already associated with the listing and opens the exact profile selected by the customer.</p><p>On VeroTask, confirm that the listing is yours and enter the email you want to use going forward. We will send a second verification link to that address. After you verify it, the profile is unlocked and this customer request opens ready for your quote.</p><p>The customer's exact street address, email and phone remain private until the customer accepts your quote and pays the VeroTask booking fee. After the service is completed, the customer pays your service price directly to you.</p>`,
       magicLink,
-      "View request and send quote",
+      "Confirm profile and view request",
       `A VeroTask customer selected ${ctx.business.name} and is waiting for a quote.`
     )
   });
@@ -113,6 +113,30 @@ export async function sendCustomerDeclinedNotification(bookingId: string) {
       `<p><strong>${esc(publicProviderName(ctx.business.id, "en"))}</strong> is not taking this booking. You were not charged a VeroTask booking fee.</p><p>You can return to VeroTask and choose another provider.</p>`,
       `${appUrl()}/services`,
       "Find another provider"
+    )
+  });
+}
+
+export async function sendOpportunityEmailVerification({
+  to,
+  businessName,
+  task,
+  verificationUrl
+}: {
+  to: string;
+  businessName: string;
+  task: string;
+  verificationUrl: string;
+}) {
+  return sendTransactionalEmail({
+    to,
+    subject: `VeroTask: Confirm your email to unlock this job · ${task}`,
+    html: emailShell(
+      "Confirm your email and unlock this opportunity",
+      `<p>You are one step away from accessing the customer request for <strong>${esc(task)}</strong> connected to <strong>${esc(businessName)}</strong>.</p><p>Click the secure button below to confirm this is the email you want to use for your VeroTask Pro account. After verification, VeroTask will update the listing email when needed, sign you in and open the exact customer request so you can send your price.</p><p>The customer's exact street address and direct contact details stay private until the customer accepts the quote and pays the VeroTask booking fee. The customer pays the service price directly to the Pro after the service is completed.</p>`,
+      verificationUrl,
+      "Verify email and open job",
+      `Verify your email to unlock the VeroTask opportunity for ${task}.`
     )
   });
 }
