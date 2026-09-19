@@ -83,6 +83,40 @@ jobs:
             }`;
           if (!source.includes(needle)) throw new Error("privacy_patch_anchor_missing");
           source = source.replace(needle, replacement);
+
+          const r2Anchor = 'pass("Provider accepted booking request");';
+          const r2Patch = `pass("Provider accepted booking request");
+
+            const presignResponse = await provider.request.post(\`\${BASE}/api/bookings/\${bookingId}/uploads/presign\`, {
+              data: { kind: "before", contentType: "image/png" }
+            });
+            assert.equal(presignResponse.status(), 200, \`presign HTTP \${presignResponse.status()}\`);
+            const upload = await presignResponse.json();
+            assert.equal(typeof upload.uploadUrl, "string");
+            assert.equal(typeof upload.objectRef, "string");
+
+            const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WlW4YQAAAAASUVORK5CYII=", "base64");
+            const put = await fetch(upload.uploadUrl, {
+              method: "PUT",
+              headers: { "content-type": "image/png" },
+              body: png
+            });
+            assert(put.ok, \`R2 upload HTTP \${put.status}\`);
+
+            const evidenceResponse = await provider.request.post(\`\${BASE}/api/bookings/\${bookingId}/evidence\`, {
+              data: {
+                type: "before_photo",
+                objectRef: upload.objectRef,
+                note: "Automated launch QA storage verification."
+              }
+            });
+            assert.equal(evidenceResponse.status(), 200, \`evidence HTTP \${evidenceResponse.status()}\`);
+            const evidence = await evidenceResponse.json();
+            assert.equal(evidence.ok, true);
+            pass("Cloudflare R2 signed upload and evidence verification");`;
+
+          if (!source.includes(r2Anchor)) throw new Error("r2_patch_anchor_missing");
+          source = source.replace(r2Anchor, r2Patch);
           fs.writeFileSync(path, source);
           NODE
       - name: Run production journey without payment
