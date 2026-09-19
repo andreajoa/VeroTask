@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { bookingCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, services, users } from "@/db/schema";
+import { parseQuoteRequestBrief } from "@/lib/quote-request";
 import { requestAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/auth";
 import { requireCustomerBooking } from "@/lib/booking-access";
@@ -43,9 +44,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await db.update(bookingCheckoutSessions).set({ status: "expired", updatedAt: new Date() }).where(eq(bookingCheckoutSessions.id, existing.id));
   }
 
-  if (!access.booking.serviceId) return NextResponse.json({ error: "service_not_found" }, { status: 409 });
-  const [service] = await db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1);
-  if (!service) return NextResponse.json({ error: "service_not_found" }, { status: 409 });
+  const [service] = access.booking.serviceId
+    ? await db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1)
+    : [null];
+  const brief = parseQuoteRequestBrief(access.booking.customerNotes);
+  const serviceLabel = brief?.task ?? service?.name ?? "Local service";
+  if (access.booking.subtotalCents < 1000) return NextResponse.json({ error: "provider_quote_required" }, { status: 409 });
 
   let customerId = user.stripeCustomerId;
   if (!customerId) {
@@ -59,9 +63,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     ui_mode: "embedded_page",
     mode: "payment",
     customer: customerId,
-    line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: access.booking.marketplaceFeeCents, product_data: { name: `VeroTask booking fee · ${service.name}`, description: `${access.business.name} · ${access.business.city}, FL` } } }],
+    line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: access.booking.marketplaceFeeCents, product_data: { name: `VeroTask booking fee · ${serviceLabel}`, description: `Protected VeroTask booking · ${access.business.city}, FL` } } }],
     payment_intent_data: { metadata: { verotask_booking_id: id, verotask_business_id: access.business.id, verotask_policy_version: POLICY_VERSION, payment_model: "booking_fee_only" } },
-    metadata: { verotask_booking_id: id, verotask_business_id: access.business.id, verotask_service_id: service.id, verotask_policy_version: POLICY_VERSION, payment_model: "booking_fee_only", provider_paid_directly: "true" },
+    metadata: { verotask_booking_id: id, verotask_business_id: access.business.id, ...(service?.id ? { verotask_service_id: service.id } : {}), verotask_policy_version: POLICY_VERSION, payment_model: "booking_fee_only", provider_paid_directly: "true" },
     return_url: `${baseUrl}/bookings/${id}?checkout=return&session_id={CHECKOUT_SESSION_ID}`
   }, { idempotencyKey: `verotask-checkout-${id}-${existing?.stripeSessionId ?? "initial"}` });
 
