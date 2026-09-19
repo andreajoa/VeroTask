@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getDb } from "@/db";
-import { crmContacts, crmEmailEvents, crmEmailSends } from "@/db/analytics-schema";
+import { crmContacts, crmEmailEvents, crmEmailSends, platformSecrets } from "@/db/analytics-schema";
 
 export const runtime = "nodejs";
 
@@ -18,39 +17,41 @@ type ResendEvent = {
   };
 };
 
+async function resendWebhookSecret() {
+  if (process.env.RESEND_WEBHOOK_SECRET) return process.env.RESEND_WEBHOOK_SECRET;
+  try {
+    const [stored] = await getDb()
+      .select({ value: platformSecrets.secretValue })
+      .from(platformSecrets)
+      .where(eq(platformSecrets.id, "resend_webhook_secret"))
+      .limit(1);
+    return stored?.value || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "webhook_not_configured" }, { status: 503 });
 
   const payload = await request.text();
-  const endpointKey = request.nextUrl.searchParams.get("key") || "";
-  const endpointKeyValid = endpointKey.length >= 32 &&
-    createHash("sha256").update(endpointKey).digest("hex") === "57ccb10b03a8045b6b5ff758420a3910623b1d0b75131266b538790e984c283e";
+  const webhookEventId = request.headers.get("svix-id") || "";
+  const timestamp = request.headers.get("svix-timestamp");
+  const signature = request.headers.get("svix-signature");
+  const webhookSecret = await resendWebhookSecret();
+  if (!webhookSecret || !webhookEventId || !timestamp || !signature) return NextResponse.json({ error: "missing_signature" }, { status: 400 });
 
   let verified: ResendEvent;
-  let webhookEventId = request.headers.get("svix-id") || "";
-  if (endpointKeyValid) {
-    try {
-      verified = JSON.parse(payload) as ResendEvent;
-      if (!webhookEventId) webhookEventId = `endpoint-${createHash("sha256").update(payload).digest("hex")}`;
-    } catch {
-      return NextResponse.json({ error: "invalid_payload" }, { status: 400 });
-    }
-  } else {
-    const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
-    const timestamp = request.headers.get("svix-timestamp");
-    const signature = request.headers.get("svix-signature");
-    if (!webhookSecret || !webhookEventId || !timestamp || !signature) return NextResponse.json({ error: "missing_signature" }, { status: 400 });
-    try {
-      const resend = new Resend(apiKey);
-      verified = await Promise.resolve(resend.webhooks.verify({
-        payload,
-        headers: { id: webhookEventId, timestamp, signature },
-        webhookSecret
-      })) as unknown as ResendEvent;
-    } catch {
-      return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
-    }
+  try {
+    const resend = new Resend(apiKey);
+    verified = await Promise.resolve(resend.webhooks.verify({
+      payload,
+      headers: { id: webhookEventId, timestamp, signature },
+      webhookSecret
+    })) as unknown as ResendEvent;
+  } catch {
+    return NextResponse.json({ error: "invalid_signature" }, { status: 400 });
   }
 
   const eventType = verified.type || "unknown";
