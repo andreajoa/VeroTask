@@ -11,7 +11,7 @@ import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from 
 import { sendProviderNewRequestNotification, sendUnclaimedProviderOpportunityNotification } from "@/lib/booking-notifications";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
-import { containsDirectContactInfo, serializeQuoteRequestBrief } from "@/lib/quote-request";
+import { containsDirectContactInfo, containsExactServiceAddress, serializeQuoteRequestBrief } from "@/lib/quote-request";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
 
   if (containsDirectContactInfo(parsed.data.task) || containsDirectContactInfo(parsed.data.details)) {
     return NextResponse.json({ error: "direct_contact_not_allowed" }, { status: 400 });
+  }
+  if (
+    containsExactServiceAddress(parsed.data.task, parsed.data.serviceAddress) ||
+    containsExactServiceAddress(parsed.data.details, parsed.data.serviceAddress)
+  ) {
+    return NextResponse.json({ error: "exact_address_not_allowed_in_job_brief" }, { status: 400 });
   }
 
   const db = getDb();
