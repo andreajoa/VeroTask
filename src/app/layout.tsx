@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "Find trusted local professionals in Orlando and Central Florida with a separate VeroTask booking fee, verified service evidence, transparent disputes and customer reviews.",
   applicationName: "VeroTask",
   verification: {
-    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+    google: "g7DcEyI2I4ao2UQTEm5pvalz7vB3sIWIyJ8urKACCf0",
     other: Object.keys(verificationOther).length ? verificationOther : undefined
   },
   alternates: {
