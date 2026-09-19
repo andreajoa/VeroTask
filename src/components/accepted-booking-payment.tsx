@@ -78,8 +78,8 @@ export function AcceptedBookingPayment({
 
   return (
     <div className="card p-6">
-      <div className="flex items-center gap-2 font-black"><CreditCard size={19} /> Provider accepted your request</div>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">To confirm the booking, pay the VeroTask booking fee of <strong>{money(bookingFeeCents)}</strong>. The service price of <strong>{money(servicePriceCents)}</strong> is paid directly to the professional; VeroTask does not collect or transfer that service payment.</p>
+      <div className="flex items-center gap-2 font-black"><CreditCard size={19} /> Your professional sent a quote</div>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">To accept the quote and confirm the booking, pay the VeroTask booking fee of <strong>{money(bookingFeeCents)}</strong>. The service price of <strong>{money(servicePriceCents)}</strong> is paid directly to the professional; VeroTask does not collect or transfer that service payment.</p>
       {error && <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-800">{error}</div>}
       <div className="mt-5 flex flex-wrap gap-3">
         <button className="btn-primary" disabled={busy || !publishableKey} onClick={startPayment}>
