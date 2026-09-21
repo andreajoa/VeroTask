@@ -29,6 +29,8 @@ VeroTask is a production-oriented local-services marketplace for Orlando and Cen
 11. VeroTask records completion without any provider payout or Stripe transfer.
 12. Customer and professional can rate one another after completion.
 
+> Changing this codebase? Read [`AGENTS.md`](AGENTS.md) first. It documents the invariants that are not obvious from the code — what `payment_authorized` really means, why the Stripe webhook is the hinge of the whole product, which database driver to use for transactions, and what the test suites deliberately do not cover.
+
 ## Core stack
 
 - Next.js 16 App Router + React 19 + TypeScript
