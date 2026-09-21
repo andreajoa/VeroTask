@@ -1,0 +1,51 @@
+name: Stripe Webhook Liveness
+
+# A checkout session that lapsed and is still open means Stripe is not reaching
+# production. That is the failure where the customer's card is charged, the
+# booking never becomes `scheduled`, and the customer never receives the service
+# PIN — with nothing in the app looking broken. This job is the alarm, and it
+# needs no payment to fire.
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stripe-webhook-liveness
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check that Stripe events still reach production
+        env:
+          MONITOR_TOKEN: ${{ secrets.VEROTASK_WEBHOOK_MONITOR_TOKEN }}
+          APP_URL: https://www.verotask.online
+        run: |
+          set -euo pipefail
+          test -n "$MONITOR_TOKEN"
+          body=$(mktemp)
+          code=$(curl --silent --show-error --retry 2 --max-time 60 \
+            -o "$body" -w '%{http_code}' \
+            -H "Authorization: Bearer $MONITOR_TOKEN" \
+            "$APP_URL/api/monitoring/stripe-webhook")
+          cat "$body"
+          echo
+          if [ "$code" = "200" ]; then
+            echo "Stripe webhook delivery looks alive."
+            exit 0
+          fi
+          if [ "$code" = "503" ]; then
+            echo "::error::Stripe is not reaching production. Checkout sessions lapsed without checkout.session.expired arriving, so a real payment would charge the card and never release the address or the service PIN. Check the webhook endpoint in the Stripe LIVE dashboard."
+            exit 1
+          fi
+          # Anything else means the alarm itself is broken, which is a different
+          # problem from the one it watches. Say so instead of blaming Stripe.
+          echo "::error::The liveness probe could not run (HTTP $code). This says nothing about Stripe — fix the probe first."
+          exit 1

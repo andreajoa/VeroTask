@@ -78,7 +78,9 @@ What `scheduled` unlocks:
 
 ### How to tell whether the webhook is alive without making a payment
 
-A checkout session that is past `expires_at` and still `status = 'open'` means Stripe is not reaching this deployment — Stripe fires `checkout.session.expired` and the handler marks it `expired`. Note that the cancellation path also writes `expired`, so attribute carefully: compare `updated_at` against the `booking_cancelled` event.
+A checkout session that is past `expires_at` and still `status = 'open'` means Stripe is not reaching this deployment — Stripe fires `checkout.session.expired` and the handler marks it `expired`. Note that the cancellation path also writes `expired`, so attribute carefully: compare `updated_at` against the `booking_cancelled` event. That direction of error is safe for the alarm below: a local write can only hide a dead webhook, never invent one, because every row it counts is still `open`.
+
+This is automated. `GET /api/monitoring/stripe-webhook` (`src/lib/stripe-webhook-liveness.ts`) returns 200 while events are arriving and **503** when a session lapsed more than an hour ago and is still open; the hourly `Stripe Webhook Liveness` workflow turns red on 503. Two deliberate choices there: a 60-minute grace, because Stripe's expiry event is not instant, and a 48-hour window, because Stripe never re-emits the expiry of an old session — without the window the alarm would stay red forever after the endpoint is fixed. `payment_succeeded`, `payment_requires_refund` and `checkout_expired` are written by the webhook and nothing else, so `lastInboundEventAt` is the honest answer to "when did Stripe last reach us".
 
 Required webhook events (`src/app/api/stripe/webhook/route.ts`):
 
