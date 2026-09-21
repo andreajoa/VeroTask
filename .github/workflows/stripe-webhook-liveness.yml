@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Check that Stripe events still reach production
         env:
-          MONITOR_TOKEN: ${{ secrets.VEROTASK_WEBHOOK_MONITOR_TOKEN }}
+          MONITOR_TOKEN: ${{ secrets.VEROTASK_EMAIL_CRON_TOKEN }}
           APP_URL: https://www.verotask.online
         run: |
           set -euo pipefail
