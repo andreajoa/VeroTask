@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   doublePrecision,
@@ -121,6 +122,7 @@ export const businesses = pgTable("businesses", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (t) => [
   uniqueIndex("businesses_slug_unique").on(t.slug),
+  uniqueIndex("businesses_owner_user_unique").on(t.ownerUserId).where(sql`${t.ownerUserId} is not null`),
   index("businesses_location_idx").on(t.city, t.state),
   index("businesses_plan_idx").on(t.plan),
   index("businesses_status_idx").on(t.status)
@@ -254,7 +256,11 @@ export const disputes = pgTable("disputes", {
   openedAt: timestamp("opened_at", { withTimezone: true }).defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
-}, (t) => [index("disputes_booking_idx").on(t.bookingId), index("disputes_status_idx").on(t.status)]);
+}, (t) => [
+  index("disputes_booking_idx").on(t.bookingId),
+  index("disputes_status_idx").on(t.status),
+  uniqueIndex("disputes_booking_open_unique").on(t.bookingId).where(sql`${t.resolvedAt} is null`)
+]);
 
 export const refunds = pgTable("refunds", {
   id: uuid("id").defaultRandom().primaryKey(),

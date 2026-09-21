@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       canonical: current,
       languages: {
         "en-US": english,
-        "pt-US": `/pt-br/locations/${city}`,
+        "pt-BR": `/pt-br/locations/${city}`,
         "es-US": `/es/locations/${city}`,
         "x-default": english
       }

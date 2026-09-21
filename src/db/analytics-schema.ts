@@ -262,6 +262,14 @@ export const adminCredentials = pgTable("admin_credentials", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+export const adminLoginAttempts = pgTable("admin_login_attempts", {
+  keyHash: varchar("key_hash", { length: 64 }).primaryKey(),
+  failureCount: integer("failure_count").notNull().default(0),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }).defaultNow().notNull(),
+  blockedUntil: timestamp("blocked_until", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (t) => [index("admin_login_attempts_blocked_idx").on(t.blockedUntil)]);
+
 export const platformSecrets = pgTable("platform_secrets", {
   id: varchar("id", { length: 120 }).primaryKey(),
   secretValue: text("secret_value").notNull(),

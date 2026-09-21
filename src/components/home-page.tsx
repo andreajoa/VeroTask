@@ -17,20 +17,20 @@ export async function HomePage({ locale }: { locale: PublicLocale }) {
       "@type": "Organization",
       name: "VeroTask",
       url: base,
-      description: "Local services marketplace focused on Orlando and Central Florida, United States."
+      description: c.home.organizationDescription
     },
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
       name: "VeroTask",
       url: base,
-      inLanguage: ["en-US", "pt-US", "es-US"]
+      inLanguage: ["en-US", "pt-BR", "es-US"]
     },
     {
       "@context": "https://schema.org",
       "@type": "Service",
-      name: "VeroTask local services marketplace",
-      serviceType: "Local service discovery, quote requests and booking coordination",
+      name: c.home.serviceName,
+      serviceType: c.home.serviceType,
       provider: { "@type": "Organization", name: "VeroTask", url: base },
       areaServed: activeLocations.map((location) => ({
         "@type": "City",
@@ -54,10 +54,10 @@ export async function HomePage({ locale }: { locale: PublicLocale }) {
       <section className="bg-[var(--background)] py-16 lg:py-24">
         <div className="container-shell">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--accent)]">Simple from request to done</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--accent)]">{c.home.howEyebrow}</p>
             <h2 className="mt-3 text-3xl font-black tracking-[-0.04em] sm:text-4xl">{c.howTitle}</h2>
-            <p className="mt-4 text-slate-600">VeroTask helps define the job before matching, so both sides start with clearer expectations.</p>
-            <Link href={localePath(locale, "/how-it-works")} className="mt-6 inline-flex items-center font-black text-[var(--brand)]">See the complete process <ArrowRight size={17} className="ml-2" /></Link>
+            <p className="mt-4 text-slate-600">{c.home.howBody}</p>
+            <Link href={localePath(locale, "/how-it-works")} className="mt-6 inline-flex items-center font-black text-[var(--brand)]">{c.home.howLink} <ArrowRight size={17} className="ml-2" /></Link>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-4">
@@ -78,10 +78,10 @@ export async function HomePage({ locale }: { locale: PublicLocale }) {
       <section className="border-y border-slate-200 bg-white py-16 lg:py-24">
         <div className="container-shell grid gap-12 lg:grid-cols-[.82fr_1.18fr] lg:items-start">
           <div className="lg:sticky lg:top-28">
-            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-black uppercase tracking-[0.13em] text-[var(--brand)]"><ShieldCheck size={15} /> Booking protection</div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-black uppercase tracking-[0.13em] text-[var(--brand)]"><ShieldCheck size={15} /> {c.home.protectionEyebrow}</div>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] sm:text-5xl">{c.trustTitle}</h2>
             <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">{c.trustBody}</p>
-            <Link href={localePath(locale, "/protection")} className="mt-7 inline-flex items-center font-black text-[var(--brand)]">Read the full protection rules <ArrowRight size={17} className="ml-2" /></Link>
+            <Link href={localePath(locale, "/protection")} className="mt-7 inline-flex items-center font-black text-[var(--brand)]">{c.home.protectionLink} <ArrowRight size={17} className="ml-2" /></Link>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -102,17 +102,15 @@ export async function HomePage({ locale }: { locale: PublicLocale }) {
       <section className="overflow-hidden bg-[var(--brand-strong)] text-white">
         <div className="container-shell grid lg:grid-cols-[1fr_.92fr] lg:items-stretch">
           <div className="py-16 pr-0 lg:py-24 lg:pr-16">
-            <div className="inline-flex items-center gap-2 text-sm font-black text-sky-200"><UserRoundCheck size={17} /> Built for independent local professionals</div>
+            <div className="inline-flex items-center gap-2 text-sm font-black text-sky-200"><UserRoundCheck size={17} /> {c.home.providerEyebrow}</div>
             <h2 className="mt-4 max-w-2xl text-3xl font-black tracking-[-0.045em] sm:text-5xl">{c.providerTitle}</h2>
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">Join free, choose the work you want, review the customer before accepting and receive the full service price directly from your customer. VeroTask charges its booking fee separately.</p>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-200">{c.providerBody}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={localePath(locale, "/providers")} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-5 font-black text-[var(--brand-strong)]">Explore VeroTask for providers <ArrowRight size={18} className="ml-2" /></Link>
-              <Link href={localePath(locale, "/providers/join")} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/25 px-5 font-black text-white hover:bg-white/10">Join free</Link>
+              <Link href={localePath(locale, "/providers")} className="inline-flex min-h-12 items-center justify-center rounded-xl bg-white px-5 font-black text-[var(--brand-strong)]">{c.home.providerPrimaryCta} <ArrowRight size={18} className="ml-2" /></Link>
+              <Link href={localePath(locale, "/providers/join")} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-white/25 px-5 font-black text-white hover:bg-white/10">{c.home.providerSecondaryCta}</Link>
             </div>
             <div className="mt-9 grid gap-3 text-sm text-slate-200 sm:grid-cols-3">
-              <div><strong className="block text-white">No monthly fee required</strong><span>Start on the Free plan.</span></div>
-              <div><strong className="block text-white">Choose your work</strong><span>Control services and availability.</span></div>
-              <div><strong className="block text-white">Direct service payment</strong><span>The customer pays your service price directly to you.</span></div>
+              {c.home.providerBenefits.map(([title, body]) => <div key={title}><strong className="block text-white">{title}</strong><span>{body}</span></div>)}
             </div>
           </div>
           <div className="relative min-h-[360px] lg:min-h-full">
@@ -124,7 +122,7 @@ export async function HomePage({ locale }: { locale: PublicLocale }) {
 
       <section className="border-y border-slate-200 bg-[var(--background)] py-12">
         <div className="container-shell">
-          <div className="mb-5 flex items-center justify-center gap-2 text-sm font-black text-slate-500"><Star size={15} className="text-[var(--accent)]" fill="currentColor" /> Find help across Central Florida</div>
+          <div className="mb-5 flex items-center justify-center gap-2 text-sm font-black text-slate-500"><Star size={15} className="text-[var(--accent)]" fill="currentColor" /> {c.home.locationsTitle}</div>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm font-bold text-slate-700">
             {activeLocations.map((location) => <Link href={localePath(locale, `/locations/${location.slug}`)} key={location.slug} className="hover:text-[var(--brand)]">{location.label}</Link>)}
           </div>

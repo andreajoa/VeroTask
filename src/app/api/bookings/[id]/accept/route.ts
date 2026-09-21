@@ -1,19 +1,22 @@
 import { and, eq } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb } from "@/db";
+import { getDb, getTransactionalDb } from "@/db";
 import { bookingEvents, bookings, providerProfilePhotos } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { checkProviderAvailability } from "@/lib/availability";
 import { requireProviderBooking } from "@/lib/booking-access";
-import { sendCustomerAcceptedNotification } from "@/lib/booking-notifications";
 import { canProviderAccept } from "@/lib/booking-state";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 import { algorithmReputationScore } from "@/lib/reputation-score";
+import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
 
 const schema = z.object({
   quoteCents: z.number().int().min(1000).max(5_000_000)
 });
+
+export const maxDuration = 60;
 
 function postgresErrorCode(error: unknown) {
   if (!error || typeof error !== "object") return null;
@@ -54,17 +57,61 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: "provider_photo_required" }, { status: 409 });
   }
 
+  const availability = await checkProviderAvailability(
+    access.business.id,
+    access.booking.scheduledStart,
+    access.booking.scheduledEnd ?? access.booking.scheduledStart,
+    access.booking.id
+  );
+  if (!availability.available) {
+    return NextResponse.json({ error: availability.reason }, { status: 409 });
+  }
+
   const amounts = calculateBookingAmounts(parsed.data.quoteCents, access.business.plan as PlanKey);
+  const reputation = await getCustomerReputationSummary(access.booking.customerId);
+  const reputationScore = algorithmReputationScore({
+    rating: reputation.rating,
+    ratingCount: reputation.ratingCount,
+    completedJobs: reputation.completedJobs
+  });
+
   let claimed;
   try {
-    [claimed] = await db.update(bookings).set({
-      status: "accepted",
-      subtotalCents: amounts.totalCents,
-      marketplaceFeeCents: amounts.marketplaceFeeCents,
-      providerAmountCents: amounts.providerAmountCents,
-      commissionBpsSnapshot: amounts.commissionBps,
-      updatedAt: new Date()
-    }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
+    claimed = await getTransactionalDb().transaction(async (tx) => {
+      const [updated] = await tx.update(bookings).set({
+        status: "accepted",
+        subtotalCents: amounts.totalCents,
+        marketplaceFeeCents: amounts.marketplaceFeeCents,
+        providerAmountCents: amounts.providerAmountCents,
+        commissionBpsSnapshot: amounts.commissionBps,
+        updatedAt: new Date()
+      }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
+      if (!updated) return null;
+
+      await tx.insert(bookingEvents).values({
+        bookingId: id,
+        actorUserId: user.id,
+        eventType: "provider_quote_submitted",
+        previousStatus: "requested",
+        nextStatus: "accepted",
+        metadata: {
+          quoteCents: amounts.totalCents,
+          bookingFeeCents: amounts.marketplaceFeeCents,
+          customerRating: reputation.rating,
+          customerRatingCount: reputation.ratingCount,
+          customerCompletedJobs: reputation.completedJobs,
+          customerReputationLabel: reputation.label,
+          customerAlgorithmReputationScore: reputationScore,
+          exactAddressStillWithheld: true
+        }
+      });
+      await queueBookingEmail(tx, {
+        kind: "customer_quote_ready",
+        bookingId: id,
+        idempotencyKey: `booking:${id}:customer-quote-ready`
+      });
+      return updated;
+    });
   } catch (error) {
     if (postgresErrorCode(error) === "23P01") {
       return NextResponse.json({ error: "schedule_conflict" }, { status: 409 });
@@ -73,33 +120,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
   if (!claimed) return NextResponse.json({ error: "booking_state_changed" }, { status: 409 });
 
-  const reputation = await getCustomerReputationSummary(claimed.customerId);
-  const reputationScore = algorithmReputationScore({
-    rating: reputation.rating,
-    ratingCount: reputation.ratingCount,
-    completedJobs: reputation.completedJobs
-  });
-
-  await db.insert(bookingEvents).values({
-    bookingId: id,
-    actorUserId: user.id,
-    eventType: "provider_quote_submitted",
-    previousStatus: "requested",
-    nextStatus: "accepted",
-    metadata: {
-      quoteCents: amounts.totalCents,
-      bookingFeeCents: amounts.marketplaceFeeCents,
-      customerRating: reputation.rating,
-      customerRatingCount: reputation.ratingCount,
-      customerCompletedJobs: reputation.completedJobs,
-      customerReputationLabel: reputation.label,
-      customerAlgorithmReputationScore: reputationScore,
-      exactAddressStillWithheld: true
-    }
-  });
-
-  try { await sendCustomerAcceptedNotification(id); }
-  catch (error) { console.error("[VeroTask quote notification]", error); }
+  after(() => kickTransactionalEmailOutbox(id));
 
   return NextResponse.json({
     ok: true,

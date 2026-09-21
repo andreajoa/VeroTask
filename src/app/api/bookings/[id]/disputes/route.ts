@@ -1,11 +1,9 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb } from "@/db";
-import { bookingEvents, bookings, disputes } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
+import { openBookingDispute } from "@/lib/dispute-workflow";
 
 const schema = z.object({
   reason: z.enum(["provider_no_show", "service_not_completed", "service_not_as_described", "property_damage", "customer_no_show", "payment_issue", "other"]),
@@ -25,60 +23,27 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (parsed.data.reason === "customer_no_show" && !access.isProvider) return NextResponse.json({ error: "provider_reason_only" }, { status: 403 });
   if (parsed.data.reason === "provider_no_show" && !access.isCustomer) return NextResponse.json({ error: "customer_reason_only" }, { status: 403 });
 
-  const now = Date.now();
-  const serviceEnd = (access.booking.scheduledEnd ?? access.booking.scheduledStart).getTime();
-  const canOpen = ["scheduled", "in_progress", "provider_completed", "customer_confirmed", "auto_completed", "paid_out"].includes(access.booking.status);
-  if (!canOpen) return NextResponse.json({ error: "dispute_not_available" }, { status: 409 });
-  if (access.booking.status === "scheduled" && now < serviceEnd && parsed.data.reason === "provider_no_show") {
-    return NextResponse.json({ error: "service_window_not_finished" }, { status: 409 });
-  }
-  if (now > serviceEnd + 72 * 60 * 60 * 1000) return NextResponse.json({ error: "internal_dispute_window_closed" }, { status: 409 });
-
-  const db = getDb();
-
-  if (parsed.data.reason === "provider_no_show") {
-    const [arrivalVerified] = await db.select({ id: bookingEvents.id }).from(bookingEvents)
-      .where(and(eq(bookingEvents.bookingId, id), eq(bookingEvents.eventType, "provider_arrival_verified")))
-      .limit(1);
-    if (arrivalVerified) {
-      return NextResponse.json({
-        error: "provider_arrival_already_verified",
-        bookingFeeRefundAvailableForNoShow: false
-      }, { status: 409 });
-    }
-  }
-
-  const [open] = await db.select({ id: disputes.id }).from(disputes)
-    .where(and(eq(disputes.bookingId, id), isNull(disputes.resolvedAt))).limit(1);
-  if (open) return NextResponse.json({ error: "dispute_already_open", disputeId: open.id }, { status: 409 });
-
   // VeroTask can review/refund only the booking fee collected by Stripe. Any
   // service-price dispute remains between the customer and the professional.
-  const requested = Math.min(parsed.data.requestedRefundCents ?? access.booking.marketplaceFeeCents, access.booking.marketplaceFeeCents);
-  const [dispute] = await db.insert(disputes).values({
-    bookingId: id,
-    openedByUserId: user.id,
-    reason: parsed.data.reason,
-    summary: parsed.data.summary,
-    customerRequestedRefundCents: access.isCustomer ? requested : undefined,
-    status: "open"
-  }).returning();
-
-  await db.update(bookings).set({ status: "disputed", updatedAt: new Date() }).where(eq(bookings.id, id));
-  await db.insert(bookingEvents).values({
+  const result = await openBookingDispute({
     bookingId: id,
     actorUserId: user.id,
-    eventType: "dispute_opened",
-    previousStatus: access.booking.status,
-    nextStatus: "disputed",
-    metadata: {
-      disputeId: dispute.id,
-      reason: dispute.reason,
-      policyVersion: POLICY_VERSION,
-      requestedBookingFeeRefundCents: requested,
-      servicePaymentHandledDirectly: true
-    }
+    reason: parsed.data.reason,
+    summary: parsed.data.summary,
+    requestedRefundCents: parsed.data.requestedRefundCents,
+    isCustomer: access.isCustomer,
+    isProvider: access.isProvider,
+    policyVersion: POLICY_VERSION
   });
+  if (!result.ok) {
+    const status = result.error === "booking_not_found" ? 404
+      : result.error === "provider_reason_only" || result.error === "customer_reason_only" ? 403 : 409;
+    return NextResponse.json({
+      error: result.error,
+      ...(result.error === "dispute_already_open" ? { disputeId: result.disputeId } : {}),
+      ...(result.error === "provider_arrival_already_verified" ? { bookingFeeRefundAvailableForNoShow: false } : {})
+    }, { status });
+  }
 
-  return NextResponse.json({ ok: true, disputeId: dispute.id, status: "disputed" });
+  return NextResponse.json(result);
 }

@@ -24,6 +24,10 @@ const copy = {
     locationPlaceholder: "ZIP code or city",
     button: "Find trusted help",
     noCalls: "Direct contact details stay private during the quote and booking flow.",
+    heroBody: "Tell us what needs doing in your own words. VeroTask turns it into a clearer job brief before matching local professionals.",
+    sameDay: "Same-day options where available",
+    serviceLabel: "Service or task",
+    locationLabel: "Location",
     modalEyebrow: "Build your job brief",
     sizeTitle: "How big is the task?",
     sizeBody: "A quick answer helps us avoid showing you the wrong kind of pro.",
@@ -38,13 +42,27 @@ const copy = {
     back: "Back",
     close: "Close",
     categoriesTitle: "Popular ways to get help",
-    categoriesBody: "Home projects, everyday tasks and flexible local help — all in one marketplace."
+    categoriesBody: "Home projects, everyday tasks and flexible local help — all in one marketplace.",
+    categoriesEyebrow: "Explore by task",
+    unsureCta: "Not sure where to start? Tell us the task",
+    showScene: "Show",
+    playSlideshow: "Play hero slideshow",
+    pauseSlideshow: "Pause hero slideshow",
+    preferredDate: "Preferred service date",
+    whyAsk: "Why we ask:",
+    whyAskBody: "provider availability, travel range and licensing can vary by location.",
+    detailsPlaceholder: "Example: two 55-inch TVs, drywall, mounts already purchased, parking available...",
+    summary: { task: "Task", location: "Location", scope: "Scope", timeline: "Timeline" }
   },
   "pt-br": {
     searchPlaceholder: "Com o que você precisa de ajuda?",
     locationPlaceholder: "ZIP code ou cidade",
     button: "Encontrar ajuda confiável",
     noCalls: "Os dados de contato direto permanecem privados durante o orçamento e a reserva.",
+    heroBody: "Conte com suas palavras o que precisa ser feito. A VeroTask transforma isso em um pedido mais claro antes de encontrar profissionais locais.",
+    sameDay: "Opções para o mesmo dia, quando disponíveis",
+    serviceLabel: "Serviço ou tarefa",
+    locationLabel: "Localização",
     modalEyebrow: "Monte os detalhes do serviço",
     sizeTitle: "Qual é o tamanho da tarefa?",
     sizeBody: "Uma resposta rápida ajuda a evitar profissionais que não combinam com o serviço.",
@@ -59,13 +77,27 @@ const copy = {
     back: "Voltar",
     close: "Fechar",
     categoriesTitle: "Formas populares de conseguir ajuda",
-    categoriesBody: "Serviços para casa, tarefas do dia a dia e ajuda local em um só marketplace."
+    categoriesBody: "Serviços para casa, tarefas do dia a dia e ajuda local em um só marketplace.",
+    categoriesEyebrow: "Explore por tarefa",
+    unsureCta: "Não sabe por onde começar? Conte qual é a tarefa",
+    showScene: "Mostrar",
+    playSlideshow: "Reproduzir apresentação",
+    pauseSlideshow: "Pausar apresentação",
+    preferredDate: "Data preferida para o serviço",
+    whyAsk: "Por que perguntamos:",
+    whyAskBody: "a disponibilidade, a distância de atendimento e as licenças podem variar conforme o local.",
+    detailsPlaceholder: "Exemplo: duas TVs de 55 polegadas, parede de drywall, suportes já comprados e estacionamento disponível...",
+    summary: { task: "Tarefa", location: "Local", scope: "Escopo", timeline: "Prazo" }
   },
   es: {
     searchPlaceholder: "¿Con qué necesitas ayuda?",
     locationPlaceholder: "Código postal o ciudad",
     button: "Encontrar ayuda confiable",
     noCalls: "Los datos de contacto directo permanecen privados durante la cotización y la reserva.",
+    heroBody: "Cuéntanos con tus palabras qué necesitas. VeroTask lo convierte en una solicitud más clara antes de encontrar profesionales locales.",
+    sameDay: "Opciones para el mismo día cuando estén disponibles",
+    serviceLabel: "Servicio o tarea",
+    locationLabel: "Ubicación",
     modalEyebrow: "Arma los detalles del trabajo",
     sizeTitle: "¿Qué tan grande es la tarea?",
     sizeBody: "Una respuesta rápida ayuda a evitar profesionales que no encajan con el trabajo.",
@@ -80,23 +112,105 @@ const copy = {
     back: "Volver",
     close: "Cerrar",
     categoriesTitle: "Formas populares de obtener ayuda",
-    categoriesBody: "Proyectos del hogar, tareas cotidianas y ayuda local flexible en un solo marketplace."
+    categoriesBody: "Proyectos del hogar, tareas cotidianas y ayuda local flexible en un solo marketplace.",
+    categoriesEyebrow: "Explora por tarea",
+    unsureCta: "¿No sabes por dónde empezar? Cuéntanos la tarea",
+    showScene: "Mostrar",
+    playSlideshow: "Reproducir presentación",
+    pauseSlideshow: "Pausar presentación",
+    preferredDate: "Fecha preferida para el servicio",
+    whyAsk: "Por qué preguntamos:",
+    whyAskBody: "la disponibilidad, el radio de atención y las licencias pueden variar según la ubicación.",
+    detailsPlaceholder: "Ejemplo: dos televisores de 55 pulgadas, pared de drywall, soportes ya comprados y estacionamiento disponible...",
+    summary: { task: "Tarea", location: "Ubicación", scope: "Alcance", timeline: "Plazo" }
   }
 } as const;
 
-const sizeOptions: Array<{ value: ProjectSize; title: string; body: string }> = [
-  { value: "small", title: "Small task", body: "One item or a quick job" },
-  { value: "medium", title: "Medium project", body: "A few items or several hours" },
-  { value: "large", title: "Large project", body: "Multiple rooms, items or a bigger scope" },
-  { value: "not-sure", title: "Not sure yet", body: "Let the professional help estimate the scope" }
-];
+type LocalizedOption<T extends string> = { value: T; title: string; body: string };
 
-const timelineOptions: Array<{ value: Timeline; title: string; body: string }> = [
-  { value: "asap", title: "Need a pro right away", body: "Within 48 hours" },
-  { value: "this-week", title: "Ready to hire (not urgent)", body: "Within a week" },
-  { value: "flexible", title: "Researching options", body: "Flexible on timeline" },
-  { value: "specific", title: "I have a specific date", body: "Choose the day that works for you" }
-];
+const sizeOptions: Record<PublicLocale, Array<LocalizedOption<ProjectSize>>> = {
+  en: [
+    { value: "small", title: "Small task", body: "One item or a quick job" },
+    { value: "medium", title: "Medium project", body: "A few items or several hours" },
+    { value: "large", title: "Large project", body: "Multiple rooms, items or a bigger scope" },
+    { value: "not-sure", title: "Not sure yet", body: "Let the professional help estimate the scope" }
+  ],
+  "pt-br": [
+    { value: "small", title: "Tarefa pequena", body: "Um item ou um serviço rápido" },
+    { value: "medium", title: "Projeto médio", body: "Alguns itens ou várias horas de trabalho" },
+    { value: "large", title: "Projeto grande", body: "Vários cômodos, itens ou um escopo maior" },
+    { value: "not-sure", title: "Ainda não sei", body: "O profissional pode ajudar a estimar o escopo" }
+  ],
+  es: [
+    { value: "small", title: "Tarea pequeña", body: "Un artículo o un trabajo rápido" },
+    { value: "medium", title: "Proyecto mediano", body: "Algunos artículos o varias horas de trabajo" },
+    { value: "large", title: "Proyecto grande", body: "Varias habitaciones, artículos o un alcance mayor" },
+    { value: "not-sure", title: "Aún no lo sé", body: "El profesional puede ayudar a estimar el alcance" }
+  ]
+};
+
+const timelineOptions: Record<PublicLocale, Array<LocalizedOption<Timeline>>> = {
+  en: [
+    { value: "asap", title: "Need a pro right away", body: "Within 48 hours" },
+    { value: "this-week", title: "Ready to hire (not urgent)", body: "Within a week" },
+    { value: "flexible", title: "Researching options", body: "Flexible on timeline" },
+    { value: "specific", title: "I have a specific date", body: "Choose the day that works for you" }
+  ],
+  "pt-br": [
+    { value: "asap", title: "Preciso de um PRO o quanto antes", body: "Nas próximas 48 horas" },
+    { value: "this-week", title: "Quero contratar sem urgência", body: "Dentro de uma semana" },
+    { value: "flexible", title: "Estou pesquisando opções", body: "Tenho flexibilidade de prazo" },
+    { value: "specific", title: "Tenho uma data específica", body: "Escolha o melhor dia para você" }
+  ],
+  es: [
+    { value: "asap", title: "Necesito un Pro cuanto antes", body: "En las próximas 48 horas" },
+    { value: "this-week", title: "Quiero contratar sin urgencia", body: "Dentro de una semana" },
+    { value: "flexible", title: "Estoy investigando opciones", body: "Tengo flexibilidad de tiempo" },
+    { value: "specific", title: "Tengo una fecha específica", body: "Elige el día que más te convenga" }
+  ]
+};
+
+const heroSceneCopy: Record<PublicLocale, Array<{ eyebrow: string; title: string }>> = {
+  en: HERO_SCENES.map(({ eyebrow, title }) => ({ eyebrow, title })),
+  "pt-br": [
+    { eyebrow: "Reparos residenciais", title: "Encontre ajuda confiável para tudo o que precisa ser feito." },
+    { eyebrow: "Limpeza", title: "Uma casa renovada começa com as mãos certas." },
+    { eyebrow: "Montagem", title: "Das caixas ao resultado final. Encontre quem faça acontecer." },
+    { eyebrow: "Ajuda com mudanças", title: "Mudança completa ou um item pesado: conte com uma mão extra." },
+    { eyebrow: "Ajuda no dia a dia", title: "Dia corrido? Encontre ajuda local para tarefas e compromissos." }
+  ],
+  es: [
+    { eyebrow: "Reparaciones del hogar", title: "Encuentra ayuda confiable para todo lo que necesitas resolver." },
+    { eyebrow: "Limpieza", title: "Un hogar renovado comienza con las manos adecuadas." },
+    { eyebrow: "Montaje", title: "De las cajas al resultado final. Encuentra quien lo haga realidad." },
+    { eyebrow: "Ayuda con mudanzas", title: "Mudanza completa o un objeto pesado: consigue una mano extra." },
+    { eyebrow: "Ayuda cotidiana", title: "¿Día ocupado? Encuentra ayuda local para tareas y diligencias." }
+  ]
+};
+
+const categoryCopy: Record<PublicLocale, Array<{ label: string; description: string }>> = {
+  en: MARKETPLACE_CATEGORIES.map(({ label, description }) => ({ label, description })),
+  "pt-br": [
+    { label: "Limpeza", description: "Limpeza residencial, pós-mudança e de imóveis por temporada." },
+    { label: "Marido de aluguel e reparos", description: "Reparos, instalações e pequenos projetos residenciais." },
+    { label: "Montagem de móveis", description: "Camas, mesas, estantes, berços e móveis desmontados." },
+    { label: "Ajuda com mudanças", description: "Embalagem, carregamento, descarga e mudanças dentro de casa." },
+    { label: "Jardim e área externa", description: "Cuidados com gramado, quintal e manutenção externa." },
+    { label: "Entregas e tarefas", description: "Retiradas, entregas locais, compras e tarefas do dia a dia." },
+    { label: "Assistente pessoal", description: "Ajuda local ou remota com organização e tarefas administrativas." },
+    { label: "Organização da casa", description: "Armários, cômodos, desapego e organização doméstica." }
+  ],
+  es: [
+    { label: "Limpieza", description: "Limpieza del hogar, de mudanzas y de alquileres vacacionales." },
+    { label: "Reparaciones del hogar", description: "Reparaciones, instalaciones y pequeños proyectos residenciales." },
+    { label: "Montaje de muebles", description: "Camas, escritorios, estantes, cunas y muebles para armar." },
+    { label: "Ayuda con mudanzas", description: "Empaque, carga, descarga y movimientos dentro del hogar." },
+    { label: "Jardín y exteriores", description: "Cuidado del césped, jardín y mantenimiento exterior." },
+    { label: "Entregas y diligencias", description: "Recogidas, entregas locales, compras y tareas cotidianas." },
+    { label: "Asistente personal", description: "Ayuda local o remota con organización y tareas administrativas." },
+    { label: "Organización del hogar", description: "Armarios, habitaciones, orden y organización doméstica." }
+  ]
+};
 
 export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
   const router = useRouter();
@@ -145,7 +259,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
     if (wizardOpen) dialogRef.current?.querySelector<HTMLElement>("h2")?.focus();
   }, [step, wizardOpen]);
 
-  const scene = HERO_SCENES[activeScene];
+  const localizedScene = heroSceneCopy[locale][activeScene];
   const steps = useMemo(() => ["size", "timeline", "location", "details"] as const, []);
 
   function launchWizard(request?: string) {
@@ -209,15 +323,15 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
         <div className="container-shell relative flex min-h-[630px] items-end py-14 sm:items-center sm:py-20 lg:min-h-[690px]">
           <div className="max-w-3xl text-white">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.14em] backdrop-blur-md">
-              <ShieldCheck size={15} /> {scene.eyebrow}
+              <ShieldCheck size={15} /> {localizedScene.eyebrow}
             </div>
-            <h1 className="max-w-3xl text-4xl font-black leading-[.98] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{scene.title}</h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/82 sm:text-lg">Tell us what needs doing in your own words. VeroTask turns it into a clearer job brief before matching local professionals.</p>
+            <h1 className="max-w-3xl text-4xl font-black leading-[.98] tracking-[-0.05em] sm:text-6xl lg:text-7xl">{localizedScene.title}</h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-white/82 sm:text-lg">{c.heroBody}</p>
 
             <form action={localePath(locale, "/services")} onFocus={() => setPaused(true)} onSubmit={submitSearch} className="mt-8 grid max-w-3xl gap-2 rounded-[22px] bg-white p-2.5 text-slate-950 shadow-[0_24px_70px_rgba(0,0,0,.22)] md:grid-cols-[1.4fr_.72fr_auto]">
               <label className="flex min-h-14 items-center gap-3 rounded-2xl px-4">
                 <Search size={21} className="shrink-0 text-slate-500" />
-                <span className="sr-only">Service or task</span>
+                <span className="sr-only">{c.serviceLabel}</span>
                 <input
                   value={state.request}
                   name="q" required maxLength={500}
@@ -228,7 +342,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
               </label>
               <label className="flex min-h-14 items-center gap-3 border-t border-slate-200 px-4 md:border-l md:border-t-0">
                 <MapPin size={20} className="shrink-0 text-slate-500" />
-                <span className="sr-only">Location</span>
+                <span className="sr-only">{c.locationLabel}</span>
                 <input
                   value={state.location}
                   name="location" maxLength={120}
@@ -244,7 +358,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
 
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/72">
               <span className="inline-flex items-center gap-2"><ShieldCheck size={15} /> {c.noCalls}</span>
-              <span className="inline-flex items-center gap-2"><Clock3 size={15} /> Same-day options where available</span>
+              <span className="inline-flex items-center gap-2"><Clock3 size={15} /> {c.sameDay}</span>
             </div>
           </div>
         </div>
@@ -254,13 +368,13 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
             <button
               key={item.eyebrow}
               type="button"
-              aria-label={`Show ${item.eyebrow}`}
+              aria-label={`${c.showScene} ${heroSceneCopy[locale][index].eyebrow}`}
               aria-pressed={index === activeScene}
               onClick={() => { setActiveScene(index); setPaused(true); }}
               className="grid h-11 w-11 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-white"
             ><span className={`h-2.5 rounded-full transition-[width,background-color] ${index === activeScene ? "w-8 bg-white" : "w-2.5 bg-white/65"}`} /></button>
           ))}
-          <button type="button" onClick={() => setPaused((value) => !value)} className="grid h-11 w-11 place-items-center rounded-full text-white" aria-label={paused ? "Play hero slideshow" : "Pause hero slideshow"}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>
+          <button type="button" onClick={() => setPaused((value) => !value)} className="grid h-11 w-11 place-items-center rounded-full text-white" aria-label={paused ? c.playSlideshow : c.pauseSlideshow}>{paused ? <Play size={16} /> : <Pause size={16} />}</button>
         </div>
       </section>
 
@@ -268,27 +382,27 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
         <div className="container-shell">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--accent)]">Explore by task</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--accent)]">{c.categoriesEyebrow}</p>
               <h2 className="mt-2 text-3xl font-black tracking-[-0.035em] sm:text-4xl">{c.categoriesTitle}</h2>
               <p className="mt-3 max-w-2xl text-[var(--muted)]">{c.categoriesBody}</p>
             </div>
-            <button type="button" onClick={() => launchWizard(scene.query)} className="hidden items-center gap-2 text-sm font-black text-[var(--brand)] sm:inline-flex">Not sure where to start? Tell us the task <ArrowRight size={16} /></button>
+            <button type="button" onClick={() => launchWizard(localizedScene.eyebrow)} className="hidden items-center gap-2 text-sm font-black text-[var(--brand)] sm:inline-flex">{c.unsureCta} <ArrowRight size={16} /></button>
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {MARKETPLACE_CATEGORIES.map((category) => (
+            {MARKETPLACE_CATEGORIES.map((category, index) => (
               <button
                 type="button"
                 key={category.slug}
-                onClick={() => launchWizard(category.query)}
+                onClick={() => launchWizard(categoryCopy[locale][index].label)}
                 className="group overflow-hidden rounded-[18px] border border-slate-200 bg-white text-left shadow-[0_8px_25px_rgba(15,23,42,.04)] transition hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_16px_38px_rgba(15,23,42,.09)]"
               >
                 <div className="aspect-[1.48/1] overflow-hidden bg-slate-100">
                   <div className="h-full w-full bg-cover bg-center transition duration-500 group-hover:scale-[1.035]" style={{ backgroundImage: `url(${category.image})` }} />
                 </div>
                 <div className="p-4.5">
-                  <div className="flex items-center justify-between gap-3"><h3 className="font-black tracking-tight text-slate-950">{category.label}</h3><ArrowRight size={16} className="shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[var(--brand)]" /></div>
-                  <p className="mt-2 text-sm leading-5 text-slate-600">{category.description}</p>
+                  <div className="flex items-center justify-between gap-3"><h3 className="font-black tracking-tight text-slate-950">{categoryCopy[locale][index].label}</h3><ArrowRight size={16} className="shrink-0 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-[var(--brand)]" /></div>
+                  <p className="mt-2 text-sm leading-5 text-slate-600">{categoryCopy[locale][index].description}</p>
                 </div>
               </button>
             ))}
@@ -317,7 +431,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
                 <div>
                   <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.sizeTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.sizeBody}</p>
-                  <div className="mt-7 space-y-3">{sizeOptions.map((option) => <ChoiceRow key={option.value} active={state.projectSize === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, projectSize: option.value }))} />)}</div>
+                  <div className="mt-7 space-y-3">{sizeOptions[locale].map((option) => <ChoiceRow key={option.value} active={state.projectSize === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, projectSize: option.value }))} />)}</div>
                 </div>
               )}
 
@@ -325,7 +439,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
                 <div>
                   <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.timelineTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.timelineBody}</p>
-                  <div className="mt-7 space-y-3">{timelineOptions.map((option) => <div key={option.value}><ChoiceRow active={state.timeline === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, timeline: option.value }))} />{option.value === "specific" && state.timeline === "specific" && <input type="date" aria-label="Preferred service date" min={new Date().toISOString().slice(0, 10)} value={state.specificDate} onChange={(event) => setState((current) => ({ ...current, specificDate: event.target.value }))} className="mt-3 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />}</div>)}</div>
+                  <div className="mt-7 space-y-3">{timelineOptions[locale].map((option) => <div key={option.value}><ChoiceRow active={state.timeline === option.value} title={option.title} body={option.body} onClick={() => setState((current) => ({ ...current, timeline: option.value }))} />{option.value === "specific" && state.timeline === "specific" && <input type="date" aria-label={c.preferredDate} min={new Date().toISOString().slice(0, 10)} value={state.specificDate} onChange={(event) => setState((current) => ({ ...current, specificDate: event.target.value }))} className="mt-3 min-h-12 w-full rounded-xl border border-slate-300 px-4 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" />}</div>)}</div>
                 </div>
               )}
 
@@ -337,7 +451,7 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
                     <MapPin size={20} className="text-slate-500" />
                     <input aria-label={c.locationTitle} maxLength={120} value={state.location} onChange={(event) => setState((current) => ({ ...current, location: event.target.value }))} className="w-full bg-transparent outline-none" placeholder="Orlando, FL or 32801" />
                   </label>
-                  <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600"><strong className="text-slate-900">Why we ask:</strong> provider availability, travel range and licensing can vary by location.</div>
+                  <div className="mt-4 rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600"><strong className="text-slate-900">{c.whyAsk}</strong> {c.whyAskBody}</div>
                 </div>
               )}
 
@@ -345,12 +459,12 @@ export function GuidedMarketplaceHero({ locale }: { locale: PublicLocale }) {
                 <div>
                   <h2 tabIndex={-1} id="guided-match-title" className="mt-2 text-3xl font-black tracking-[-0.035em] text-slate-950">{c.detailsTitle}</h2>
                   <p className="mt-3 text-sm leading-6 text-slate-600">{c.detailsBody}</p>
-                  <textarea aria-label={c.detailsTitle} maxLength={2000} value={state.details} onChange={(event) => setState((current) => ({ ...current, details: event.target.value }))} rows={6} className="mt-7 w-full resize-none rounded-2xl border border-slate-300 p-4 leading-6 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder="Example: two 55-inch TVs, drywall, mounts already purchased, parking available..." />
+                  <textarea aria-label={c.detailsTitle} maxLength={2000} value={state.details} onChange={(event) => setState((current) => ({ ...current, details: event.target.value }))} rows={6} className="mt-7 w-full resize-none rounded-2xl border border-slate-300 p-4 leading-6 outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]" placeholder={c.detailsPlaceholder} />
                   <div className="mt-5 grid gap-2 rounded-2xl border border-slate-200 p-4 text-sm text-slate-700 sm:grid-cols-2">
-                    <div><span className="text-slate-500">Task</span><div className="font-black">{state.request}</div></div>
-                    <div><span className="text-slate-500">Location</span><div className="font-black">{state.location}</div></div>
-                    <div><span className="text-slate-500">Scope</span><div className="font-black capitalize">{state.projectSize.replace("-", " ")}</div></div>
-                    <div><span className="text-slate-500">Timeline</span><div className="font-black capitalize">{state.timeline.replace("-", " ")}{state.specificDate ? ` · ${state.specificDate}` : ""}</div></div>
+                    <div><span className="text-slate-500">{c.summary.task}</span><div className="font-black">{state.request}</div></div>
+                    <div><span className="text-slate-500">{c.summary.location}</span><div className="font-black">{state.location}</div></div>
+                    <div><span className="text-slate-500">{c.summary.scope}</span><div className="font-black">{sizeOptions[locale].find((option) => option.value === state.projectSize)?.title}</div></div>
+                    <div><span className="text-slate-500">{c.summary.timeline}</span><div className="font-black">{timelineOptions[locale].find((option) => option.value === state.timeline)?.title}{state.specificDate ? ` · ${state.specificDate}` : ""}</div></div>
                   </div>
                 </div>
               )}

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { and, count, eq, gt, gte, isNull } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { getDb } from "@/db";
@@ -42,6 +42,45 @@ export async function createMagicLink(emailInput: string, redirectPath?: string 
 
   const baseUrl = requestAppUrl(requestOrigin);
   return `${baseUrl}/api/auth/verify?token=${encodeURIComponent(rawToken)}`;
+}
+
+export async function createRetryableMagicLink(
+  emailInput: string,
+  redirectPath: string,
+  idempotencySeed: string,
+  requestOrigin?: string | null
+) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || secret.length < 24) throw new Error("AUTH_SECRET is not configured");
+  const email = emailInput.trim().toLowerCase();
+  const slot = retryableMagicLinkSlot();
+  const rawToken = createHmac("sha256", secret).update(`email-outbox:${idempotencySeed}:${slot}`).digest("hex");
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + MAGIC_LINK_WINDOW_MS);
+  await getDb().insert(authTokens).values({
+    email,
+    tokenHash,
+    expiresAt,
+    redirectPath: safeRedirectPath(redirectPath)
+  }).onConflictDoNothing({ target: authTokens.tokenHash });
+  return {
+    link: `${requestAppUrl(requestOrigin)}/api/auth/verify?token=${encodeURIComponent(rawToken)}`,
+    deliveryKey: `${idempotencySeed}:slot:${slot}`
+  };
+}
+
+export function retryableMagicLinkSlot(now = Date.now()) {
+  return Math.floor(now / (10 * 60 * 1000));
+}
+
+export async function revokeMagicLink(link: string) {
+  const rawToken = new URL(link).searchParams.get("token");
+  if (!rawToken) return false;
+  const deleted = await getDb().delete(authTokens).where(and(
+    eq(authTokens.tokenHash, hashToken(rawToken)),
+    isNull(authTokens.usedAt)
+  )).returning();
+  return deleted.length > 0;
 }
 
 export async function createSessionForUser(userId: string) {

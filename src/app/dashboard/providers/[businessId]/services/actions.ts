@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { businesses, services } from "@/db/schema";
+import { businessCategories, businesses, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 
 const createSchema = z.object({
@@ -38,6 +38,11 @@ export async function createService(formData: FormData) {
   const base = slugify(parsed.data.name) || "service";
   const slug = `${base}-${Date.now().toString(36)}`;
   await db.insert(services).values({ businessId: business.id, categoryId: parsed.data.categoryId, slug, name: parsed.data.name, description: parsed.data.description, pricingType: "fixed", basePriceCents: Math.round(parsed.data.price * 100), durationMinutes: parsed.data.durationMinutes, active: true });
+  await db.insert(businessCategories).values({
+    businessId: business.id,
+    categoryId: parsed.data.categoryId,
+    featured: false
+  }).onConflictDoNothing();
   revalidatePath(`/dashboard/providers/${business.id}/services`);
   revalidatePath(`/providers/${business.slug}`);
   redirect(`/dashboard/providers/${business.id}/services?notice=created`);

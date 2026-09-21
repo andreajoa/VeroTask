@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ProviderPage } from "@/components/provider-page";
 import { getDb } from "@/db";
 import { businesses } from "@/db/schema";
-import { publicProviderId, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
+import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 import type { PublicLocale } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
@@ -34,16 +34,15 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const english = `/providers/${canonicalSlug}`;
   const label = publicProviderName(business.id, safeLocale);
   const isPt = locale === "pt-br";
+  const description = publicServiceText(business.description, business.name, publicProviderDescription(business.city, business.state, safeLocale));
   return {
     title: `${label} ${isPt ? "em" : "en"} ${business.city}, ${business.state}`,
-    description: isPt
-      ? `Veja serviços locais de ${label}, atendendo ${business.city}, ${business.state}, Estados Unidos. Consulte o perfil e solicite orçamento pela VeroTask.`
-      : `Consulta servicios locales de ${label}, que atiende ${business.city}, ${business.state}, Estados Unidos. Revisa el perfil y solicita una cotización por VeroTask.`,
+    description,
     alternates: {
       canonical: current,
       languages: {
         "en-US": english,
-        "pt-US": `/pt-br/providers/${canonicalSlug}`,
+        "pt-BR": `/pt-br/providers/${canonicalSlug}`,
         "es-US": `/es/providers/${canonicalSlug}`,
         "x-default": english
       }

@@ -5,15 +5,20 @@ import { redirect } from "next/navigation";
 import { DisputeResolutionForm } from "@/components/dispute-resolution-form";
 import { getDb } from "@/db";
 import { bookings, businesses, disputes, users } from "@/db/schema";
+import { isAdminSession } from "@/lib/admin-auth";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingEvidenceSummary } from "@/lib/booking-workflow";
+import { disputeAdminActor } from "@/lib/dispute-workflow";
 
 export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const user = await getCurrentUser();
-  if (!user) redirect("/signin?next=/dashboard/admin/disputes");
-  if (!["admin", "support"].includes(user.role)) redirect("/dashboard");
+  const actor = disputeAdminActor(user, user && ["admin", "support"].includes(user.role) ? false : await isAdminSession());
+  if (!actor.allowed) {
+    if (!user) redirect("/admin/signin?next=/dashboard/admin/disputes");
+    redirect("/dashboard");
+  }
 
   const db = getDb();
   const rows = await db.select({ dispute: disputes, booking: bookings, business: businesses, opener: users })
@@ -27,7 +32,7 @@ export default async function Page() {
 
   return (
     <main className="min-h-screen">
-      <header className="border-b border-[var(--line)] bg-white"><div className="container-shell flex min-h-16 items-center justify-between"><Link href="/" className="flex items-center gap-2 text-xl font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand)] text-white"><BadgeCheck size={20} /></span>VeroTask</Link><Link href="/dashboard" className="text-sm font-black text-[var(--muted)]">Dashboard</Link></div></header>
+      <header className="border-b border-[var(--line)] bg-white"><div className="container-shell flex min-h-16 items-center justify-between"><Link href="/" className="flex items-center gap-2 text-xl font-black"><span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--brand)] text-white"><BadgeCheck size={20} /></span>VeroTask</Link><Link href={actor.actorUserId ? "/dashboard" : "/admin"} className="text-sm font-black text-[var(--muted)]">Dashboard</Link></div></header>
       <section className="container-shell py-10">
         <div className="flex items-center gap-3"><ShieldCheck className="text-[var(--brand)]" /><div><p className="text-sm font-black text-[var(--brand)]">RESOLUTION CENTER</p><h1 className="text-3xl font-black tracking-tight">Open disputes</h1></div></div>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">Review the booking timeline and evidence before resolving a case. VeroTask can refund only the booking fee collected through Stripe; the underlying service price is paid directly to the professional.</p>

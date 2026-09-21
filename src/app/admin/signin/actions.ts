@@ -1,15 +1,23 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { adminLoginRateLimitStatus, clearAdminLoginFailures, createAdminSession, recordAdminLoginFailure, verifyAdminPassword } from "@/lib/admin-auth";
+import { consumeAdminLoginAttempt, adminLoginRiskKey, clearAdminLoginFailures, createAdminSession, verifyAdminPassword } from "@/lib/admin-auth";
 
 export async function adminSignIn(formData: FormData) {
-  const limit = await adminLoginRateLimitStatus();
+  const requestHeaders = await headers();
+  let riskKey: string;
+  let limit: { allowed: boolean };
+  try {
+    riskKey = adminLoginRiskKey(requestHeaders.get("x-forwarded-for") ?? requestHeaders.get("x-real-ip"));
+    limit = await consumeAdminLoginAttempt(riskKey);
+  } catch {
+    redirect("/admin/signin?error=configuration");
+  }
   if (!limit.allowed) redirect("/admin/signin?error=rate-limited");
 
   const trap = String(formData.get("website") ?? "");
   if (trap) {
-    await recordAdminLoginFailure();
     redirect("/admin/signin?error=invalid");
   }
 
@@ -22,10 +30,9 @@ export async function adminSignIn(formData: FormData) {
   }
 
   if (!valid) {
-    await recordAdminLoginFailure();
     redirect("/admin/signin?error=invalid");
   }
-  await clearAdminLoginFailures();
+  await clearAdminLoginFailures(riskKey);
   await createAdminSession();
   redirect("/dashboard");
 }

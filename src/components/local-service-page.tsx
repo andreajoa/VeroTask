@@ -92,7 +92,7 @@ export async function LocalServicePage({ locale, categorySlug, locationSlug }: {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
     name: c.title(data.categoryName, data.location.label),
-    inLanguage: locale === "en" ? "en-US" : locale === "pt-br" ? "pt-US" : "es-US",
+    inLanguage: locale === "en" ? "en-US" : locale === "pt-br" ? "pt-BR" : "es-US",
     spatialCoverage: {
       "@type": "City",
       name: data.location.city,
@@ -150,7 +150,7 @@ export async function LocalServicePage({ locale, categorySlug, locationSlug }: {
 
   return (
     <main>
-      <SiteHeader locale={locale} currentPath={path} />
+      <SiteHeader locale={locale} currentPath={`/services/${categorySlug}/${locationSlug}`} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
       <section className="border-b border-[var(--line)] bg-white py-14 lg:py-20">
@@ -172,7 +172,9 @@ export async function LocalServicePage({ locale, categorySlug, locationSlug }: {
               <article key={business.id} className="card p-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`badge ${verified ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}><BadgeCheck size={14} /> {verified ? c.verified : c.unclaimed}</span>
-                  <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700"><Star size={14} fill="currentColor" /> {Number(business.averageRating).toFixed(1)} ({business.reviewCount})</span>
+                  {business.reviewCount > 0
+                    ? <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700"><Star size={14} fill="currentColor" /> {Number(business.averageRating).toFixed(1)} ({business.reviewCount})</span>
+                    : <span className="text-sm font-bold text-slate-500">New · No reviews yet</span>}
                 </div>
                 <h3 className="mt-4 text-xl font-black">{publicProviderName(business.id, locale)}</h3>
                 <p className="mt-2 text-sm text-[var(--muted)]">{business.city}, {business.state}</p>

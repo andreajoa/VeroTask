@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getDb } from "@/db";
+import { getDb, getTransactionalDb } from "@/db";
 import { businessCategories, businesses, categories, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { geocodeUsAddress } from "@/lib/geocoding";
@@ -54,7 +54,12 @@ export async function createProviderProfile(formData: FormData) {
   if (!geocodedBase) redirect("/providers/join?error=location-not-found");
 
   const slug = `${slugify(parsed.data.name)}-${randomBytes(3).toString("hex")}`;
-  const [business] = await db.insert(businesses).values({
+  const business = await getTransactionalDb().transaction(async (tx) => {
+  // Serialize submissions from the same account, including concurrent tabs.
+  await tx.select({ id: users.id }).from(users).where(eq(users.id, user.id)).for("update");
+  const [existing] = await tx.select().from(businesses).where(eq(businesses.ownerUserId, user.id)).limit(1);
+  if (existing) return existing;
+  const [business] = await tx.insert(businesses).values({
     ownerUserId: user.id,
     name: parsed.data.name,
     slug,
@@ -75,8 +80,10 @@ export async function createProviderProfile(formData: FormData) {
     active: true
   }).returning();
 
-  await db.insert(businessCategories).values({ businessId: business.id, categoryId: category.id, featured: true }).onConflictDoNothing();
-  await db.update(users).set({ role: "provider", phone: parsed.data.phone, updatedAt: new Date() }).where(eq(users.id, user.id));
+  await tx.insert(businessCategories).values({ businessId: business.id, categoryId: category.id, featured: true }).onConflictDoNothing();
+  await tx.update(users).set({ role: "provider", phone: parsed.data.phone, updatedAt: new Date() }).where(eq(users.id, user.id));
+  return business;
+  });
 
   const planQuery = parsed.data.plan === "free" ? "" : `?plan=${parsed.data.plan}`;
   redirect(`/dashboard/providers/${business.id}/onboarding${planQuery}`);

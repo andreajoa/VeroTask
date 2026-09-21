@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canReleasePayment, canSchedulePaidBooking, validateBookingPayment } from "../src/lib/payment-policy";
+import { bookingPaymentDisposition, canReleasePayment, canSchedulePaidBooking, validateBookingPayment } from "../src/lib/payment-policy";
 
 const booking = { id: "booking-1", businessId: "business-1", marketplaceFeeCents: 1500, currency: "usd", stripePaymentIntentId: null as string | null };
 const payment = { id: "pi_1", status: "succeeded", amount_received: 1500, currency: "usd", metadata: { verotask_booking_id: "booking-1", verotask_business_id: "business-1" } };
@@ -17,6 +17,36 @@ test("only a captured VeroTask booking-fee payment matching the booking can fulf
 test("duplicate events are allowed but a second payment intent is flagged", () => {
   assert.equal(validateBookingPayment({ ...booking, stripePaymentIntentId: "pi_1" }, payment), null);
   assert.equal(validateBookingPayment({ ...booking, stripePaymentIntentId: "pi_other" }, payment), "duplicate_booking_payment");
+});
+
+test("checkout and payment-intent events are idempotent in either order and on repeats", () => {
+  for (const events of [
+    ["checkout.session.completed", "payment_intent.succeeded", "checkout.session.completed"],
+    ["payment_intent.succeeded", "checkout.session.completed", "payment_intent.succeeded"]
+  ]) {
+    let state = { status: "payment_authorized", stripePaymentIntentId: null as string | null };
+    let refunds = 0;
+
+    for (const event of events) {
+      const disposition = bookingPaymentDisposition(state, payment.id);
+      if (disposition === "schedule" || disposition === "recover_schedule") {
+        state = { status: "scheduled", stripePaymentIntentId: payment.id };
+      } else if (disposition === "refund") {
+        refunds += 1;
+        state = { status: "refunded", stripePaymentIntentId: payment.id };
+      }
+      assert.notEqual(disposition, "refund", event);
+    }
+
+    assert.deepEqual(state, { status: "scheduled", stripePaymentIntentId: payment.id });
+    assert.equal(refunds, 0);
+  }
+});
+
+test("a recorded payment intent never becomes refundable because a later webhook sees a new booking state", () => {
+  for (const status of ["scheduled", "in_progress", "provider_completed", "customer_confirmed", "auto_completed", "disputed", "cancelled", "refunded", "paid_out"]) {
+    assert.equal(bookingPaymentDisposition({ status, stripePaymentIntentId: payment.id }, payment.id), "already_processed", status);
+  }
 });
 
 test("late or unaccepted payments never reopen a booking", () => {

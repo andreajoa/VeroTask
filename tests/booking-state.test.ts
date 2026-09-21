@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   canCustomerStartPayment,
+  canCancelBooking,
   canProviderAccept,
   canProviderDeclineBeforePayment,
   checkoutExpiryNextStatus,
@@ -33,4 +34,13 @@ test("expired payment returns accepted booking to payment-ready state", () => {
   assert.equal(checkoutExpiryNextStatus("payment_authorized"), "accepted");
   assert.equal(checkoutExpiryNextStatus("requested"), "cancelled");
   assert.equal(checkoutExpiryNextStatus("scheduled"), null);
+});
+
+test("customer and provider can cancel every pre-service cancellable state", () => {
+  assert.equal(canCancelBooking("requested"), true);
+  assert.equal(canCancelBooking("accepted"), true);
+  assert.equal(canCancelBooking("payment_authorized"), true);
+  assert.equal(canCancelBooking("scheduled"), true);
+  assert.equal(canCancelBooking("in_progress"), false);
+  assert.equal(canCancelBooking("cancelled"), false);
 });

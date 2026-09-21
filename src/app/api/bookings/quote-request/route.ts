@@ -1,18 +1,18 @@
 import { addMinutes } from "date-fns";
 import { and, count, eq, gte } from "drizzle-orm";
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb } from "@/db";
+import { getDb, getTransactionalDb } from "@/db";
 import { bookingSecrets } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, services } from "@/db/schema";
-import { canonicalAppUrl } from "@/lib/app-url";
-import { createMagicLink, getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
+import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
-import { sendCustomerRequestReceivedNotification, sendProviderNewRequestNotification, sendUnclaimedProviderOpportunityNotification } from "@/lib/booking-notifications";
 import { distanceMiles } from "@/lib/distance";
 import { geocodeUsAddress, geocodeUsPostalCode } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { containsDirectContactInfo, containsExactServiceAddress, serializeQuoteRequestBrief } from "@/lib/quote-request";
+import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -27,6 +27,8 @@ const schema = z.object({
   details: z.string().trim().min(20).max(4000),
   acceptsPolicy: z.literal(true)
 });
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
@@ -108,6 +110,10 @@ export async function POST(request: NextRequest) {
     parsed.data.jobLength === "multi-day" ? 1440 : 120
   );
   const scheduledEnd = addMinutes(scheduledStart, durationMinutes);
+  const availability = await checkProviderAvailability(business.id, scheduledStart, scheduledEnd);
+  if (!availability.available) {
+    return NextResponse.json({ error: availability.reason }, { status: 409 });
+  }
   const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
   const customerPoint = geocoded ?? await geocodeUsPostalCode(parsed.data.postalCode);
 
@@ -151,7 +157,8 @@ export async function POST(request: NextRequest) {
   const plan = business.plan as PlanKey;
   const commissionBps = PROVIDER_PLANS[plan].commissionBps;
 
-  const [booking] = await db.insert(bookings).values({
+  const booking = await getTransactionalDb().transaction(async (tx) => {
+  const [booking] = await tx.insert(bookings).values({
     customerId: user.id,
     businessId: business.id,
     serviceId: service?.id,
@@ -177,8 +184,8 @@ export async function POST(request: NextRequest) {
   }).returning();
 
   const pin = servicePinForBooking(booking.id);
-  await db.insert(bookingSecrets).values({ bookingId: booking.id, servicePinHash: hashServicePin(pin) });
-  await db.insert(bookingEvents).values({
+  await tx.insert(bookingSecrets).values({ bookingId: booking.id, servicePinHash: hashServicePin(pin) });
+  await tx.insert(bookingEvents).values({
     bookingId: booking.id,
     actorUserId: user.id,
     eventType: "quote_requested",
@@ -198,27 +205,28 @@ export async function POST(request: NextRequest) {
     }
   });
 
-  try {
-    if (business.ownerUserId) {
-      await sendProviderNewRequestNotification(booking.id);
-    } else if (business.publicEmail) {
-      const next = `/opportunities/${booking.id}/claim`;
-      const magicLink = await createMagicLink(business.publicEmail, next, canonicalAppUrl());
-      await sendUnclaimedProviderOpportunityNotification(booking.id, business.publicEmail, magicLink);
-    }
-  } catch (error) {
-    console.error("[VeroTask provider quote request notification]", error);
-  }
+  await queueBookingEmail(tx, {
+    kind: business.ownerUserId ? "provider_new_request" : "unclaimed_provider_opportunity",
+    bookingId: booking.id,
+    recipientEmail: business.ownerUserId ? null : business.publicEmail,
+    idempotencyKey: `booking:${booking.id}:provider-request`,
+    expiresAt: scheduledStart
+  });
+  await queueBookingEmail(tx, {
+    kind: "customer_request_received",
+    bookingId: booking.id,
+    idempotencyKey: `booking:${booking.id}:customer-request`
+  });
 
-  try {
-    await sendCustomerRequestReceivedNotification(booking.id);
-  } catch (error) {
-    console.error("[VeroTask customer request confirmation]", error);
-  }
+  return booking;
+  });
+
+  after(() => kickTransactionalEmailOutbox(booking.id));
 
   return NextResponse.json({
     bookingId: booking.id,
     status: booking.status,
+    notificationStatus: "queued",
     providerClaimed: Boolean(business.ownerUserId),
     responseExpectation: business.ownerUserId ? "about_2_business_hours" : "first_response_may_take_longer"
   });

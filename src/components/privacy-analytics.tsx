@@ -141,6 +141,22 @@ export function PrivacyAnalytics() {
     };
   }, [consent, isAdminPath, pathname]);
 
+  const bannerRef = useRef<HTMLDivElement | null>(null);
+  const bannerVisible = !isAdminPath && consent === null;
+
+  // The banner is fixed to the bottom until a choice is made, so without this
+  // reservation it permanently covers whatever ends the page — including the
+  // quote form submit button on small viewports.
+  useEffect(() => {
+    const node = bannerVisible ? bannerRef.current : null;
+    if (!node) return;
+    const reserve = () => { document.body.style.paddingBottom = `${node.offsetHeight + 24}px`; };
+    reserve();
+    const observer = new ResizeObserver(reserve);
+    observer.observe(node);
+    return () => { observer.disconnect(); document.body.style.paddingBottom = ""; };
+  }, [bannerVisible]);
+
   function save(next: Consent) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* Session-only preference when storage is disabled. */ }
     setConsent(next);
@@ -156,7 +172,7 @@ export function PrivacyAnalytics() {
   if (isAdminPath || consent === undefined || consent) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+    <div ref={bannerRef} className="fixed inset-x-3 bottom-3 z-[100] mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
       <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-center">
         <div>
           <div className="font-black text-slate-950">Privacy choices</div>

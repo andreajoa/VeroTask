@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, notInArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories, providerProfilePhotos } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 import { publicProviderSlug } from "@/lib/public-provider";
+import { PUBLICLY_HIDDEN_PROVIDER_STATUSES } from "@/lib/provider-visibility";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = canonicalAppUrl();
@@ -23,6 +24,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/es/protection`, changeFrequency: "monthly", priority: 0.65 },
     { url: `${base}/providers`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${base}/security`, changeFrequency: "monthly", priority: 0.72 },
+    { url: `${base}/support`, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${base}/accessibility`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.45 },
+    { url: `${base}/pt-br/privacy`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${base}/es/privacy`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${base}/terms`, changeFrequency: "yearly", priority: 0.45 },
+    { url: `${base}/pt-br/terms`, changeFrequency: "yearly", priority: 0.4 },
+    { url: `${base}/es/terms`, changeFrequency: "yearly", priority: 0.4 },
     { url: `${base}/privacy-request`, changeFrequency: "monthly", priority: 0.45 },
     { url: `${base}/pt-br/providers`, changeFrequency: "weekly", priority: 0.68 },
     { url: `${base}/es/providers`, changeFrequency: "weekly", priority: 0.68 }
@@ -39,7 +48,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           eq(providerProfilePhotos.businessId, businesses.id),
           eq(providerProfilePhotos.active, true)
         ))
-        .where(and(eq(businesses.active, true), isNotNull(businesses.ownerUserId))),
+        .where(and(
+          eq(businesses.active, true),
+          isNotNull(businesses.ownerUserId),
+          notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
+        )),
       db.select({
         categorySlug: categories.slug,
         city: businesses.city,
@@ -49,7 +62,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .from(businessCategories)
         .innerJoin(categories, eq(categories.id, businessCategories.categoryId))
         .innerJoin(businesses, eq(businesses.id, businessCategories.businessId))
-        .where(and(eq(businesses.active, true), eq(categories.active, true)))
+        .where(and(
+          eq(businesses.active, true),
+          notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]),
+          eq(categories.active, true)
+        ))
     ]);
 
     for (const provider of providerRows) {

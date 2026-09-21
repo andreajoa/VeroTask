@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { ProviderPage } from "@/components/provider-page";
 import { getDb } from "@/db";
 import { businesses } from "@/db/schema";
-import { publicProviderId, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
+import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 
 export const dynamic = "force-dynamic";
 
@@ -26,14 +26,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const canonicalSlug = publicProviderSlug(business.id);
   const path = `/providers/${canonicalSlug}`;
   const label = publicProviderName(business.id, "en");
+  const description = publicServiceText(business.description, business.name, publicProviderDescription(business.city, business.state, "en"));
   return {
     title: `${label} in ${business.city}, ${business.state}`,
-    description: `View local services from ${label}, serving ${business.city}, ${business.state}, United States. Review the profile and request a quote through VeroTask.`,
+    description,
     alternates: {
       canonical: path,
       languages: {
         "en-US": path,
-        "pt-US": `/pt-br/providers/${canonicalSlug}`,
+        "pt-BR": `/pt-br/providers/${canonicalSlug}`,
         "es-US": `/es/providers/${canonicalSlug}`,
         "x-default": path
       }

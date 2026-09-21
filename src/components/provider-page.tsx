@@ -9,7 +9,7 @@ import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { businessCategories, businesses, categories, providerProfilePhotos, services } from "@/db/schema";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
-import { localePath, type PublicLocale } from "@/lib/site-copy";
+import { localePath, publicWorkflowPath, type PublicLocale } from "@/lib/site-copy";
 import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 
 export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slug: string }) {
@@ -41,15 +41,17 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
       name: publicServiceText(service.name, business.name),
       description: publicServiceText(service.description, business.name, "")
     }));
-  const displayRating = business.reviewCount === 0 ? 5 : Number(business.averageRating);
+  const displayRating = business.reviewCount > 0 ? Number(business.averageRating) : null;
   const base = canonicalAppUrl();
   const location = LAUNCH_LOCATIONS.find((item) => item.city === business.city && item.state === business.state);
   const providerPath = localePath(locale, `/providers/${publicSlug}`);
+  const publicBio = publicServiceText(business.description, business.name, publicProviderDescription(business.city, business.state, locale, categoryRows.map((category) => category.name).join(", ")));
   const jsonLd = [
   {
     "@context": "https://schema.org",
     "@type": "ProfessionalService",
     name: displayName,
+    description: publicBio,
     url: `${base}${providerPath}`,
     image: photoReady ? `${base}/api/providers/${business.id}/photo` : undefined,
     areaServed: {
@@ -70,10 +72,13 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
     } : undefined,
     makesOffer: activeServices.map((service) => ({
       "@type": "Offer",
+      price: service.basePriceCents == null ? undefined : (service.basePriceCents / 100).toFixed(2),
+      priceCurrency: service.basePriceCents == null ? undefined : "USD",
       itemOffered: {
         "@type": "Service",
         name: service.name,
         description: service.description || undefined,
+        duration: service.durationMinutes ? `PT${service.durationMinutes}M` : undefined,
         areaServed: {
           "@type": "City",
           name: business.city,
@@ -113,15 +118,14 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
 
             <h1 className="mt-5 text-4xl font-black tracking-tight text-slate-950 sm:text-5xl">{displayName}</h1>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-[var(--muted)]">
-              <span className="inline-flex items-center gap-1.5 font-black text-slate-900">
-                <Star size={17} className="text-amber-600" fill="currentColor" /> {displayRating.toFixed(2)}
-                <span className="font-medium text-[var(--muted)]">· {business.reviewCount === 0 ? "New" : `${business.reviewCount} verified ratings`}</span>
-              </span>
+              {displayRating === null
+                ? <span className="font-black text-slate-700">New · No reviews yet</span>
+                : <span className="inline-flex items-center gap-1.5 font-black text-slate-900"><Star size={17} className="text-amber-600" fill="currentColor" /> {displayRating.toFixed(2)}<span className="font-medium text-[var(--muted)]">· {business.reviewCount} verified ratings</span></span>}
               <span className="inline-flex items-center gap-2"><MapPin size={16} /> {business.city}, {business.state}</span>
             </div>
 
             <p className="mt-6 max-w-3xl text-lg leading-8 text-[var(--muted)]">
-              {publicProviderDescription(business.city, business.state, locale, categoryRows.map((category) => category.name).join(", "))}
+              {publicBio}
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2">
@@ -140,7 +144,7 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
                 <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
                   Send a structured request through VeroTask. Your email, phone and exact street address stay private while the professional reviews the job and prepares a quote.
                 </p>
-                <Link href={localePath(locale, `/book/${publicSlug}`)} className="btn-primary mt-6 w-full">Request a quote</Link>
+                <Link href={publicWorkflowPath(locale, `/book/${publicSlug}`)} className="btn-primary mt-6 w-full">Request a quote</Link>
                 {!verified && <p className="mt-4 text-xs leading-5 text-[var(--muted)]">If this listing is unclaimed, VeroTask securely emails the professional so they can verify the business email, claim the profile and review your request.</p>}
               </>
             ) : (
@@ -159,15 +163,19 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
         <section id="services" className="container-shell py-10">
           <div className="mb-6">
             <h2 className="text-2xl font-black tracking-tight text-slate-950">Services associated with this professional</h2>
-            <p className="mt-2 text-sm text-[var(--muted)]">Final pricing is provided by the professional after reviewing your structured VeroTask request.</p>
+            <p className="mt-2 text-sm text-[var(--muted)]">Published prices and durations come from the professional. Availability and the final job scope are confirmed after they review your request.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeServices.map((service) => (
               <article className="card flex flex-col p-6" key={service.id}>
                 <h3 className="text-lg font-black text-slate-950">{service.name}</h3>
                 <p className="mt-2 line-clamp-3 text-sm leading-6 text-[var(--muted)]">{service.description || "Local service."}</p>
+                <div className="mt-4 flex flex-wrap gap-2 text-sm font-black text-slate-800">
+                  {service.basePriceCents != null && <span>${(service.basePriceCents / 100).toFixed(2)} USD</span>}
+                  {service.durationMinutes != null && <span>· {service.durationMinutes} min</span>}
+                </div>
                 <div className="mt-5">
-                  <Link href={`${localePath(locale, `/book/${publicSlug}`)}?service=${encodeURIComponent(service.id)}`} className="btn-primary w-full">Request quote</Link>
+                  <Link href={publicWorkflowPath(locale, `/book/${publicSlug}`, { service: service.id })} className="btn-primary w-full">Request quote</Link>
                 </div>
               </article>
             ))}

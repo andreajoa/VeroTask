@@ -28,17 +28,16 @@ export async function saveAvailability(formData: FormData) {
   const rows: Array<{ businessId: string; dayOfWeek: number; startTime: string; endTime: string; timezone: string; active: boolean }> = [];
   for (let day = 0; day < 7; day += 1) {
     const active = formData.get(`active-${day}`) === "on";
-    if (!active) continue;
     const startTime = String(formData.get(`start-${day}`) ?? "");
     const endTime = String(formData.get(`end-${day}`) ?? "");
     if (!timePattern.test(startTime) || !timePattern.test(endTime) || startTime >= endTime) {
       redirect(`/dashboard/providers/${business.id}/availability?error=invalid-hours`);
     }
-    rows.push({ businessId: business.id, dayOfWeek: day, startTime, endTime, timezone: "America/New_York", active: true });
+    rows.push({ businessId: business.id, dayOfWeek: day, startTime, endTime, timezone: "America/New_York", active });
   }
 
   await db.delete(providerAvailability).where(eq(providerAvailability.businessId, business.id));
-  if (rows.length) await db.insert(providerAvailability).values(rows);
+  await db.insert(providerAvailability).values(rows);
 
   revalidatePath(`/dashboard/providers/${business.id}/availability`);
   redirect(`/dashboard/providers/${business.id}/availability?notice=saved`);

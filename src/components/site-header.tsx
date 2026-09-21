@@ -40,7 +40,8 @@ export async function SiteHeader({ locale = "en", currentPath = "/" }: { locale?
     [c.nav.pricing, "/providers"]
   ] as const;
 
-  const accountHref = user ? "/dashboard" : "/signin";
+  const localizedCurrentPath = localePath(locale, path);
+  const accountHref = user ? "/dashboard" : `/signin?next=${encodeURIComponent(localizedCurrentPath)}`;
   const accountLabel = user ? accountLabels[locale] : c.nav.signIn;
   const proHref = user?.role === "provider" ? "/dashboard" : "/providers/join";
   const proLabel = user?.role === "provider" ? proDashboardLabels[locale] : joinLabels[locale];
@@ -63,7 +64,7 @@ export async function SiteHeader({ locale = "en", currentPath = "/" }: { locale?
             <Link className={`rounded-lg px-2.5 py-1.5 ${locale === "pt-br" ? "bg-white text-slate-950 shadow-sm" : "text-slate-700"}`} href={localePath("pt-br", path)}>PT</Link>
             <Link className={`rounded-lg px-2.5 py-1.5 ${locale === "es" ? "bg-white text-slate-950 shadow-sm" : "text-slate-700"}`} href={localePath("es", path)}>ES</Link>
           </div>
-          <Link href={localePath(locale, accountHref)} className="hidden px-3 text-sm font-black text-slate-700 hover:text-slate-950 md:inline-flex">{accountLabel}</Link>
+          <Link href={accountHref} className="hidden px-3 text-sm font-black text-slate-700 hover:text-slate-950 md:inline-flex">{accountLabel}</Link>
           <Link href={localePath(locale, proHref)} className="hidden min-h-10 items-center rounded-xl bg-[var(--brand)] px-4 text-sm font-black text-white transition hover:bg-[var(--brand-strong)] sm:inline-flex">{proLabel}</Link>
 
           <details className="relative lg:hidden">
@@ -71,7 +72,7 @@ export async function SiteHeader({ locale = "en", currentPath = "/" }: { locale?
             <div className="absolute right-0 top-13 w-[min(88vw,330px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_18px_55px_rgba(15,23,42,.16)]">
               <nav className="space-y-1" aria-label="Mobile navigation">
                 {navItems.map(([label, href]) => <Link key={href} href={localePath(locale, href)} className="block rounded-xl px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">{label}</Link>)}
-                <Link href={localePath(locale, accountHref)} className="block rounded-xl px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">{accountLabel}</Link>
+                <Link href={accountHref} className="block rounded-xl px-4 py-3 text-sm font-black text-slate-800 hover:bg-slate-50">{accountLabel}</Link>
                 <Link href={localePath(locale, proHref)} className="mt-2 flex min-h-11 items-center justify-center rounded-xl bg-[var(--brand)] px-4 text-sm font-black text-white hover:bg-[var(--brand-strong)]">{proLabel}</Link>
               </nav>
               <div className="mt-3 flex gap-1 border-t border-slate-200 pt-3 text-xs font-black">

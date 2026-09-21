@@ -1,16 +1,29 @@
 import type { NextConfig } from "next";
 
+export function httpsConnectOrigin(value: string | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+const evidenceStorageOrigin = httpsConnectOrigin(process.env.STORAGE_ENDPOINT);
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
   "form-action 'self' https://checkout.stripe.com",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""} https://js.stripe.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com https://lh3.googleusercontent.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.stripe.com https://*.stripe.network",
+  `connect-src 'self' https://*.stripe.com https://*.stripe.network${evidenceStorageOrigin ? ` ${evidenceStorageOrigin}` : ""}`,
   "frame-src https://*.stripe.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

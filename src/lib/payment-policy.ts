@@ -24,6 +24,16 @@ export function canSchedulePaidBooking(status: string) {
   return status === "accepted" || status === "payment_authorized";
 }
 
+export function bookingPaymentDisposition(booking: {
+  status: string;
+  stripePaymentIntentId: string | null;
+}, paymentIntentId: string) {
+  if (booking.stripePaymentIntentId === paymentIntentId) {
+    return canSchedulePaidBooking(booking.status) ? "recover_schedule" : "already_processed";
+  }
+  return canSchedulePaidBooking(booking.status) ? "schedule" : "refund";
+}
+
 // Legacy state helper retained for compatibility. VeroTask does not release a
 // provider payout because the service price is paid directly to the provider.
 export function canReleasePayment(status: string, compensation = false) {

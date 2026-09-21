@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, MapPin, ShieldCheck, Star } from "lucide-react";
+import { canCancelBooking } from "@/lib/booking-state";
+import { EvidencePhotoUpload } from "@/components/evidence-photo-upload";
 
 type EvidenceItem = {
   id: string;
@@ -16,6 +18,7 @@ type Locale = "en" | "pt-br" | "es";
 type Props = {
   bookingId: string;
   role: "customer" | "provider";
+  readOnly?: boolean;
   status: string;
   serviceName: string;
   businessName: string;
@@ -97,10 +100,10 @@ export function BookingWorkflowPanel(props: Props) {
   const [rating, setRating] = useState(5);
   const [review, setReview] = useState("");
 
-  const canCancel = ["requested", "payment_authorized", "scheduled"].includes(props.status);
-  const canProviderWork = props.role === "provider" && ["scheduled", "in_progress"].includes(props.status);
-  const canConfirm = props.role === "customer" && props.status === "provider_completed" && !props.openDispute;
-  const canReview = props.role === "customer" && ["customer_confirmed", "auto_completed", "paid_out"].includes(props.status);
+  const canCancel = !props.readOnly && canCancelBooking(props.status);
+  const canProviderWork = !props.readOnly && props.role === "provider" && ["scheduled", "in_progress"].includes(props.status);
+  const canConfirm = !props.readOnly && props.role === "customer" && props.status === "provider_completed" && !props.openDispute;
+  const canReview = !props.readOnly && props.role === "customer" && ["customer_confirmed", "auto_completed", "paid_out"].includes(props.status);
   const protectionRemaining = useMemo(() => {
     if (!props.protectionDeadline) return null;
     const ms = new Date(props.protectionDeadline).getTime() - Date.now();
@@ -218,20 +221,21 @@ export function BookingWorkflowPanel(props: Props) {
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800"><AlertTriangle className="mr-2 inline" size={16} />{error}</div>}
       {props.openDispute && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900"><AlertTriangle className="mr-2 inline" size={16} />{c.openDispute} ({props.openDispute.reason.replaceAll("_", " ")})</div>}
 
-      {props.role === "customer" && props.servicePin && ["scheduled", "in_progress"].includes(props.status) && <div className="card p-6"><div className="flex items-center gap-2 font-black"><ShieldCheck size={19} />{c.pin}</div><div className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-3 font-mono text-2xl font-black tracking-[0.3em] text-white">{props.servicePin}</div><p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">{c.pinHelp}</p></div>}
+      {!props.readOnly && props.role === "customer" && props.servicePin && ["scheduled", "in_progress"].includes(props.status) && <div className="card p-6"><div className="flex items-center gap-2 font-black"><ShieldCheck size={19} />{c.pin}</div><div className="mt-4 inline-flex rounded-xl bg-slate-950 px-5 py-3 font-mono text-2xl font-black tracking-[0.3em] text-white">{props.servicePin}</div><p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--muted)]">{c.pinHelp}</p></div>}
 
-      {props.role === "customer" && props.status === "scheduled" && props.arrivalRequestPending && <div className="card border-amber-200 bg-amber-50 p-6"><div className="flex items-center gap-2 font-black text-amber-950"><MapPin size={19} />{c.confirmArrival}</div><p className="mt-2 max-w-2xl text-sm leading-6 text-amber-900">{c.arrivalHelp}</p><button className="btn-primary mt-4" disabled={Boolean(busy)} onClick={() => run("confirm-arrival", () => api(`/api/bookings/${props.bookingId}/confirm-arrival`))}>{actionBusy("confirm-arrival") || c.confirmArrival}</button></div>}
+      {!props.readOnly && props.role === "customer" && props.status === "scheduled" && props.arrivalRequestPending && <div className="card border-amber-200 bg-amber-50 p-6"><div className="flex items-center gap-2 font-black text-amber-950"><MapPin size={19} />{c.confirmArrival}</div><p className="mt-2 max-w-2xl text-sm leading-6 text-amber-900">{c.arrivalHelp}</p><button className="btn-primary mt-4" disabled={Boolean(busy)} onClick={() => run("confirm-arrival", () => api(`/api/bookings/${props.bookingId}/confirm-arrival`))}>{actionBusy("confirm-arrival") || c.confirmArrival}</button></div>}
 
       {props.status === "provider_completed" && props.protectionDeadline && <div className="card p-6"><div className="flex items-center gap-2 font-black"><Clock3 size={19} />{c.protection}</div><div className="mt-3 text-2xl font-black">{protectionRemaining}</div><p className="mt-2 text-sm leading-6 text-[var(--muted)]">{c.auto} Deadline: {localDate(props.protectionDeadline, props.locale)}</p></div>}
 
       {canProviderWork && <div className="card p-6"><h2 className="text-lg font-black">{c.proof}</h2><p className="mt-2 text-sm text-[var(--muted)]">{c.privacy}</p><div className="mt-5 grid gap-3 md:grid-cols-2">
+        <EvidencePhotoUpload bookingId={props.bookingId} status={props.status} locale={props.locale} />
         {props.status === "scheduled" && <div className="md:col-span-2 rounded-xl border border-[var(--line)] bg-[var(--background)] p-4">
           <label className="text-sm font-black">Customer PIN</label>
           <div className="mt-2 flex gap-2"><input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="000000" className="min-w-0 flex-1 rounded-xl border border-[var(--line)] bg-white px-3 py-2 font-mono text-lg tracking-[0.2em]" /><button className="btn-primary" disabled={pin.length !== 6 || Boolean(busy)} onClick={() => withArrivalLocation("pin")}><MapPin size={17} /> {actionBusy("check-in") || c.checkIn}</button></div>
           <button className="mt-3 text-sm font-black text-[var(--brand)] underline-offset-4 hover:underline" disabled={Boolean(busy)} onClick={() => withArrivalLocation("fallback")}>{actionBusy("arrival-request") || c.fallback}</button>
         </div>}
         {props.status === "in_progress" && <button className="btn-secondary" disabled={Boolean(busy)} onClick={withCheckOutLocation}><MapPin size={17} /> {actionBusy("check-out") || c.checkOut}</button>}
-        <button className="btn-secondary" disabled={Boolean(busy)} onClick={() => run("checklist", () => api(`/api/bookings/${props.bookingId}/evidence`, { type: "checklist", metadata: { completed: true } }))}><CheckCircle2 size={17} /> {actionBusy("checklist") || c.checklist}</button>
+        <button className="btn-secondary" disabled={Boolean(busy)} onClick={() => run("checklist", () => api(`/api/bookings/${props.bookingId}/evidence`, { type: "checklist" }))}><CheckCircle2 size={17} /> {actionBusy("checklist") || c.checklist}</button>
         <button className="btn-primary" disabled={Boolean(busy) || props.status !== "in_progress"} onClick={() => run("complete", () => api(`/api/bookings/${props.bookingId}/complete`))}><CheckCircle2 size={17} /> {actionBusy("complete") || c.complete}</button>
       </div></div>}
 

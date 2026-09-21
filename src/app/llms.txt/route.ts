@@ -34,7 +34,7 @@ ${locationLines}
 
 ## Languages for the U.S. market
 - English (en-US): ${base}/
-- Portuguese for U.S. users (pt-US): ${base}/pt-br
+- Brazilian Portuguese (pt-BR): ${base}/pt-br
 - Spanish for U.S. users (es-US): ${base}/es
 
 ## Important public resources

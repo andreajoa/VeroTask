@@ -14,7 +14,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       canonical: "/services",
       languages: {
         "en-US": "/services",
-        "pt-US": "/pt-br/services",
+        "pt-BR": "/pt-br/services",
         "es-US": "/es/services",
         "x-default": "/services"
       }

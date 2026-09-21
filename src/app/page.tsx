@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     canonical: "/",
     languages: {
       "en-US": "/",
-      "pt-US": "/pt-br",
+      "pt-BR": "/pt-br",
       "es-US": "/es",
       "x-default": "/"
     }
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    alternateLocale: ["pt_US", "es_US"],
+    alternateLocale: ["pt_BR", "es_US"],
     title: "VeroTask | Local Services in Orlando, FL",
     description: "Local service marketplace for Orlando and Central Florida, United States."
   }

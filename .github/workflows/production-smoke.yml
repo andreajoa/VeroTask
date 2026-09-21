@@ -46,13 +46,11 @@ jobs:
             .market == "Orlando / Central Florida" and
             .paymentModel == "booking_fee_only" and
             .checks.database == true and
-            .checks.databaseError == false and
-            .checks.productionUrlValid == true and
+            .checks.schema == true and
+            .checks.storageOperational == true and
+            .checks.storageOptional == false and
             .checks.configuredAppUrlValid == true and
-            .checks.staleConfiguredAppUrl == false and
-            .checks.supportEmailConfigured == true and
-            .checks.requiredEnvironmentConfigured == true and
-            .checks.missingEnvironmentCount == 0
+            .checks.requiredEnvironmentConfigured == true
           ' /tmp/ready.json >/dev/null
 
       - name: Verify public customer pages

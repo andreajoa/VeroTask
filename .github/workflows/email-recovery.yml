@@ -1,0 +1,29 @@
+name: Transactional Email Recovery
+
+on:
+  schedule:
+    - cron: "3-58/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: transactional-email-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Recover pending booking notifications
+        env:
+          EMAIL_CRON_TOKEN: ${{ secrets.VEROTASK_EMAIL_CRON_TOKEN }}
+          APP_URL: https://www.verotask.online
+        run: |
+          set -euo pipefail
+          test -n "$EMAIL_CRON_TOKEN"
+          curl --fail --silent --show-error --retry 2 --max-time 120 \
+            -H "Authorization: Bearer $EMAIL_CRON_TOKEN" \
+            "$APP_URL/api/cron/email-outbox"

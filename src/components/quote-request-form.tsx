@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CalendarClock, MapPin, ShieldCheck } from "lucide-react";
 
 type Initial = {
@@ -24,6 +25,7 @@ export function QuoteRequestForm({
   initial: Initial;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -32,6 +34,7 @@ export function QuoteRequestForm({
     setError(null);
 
     const form = new FormData(event.currentTarget);
+    try {
     const response = await fetch("/api/bookings/quote-request", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -67,7 +70,11 @@ export function QuoteRequestForm({
       return;
     }
 
-    window.location.href = `/bookings/${data.bookingId}?requested=1`;
+    router.push(`/bookings/${data.bookingId}?requested=1`);
+    } catch {
+      setError("We could not connect. Check your connection and try again.");
+      setSubmitting(false);
+    }
   }
 
   return (

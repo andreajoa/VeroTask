@@ -17,9 +17,35 @@ export const BLOCKING_BOOKING_STATUSES = [
   "paid_out"
 ] as const;
 
+export type PublishedAvailabilityRule = {
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  active: boolean;
+};
+
 function minutes(value: string) {
   const [h, m] = value.split(":").map(Number);
   return h * 60 + m;
+}
+
+export function matchesPublishedAvailability(
+  start: Date,
+  end: Date,
+  rules: PublishedAvailabilityRule[]
+) {
+  if (formatInTimeZone(start, SERVICE_TIMEZONE, "yyyy-MM-dd") !== formatInTimeZone(end, SERVICE_TIMEZONE, "yyyy-MM-dd")) {
+    return false;
+  }
+  if (rules.length === 0) return true;
+
+  const weekday = Number(formatInTimeZone(start, SERVICE_TIMEZONE, "i")) % 7;
+  const startMinutes = Number(formatInTimeZone(start, SERVICE_TIMEZONE, "H")) * 60 + Number(formatInTimeZone(start, SERVICE_TIMEZONE, "m"));
+  const endMinutes = Number(formatInTimeZone(end, SERVICE_TIMEZONE, "H")) * 60 + Number(formatInTimeZone(end, SERVICE_TIMEZONE, "m"));
+
+  return rules
+    .filter((rule) => rule.active && rule.dayOfWeek === weekday)
+    .some((rule) => startMinutes >= minutes(rule.startTime) && endMinutes <= minutes(rule.endTime));
 }
 
 export async function checkProviderAvailability(
@@ -29,24 +55,10 @@ export async function checkProviderAvailability(
   excludeBookingId?: string
 ) {
   const db = getDb();
-  const weekday = Number(formatInTimeZone(start, SERVICE_TIMEZONE, "i")) % 7;
-  const startMinutes = Number(formatInTimeZone(start, SERVICE_TIMEZONE, "H")) * 60 + Number(formatInTimeZone(start, SERVICE_TIMEZONE, "m"));
-  const endMinutes = Number(formatInTimeZone(end, SERVICE_TIMEZONE, "H")) * 60 + Number(formatInTimeZone(end, SERVICE_TIMEZONE, "m"));
+  const rules = await db.select().from(providerAvailability).where(eq(providerAvailability.businessId, businessId));
 
-  const rules = await db.select().from(providerAvailability).where(and(
-    eq(providerAvailability.businessId, businessId),
-    eq(providerAvailability.active, true)
-  ));
-
-  if (formatInTimeZone(start, SERVICE_TIMEZONE, "yyyy-MM-dd") !== formatInTimeZone(end, SERVICE_TIMEZONE, "yyyy-MM-dd")) {
+  if (!matchesPublishedAvailability(start, end, rules)) {
     return { available: false, reason: "outside_provider_hours" as const };
-  }
-
-  if (rules.length > 0) {
-    const insidePublishedHours = rules
-      .filter((rule) => rule.dayOfWeek === weekday)
-      .some((rule) => startMinutes >= minutes(rule.startTime) && endMinutes <= minutes(rule.endTime));
-    if (!insidePublishedHours) return { available: false, reason: "outside_provider_hours" as const };
   }
 
   const predicates = [

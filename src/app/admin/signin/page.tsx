@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
 
         {query.error === "invalid" && <div className="mt-5 rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm font-bold text-red-200">Invalid password.</div>}
         {query.error === "configuration" && <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm font-bold text-amber-100">Admin authentication is not configured.</div>}
-        {query.error === "rate-limited" && <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm font-bold text-amber-100">Too many failed attempts. Admin sign-in is temporarily locked for this browser. Try again in about 15 minutes.</div>}
+        {query.error === "rate-limited" && <div className="mt-5 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm font-bold text-amber-100">Too many failed attempts. Admin sign-in is temporarily locked for this network and device. Try again in about 15 minutes.</div>}
 
         <form action={adminSignIn} className="mt-7 space-y-4">
           <label className="block">

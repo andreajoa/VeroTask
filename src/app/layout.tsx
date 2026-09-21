@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { PrivacyAnalytics } from "@/components/privacy-analytics";
 import { InterestPopup } from "@/components/interest-popup";
 import { canonicalAppUrl } from "@/lib/app-url";
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     title: "VeroTask | Local Services in Orlando, FL",
     description: "Find and book local professionals serving Orlando and Central Florida, United States.",
     locale: "en_US",
-    alternateLocale: ["es_US", "pt_US"]
+    alternateLocale: ["es_US", "pt_BR"]
   },
   twitter: {
     card: "summary_large_image",
@@ -35,9 +36,12 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const requestHeaders = await headers();
+  const locale = requestHeaders.get("x-verotask-locale");
+  const documentLanguage = locale === "pt-br" ? "pt-BR" : locale === "es" ? "es-US" : "en-US";
   return (
-    <html lang="en">
+    <html lang={documentLanguage}>
       <body>
         {children}
         <InterestPopup />

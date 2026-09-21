@@ -7,6 +7,7 @@ const links = [
   ["/admin/analytics", "Analytics", Activity],
   ["/admin/crm", "CRM", UsersRound],
   ["/admin/bookings", "Bookings", BriefcaseBusiness],
+  ["/admin/refunds", "Refund review", Scale],
   ["/admin/email", "Email", Mail],
   ["/admin/legal", "Legal & Audit", Scale],
   ["/admin/evidence", "Evidence", FileSearch],

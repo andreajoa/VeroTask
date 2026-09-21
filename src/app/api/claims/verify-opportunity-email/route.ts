@@ -1,5 +1,5 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { businessClaims, bookingEvents, bookings, businesses, users } from "@/db/schema";
@@ -68,12 +68,6 @@ export async function GET(request: NextRequest) {
   const ownerUserId = existingRequestedUser?.id ?? row.claim.claimantUserId;
   const now = new Date();
 
-  if (!existingRequestedUser) {
-    await db.update(users).set({ email: requestedEmail, role: "provider", updatedAt: now }).where(eq(users.id, row.claim.claimantUserId));
-  } else {
-    await db.update(users).set({ role: "provider", updatedAt: now }).where(eq(users.id, existingRequestedUser.id));
-  }
-
   const [claimed] = await db.update(businesses).set({
     ownerUserId,
     publicEmail: requestedEmail,
@@ -82,12 +76,18 @@ export async function GET(request: NextRequest) {
     updatedAt: now
   }).where(and(
     eq(businesses.id, row.business.id),
-    isNull(businesses.ownerUserId)
+    or(isNull(businesses.ownerUserId), eq(businesses.ownerUserId, ownerUserId))
   )).returning();
 
-  if (!claimed && row.business.ownerUserId !== ownerUserId) {
+  if (!claimed) {
     await db.update(businessClaims).set({ status: "rejected", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));
     return NextResponse.redirect(new URL("/dashboard?error=profile-already-claimed", base));
+  }
+
+  if (!existingRequestedUser) {
+    await db.update(users).set({ email: requestedEmail, role: "provider", updatedAt: now }).where(eq(users.id, row.claim.claimantUserId));
+  } else {
+    await db.update(users).set({ role: "provider", updatedAt: now }).where(eq(users.id, existingRequestedUser.id));
   }
 
   await db.update(businessClaims).set({ status: "verified", resolvedAt: now }).where(eq(businessClaims.id, row.claim.id));

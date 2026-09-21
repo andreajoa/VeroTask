@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
@@ -17,9 +17,29 @@ function hash(value: string) {
 async function completeClaim(claimId: string, claimantUserId: string, businessId: string) {
   const db = getDb();
   const now = new Date();
-  await db.update(businessClaims).set({ status: "verified", resolvedAt: now }).where(eq(businessClaims.id, claimId));
-  await db.update(businesses).set({ ownerUserId: claimantUserId, status: "pending", updatedAt: now }).where(eq(businesses.id, businessId));
+  const claimed = await db.update(businesses).set({ ownerUserId: claimantUserId, status: "pending", updatedAt: now }).where(and(
+    eq(businesses.id, businessId),
+    isNull(businesses.ownerUserId)
+  )).returning();
+  if (claimed.length === 0) {
+    await db.update(businessClaims).set({ status: "rejected", resolvedAt: now }).where(and(
+      eq(businessClaims.id, claimId),
+      eq(businessClaims.status, "pending")
+    ));
+    return false;
+  }
+
+  await db.update(businessClaims).set({ status: "verified", resolvedAt: now }).where(and(
+    eq(businessClaims.id, claimId),
+    eq(businessClaims.status, "pending")
+  ));
+  await db.update(businessClaims).set({ status: "revoked", resolvedAt: now }).where(and(
+    eq(businessClaims.businessId, businessId),
+    eq(businessClaims.status, "pending"),
+    ne(businessClaims.id, claimId)
+  ));
   await db.update(users).set({ role: "provider", updatedAt: now }).where(eq(users.id, claimantUserId));
+  return true;
 }
 
 export async function startBusinessClaim(slug: string) {
@@ -107,6 +127,7 @@ export async function verifyWebsiteClaim(claimId: string, slug: string) {
 
   if (!verified) redirect(`/providers/${slug}/claim?claim=${claimId}&error=verification-not-found`);
 
-  await completeClaim(row.claim.id, user.id, row.business.id);
+  const claimed = await completeClaim(row.claim.id, user.id, row.business.id);
+  if (!claimed) redirect(`/providers/${slug}?claim=already-owned`);
   redirect("/dashboard?claimed=1");
 }

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { bookingEvents, bookings } from "@/db/schema";
@@ -28,12 +28,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   const evidence = await bookingEvidenceSummary(id);
   const db = getDb();
 
-  await db.update(bookings).set({
+  const [claimed] = await db.update(bookings).set({
     status: "provider_completed",
     providerMarkedCompleteAt: completedAt,
     protectionDeadline: deadline,
     updatedAt: completedAt
-  }).where(eq(bookings.id, id));
+  }).where(and(eq(bookings.id, id), eq(bookings.status, access.booking.status))).returning();
+  if (!claimed) return NextResponse.json({ error: "booking_changed" }, { status: 409 });
   await db.insert(bookingEvents).values({
     bookingId: id,
     actorUserId: user.id,

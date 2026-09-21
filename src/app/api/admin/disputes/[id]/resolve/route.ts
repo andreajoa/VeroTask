@@ -1,10 +1,8 @@
-import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb } from "@/db";
-import { bookingEvents, bookings, disputes } from "@/db/schema";
+import { isAdminSession } from "@/lib/admin-auth";
 import { getCurrentUser } from "@/lib/auth";
-import { refundBookingPayment } from "@/lib/booking-workflow";
+import { disputeAdminActor, resolveBookingDispute } from "@/lib/dispute-workflow";
 
 const schema = z.object({
   outcome: z.enum(["customer", "provider", "split"]),
@@ -14,70 +12,27 @@ const schema = z.object({
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
-  if (!user || !["admin", "support"].includes(user.role)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  const actor = disputeAdminActor(user, user && ["admin", "support"].includes(user.role) ? false : await isAdminSession());
+  if (!actor.allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const { id } = await params;
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "invalid_resolution" }, { status: 400 });
 
-  const db = getDb();
-  const [dispute] = await db.select().from(disputes).where(eq(disputes.id, id)).limit(1);
-  if (!dispute || dispute.resolvedAt) return NextResponse.json({ error: "dispute_not_open" }, { status: 404 });
-  const [booking] = await db.select().from(bookings).where(eq(bookings.id, dispute.bookingId)).limit(1);
-  if (!booking) return NextResponse.json({ error: "booking_not_found" }, { status: 404 });
-
-  const maxRefund = booking.marketplaceFeeCents;
-  if (parsed.data.refundCents > maxRefund) {
-    return NextResponse.json({ error: "refund_exceeds_verotask_booking_fee" }, { status: 400 });
-  }
-  if (parsed.data.outcome === "customer" && parsed.data.refundCents === 0) return NextResponse.json({ error: "customer_outcome_requires_refund" }, { status: 400 });
-  if (parsed.data.outcome === "provider" && parsed.data.refundCents !== 0) return NextResponse.json({ error: "provider_outcome_requires_zero_refund" }, { status: 400 });
-  if (parsed.data.outcome === "split" && (parsed.data.refundCents <= 0 || parsed.data.refundCents >= maxRefund)) {
-    return NextResponse.json({ error: "split_outcome_requires_partial_booking_fee_refund" }, { status: 400 });
-  }
-
-  if (parsed.data.refundCents > 0) {
-    await refundBookingPayment({
-      bookingId: booking.id,
-      amountCents: parsed.data.refundCents,
-      reason: `dispute_resolution_${parsed.data.outcome}`,
-      disputeId: dispute.id
+  try {
+    const result = await resolveBookingDispute({
+      disputeId: id,
+      actorUserId: actor.actorUserId,
+      ...parsed.data
     });
-  }
-
-  const disputeStatus = parsed.data.outcome === "customer"
-    ? "resolved_customer"
-    : parsed.data.outcome === "provider" ? "resolved_provider" : "resolved_split";
-  const now = new Date();
-  await db.update(disputes).set({
-    status: disputeStatus,
-    resolutionRefundCents: parsed.data.refundCents,
-    resolutionProviderCents: 0,
-    resolutionNote: parsed.data.note,
-    resolvedAt: now
-  }).where(eq(disputes.id, dispute.id));
-
-  const fullBookingFeeRefund = maxRefund > 0 && parsed.data.refundCents === maxRefund;
-  const nextStatus = fullBookingFeeRefund ? "refunded" : "customer_confirmed";
-  await db.update(bookings).set({
-    status: nextStatus,
-    payoutEligibleAt: null,
-    updatedAt: now
-  }).where(eq(bookings.id, booking.id));
-  await db.insert(bookingEvents).values({
-    bookingId: booking.id,
-    actorUserId: user.id,
-    eventType: "dispute_resolved",
-    previousStatus: "disputed",
-    nextStatus,
-    metadata: {
-      disputeId: dispute.id,
-      outcome: parsed.data.outcome,
-      bookingFeeRefundCents: parsed.data.refundCents,
-      providerCents: 0,
-      servicePaymentHandledDirectly: true,
-      note: parsed.data.note
+    if (!result.ok) {
+      const status = result.error === "dispute_not_open" || result.error === "booking_not_found" ? 404
+        : result.error === "refund_pending" || result.error === "refund_failed_requires_review" || result.error === "refund_request_conflict" ? 409
+          : 400;
+      return NextResponse.json({ error: result.error }, { status });
     }
-  });
-
-  return NextResponse.json({ ok: true, disputeStatus, refundCents: parsed.data.refundCents, providerCents: 0, payoutPending: false });
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error("[VeroTask dispute resolution] transaction failed", error);
+    return NextResponse.json({ error: "resolution_service_unavailable" }, { status: 502 });
+  }
 }

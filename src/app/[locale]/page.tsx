@@ -27,15 +27,15 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
       canonical: current,
       languages: {
         "en-US": "/",
-        "pt-US": "/pt-br",
+        "pt-BR": "/pt-br",
         "es-US": "/es",
         "x-default": "/"
       }
     },
     openGraph: {
       type: "website",
-      locale: isPt ? "pt_US" : "es_US",
-      alternateLocale: ["en_US", isPt ? "es_US" : "pt_US"],
+      locale: isPt ? "pt_BR" : "es_US",
+      alternateLocale: ["en_US", isPt ? "es_US" : "pt_BR"],
       title: isPt ? "VeroTask | Serviços locais em Orlando, FL" : "VeroTask | Servicios locales en Orlando, FL",
       description: isPt
         ? "Marketplace local para Orlando e Flórida Central, Estados Unidos."

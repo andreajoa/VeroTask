@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
       canonical: path,
       languages: {
         "en-US": path,
-        "pt-US": `/pt-br/locations/${city}`,
+        "pt-BR": `/pt-br/locations/${city}`,
         "es-US": `/es/locations/${city}`,
         "x-default": path
       }

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     canonical: "/providers",
     languages: {
       "en-US": "/providers",
-      "pt-US": "/pt-br/providers",
+      "pt-BR": "/pt-br/providers",
       "es-US": "/es/providers",
       "x-default": "/providers"
     }

@@ -22,7 +22,7 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
       canonical: current,
       languages: {
         "en-US": "/services",
-        "pt-US": "/pt-br/services",
+        "pt-BR": "/pt-br/services",
         "es-US": "/es/services",
         "x-default": "/services"
       }

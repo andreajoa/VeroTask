@@ -7,9 +7,9 @@ import { getDb } from "@/db";
 import { businessCategories, businesses, categories, providerProfilePhotos } from "@/db/schema";
 import { distanceMiles } from "@/lib/distance";
 import { geocodeUsPostalCode } from "@/lib/geocoding";
-import { publicProviderDescription, publicProviderName, publicProviderSlug } from "@/lib/public-provider";
+import { publicProviderDescription, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
-import { localePath, type PublicLocale } from "@/lib/site-copy";
+import { localePath, publicWorkflowPath, type PublicLocale } from "@/lib/site-copy";
 
 export type ServiceSearchParams = {
   q?: string;
@@ -126,6 +126,11 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
   }
 
   const hasBrief = Boolean(searchParams.size || searchParams.timeline || searchParams.details || searchParams.date);
+  const searchLabels = locale === "pt-br"
+    ? { service: "Serviço ou tarefa", servicePlaceholder: "Serviço, tarefa ou empresa", location: "Cidade ou ZIP code", submit: "Pesquisar" }
+    : locale === "es"
+      ? { service: "Servicio o tarea", servicePlaceholder: "Servicio, tarea o empresa", location: "Ciudad o código postal", submit: "Buscar" }
+      : { service: "Service or task", servicePlaceholder: "Service, task or business", location: "City or ZIP code", submit: "Search" };
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
@@ -134,9 +139,9 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
       <section className="border-b border-slate-200 bg-white py-6">
         <div className="container-shell">
           <form className="grid gap-2 rounded-[18px] border border-slate-200 bg-white p-2 shadow-[0_8px_30px_rgba(15,23,42,.05)] md:grid-cols-[1.4fr_1fr_auto]" action={localePath(locale, "/services")}>
-            <label className="flex min-h-13 items-center gap-3 rounded-xl px-4"><Search size={19} className="text-slate-500" /><input defaultValue={q} name="q" className="w-full bg-transparent outline-none" placeholder="Service, task or business" /></label>
-            <label className="flex min-h-13 items-center gap-3 border-t border-slate-200 px-4 md:border-l md:border-t-0"><MapPin size={19} className="text-slate-500" /><input defaultValue={location} name="location" className="w-full bg-transparent outline-none" placeholder="City or ZIP code" /></label>
-            <button type="submit" className="btn-primary">Search</button>
+            <label className="flex min-h-13 items-center gap-3 rounded-xl px-4"><Search size={19} className="text-slate-500" /><span className="sr-only">{searchLabels.service}</span><input defaultValue={q} name="q" className="w-full bg-transparent outline-none" placeholder={searchLabels.servicePlaceholder} /></label>
+            <label className="flex min-h-13 items-center gap-3 border-t border-slate-200 px-4 md:border-l md:border-t-0"><MapPin size={19} className="text-slate-500" /><span className="sr-only">{searchLabels.location}</span><input defaultValue={location} name="location" className="w-full bg-transparent outline-none" placeholder={searchLabels.location} /></label>
+            <button type="submit" className="btn-primary">{searchLabels.submit}</button>
           </form>
         </div>
       </section>
@@ -184,11 +189,11 @@ export async function ServicesPage({ locale, searchParams }: { locale: PublicLoc
                           {Number(business.reviewCount) > 0 && <span>★ {Number(business.averageRating).toFixed(1)} · {business.reviewCount} reviews</span>}
                           {business.completedJobs > 0 && <span>{business.completedJobs} jobs on VeroTask</span>}
                         </div>
-                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{publicProviderDescription(business.city, business.state, locale)}</p>
+                        <p className="mt-4 line-clamp-2 text-sm leading-6 text-slate-600">{publicServiceText(business.description, business.name, publicProviderDescription(business.city, business.state, locale))}</p>
                       </div>
                       <div className="flex flex-col gap-2 sm:self-center">
                         <Link
-                          href={`${localePath(locale, `/book/${publicProviderSlug(business.id)}`)}?${new URLSearchParams(Object.entries(searchParams).filter(([, value]) => Boolean(value)) as Array<[string, string]>).toString()}`}
+                          href={publicWorkflowPath(locale, `/book/${publicProviderSlug(business.id)}`, searchParams)}
                           className="btn-primary whitespace-nowrap"
                         >Request quote <ArrowRight size={16} className="ml-2" /></Link>
                         <Link href={localePath(locale, `/providers/${publicProviderSlug(business.id)}`)} className="text-center text-xs font-black text-[var(--brand)]">View profile</Link>

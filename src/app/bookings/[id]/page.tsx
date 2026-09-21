@@ -8,11 +8,13 @@ import { BookingWorkflowPanel } from "@/components/booking-workflow-panel";
 import { MutualReputationPanel } from "@/components/mutual-reputation-panel";
 import { getDb } from "@/db";
 import { bilateralRatings } from "@/db/reputation-schema";
-import { bookingEvidence, bookingEvents, disputes, providerProfilePhotos, services } from "@/db/schema";
+import { bookingEvidence, bookingEvents, disputes, providerProfilePhotos, refunds, services } from "@/db/schema";
+import { isAdminSession } from "@/lib/admin-auth";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { servicePinForBooking } from "@/lib/booking";
-import { bookingEvidenceSummary } from "@/lib/booking-workflow";
+import { bookingEvidenceSummary, getBookingContext } from "@/lib/booking-workflow";
+import { disputeAdminActor } from "@/lib/dispute-workflow";
 import { publicProviderName } from "@/lib/public-provider";
 import { maskedServiceLocation, parseQuoteRequestBrief, quoteRequestLabel } from "@/lib/quote-request";
 import { getCustomerReputationSummary, getProviderReputationSummary } from "@/lib/reputation";
@@ -35,30 +37,30 @@ const ADDRESS_RELEASE_STATUSES = new Set([
 
 function requestWaitingCopy(locale: "en" | "pt-br" | "es", claimed: boolean) {
   if (locale === "pt-br") return claimed ? {
-    title: "Pedido enviado. Estamos aguardando o PRO.",
-    body: "A VeroTask já avisou este PRO sobre o seu pedido. Muitos profissionais disponíveis respondem em cerca de 2 horas durante o horário comercial, mas o tempo pode variar. À noite, fins de semana e feriados, a resposta pode levar mais tempo.",
+    title: "Pedido recebido. A notificação do PRO está sendo processada.",
+    body: "A VeroTask recebeu seu pedido e está preparando a notificação deste PRO. Muitos profissionais disponíveis respondem em cerca de 2 horas durante o horário comercial, mas o tempo pode variar. À noite, fins de semana e feriados, a resposta pode levar mais tempo.",
     detail: "Você receberá um email assim que o PRO enviar o orçamento ou recusar. Nenhuma taxa de reserva foi cobrada enquanto você espera."
   } : {
-    title: "Pedido enviado ao PRO.",
-    body: "A VeroTask enviou o pedido para o email comercial associado a este perfil. Como o profissional ainda precisa confirmar o acesso ao perfil antes de enviar o orçamento, a primeira resposta pode levar mais de 2 horas.",
+    title: "Pedido recebido. A notificação está sendo processada.",
+    body: "A VeroTask recebeu seu pedido e está preparando a notificação para o email comercial associado a este perfil. Como o profissional ainda precisa confirmar o acesso ao perfil antes de enviar o orçamento, a primeira resposta pode levar mais de 2 horas.",
     detail: "Você receberá um email assim que houver resposta. Nenhuma taxa de reserva foi cobrada enquanto você espera."
   };
   if (locale === "es") return claimed ? {
-    title: "Solicitud enviada. Estamos esperando al Pro.",
-    body: "VeroTask ya notificó a este Pro. Muchos profesionales disponibles responden en aproximadamente 2 horas durante el horario comercial, aunque el tiempo puede variar. Por la noche, fines de semana y feriados puede tardar más.",
+    title: "Solicitud recibida. La notificación al Pro se está procesando.",
+    body: "VeroTask recibió tu solicitud y está preparando la notificación a este Pro. Muchos profesionales disponibles responden en aproximadamente 2 horas durante el horario comercial, aunque el tiempo puede variar. Por la noche, fines de semana y feriados puede tardar más.",
     detail: "Recibirás un email cuando el Pro envíe una cotización o rechace la solicitud. No se ha cobrado ninguna tarifa de reserva mientras esperas."
   } : {
-    title: "Solicitud enviada al Pro.",
-    body: "VeroTask envió la solicitud al email comercial asociado con este perfil. Como el profesional todavía debe confirmar el acceso al perfil antes de cotizar, la primera respuesta puede tardar más de 2 horas.",
+    title: "Solicitud recibida. La notificación se está procesando.",
+    body: "VeroTask recibió tu solicitud y está preparando la notificación al email comercial asociado con este perfil. Como el profesional todavía debe confirmar el acceso al perfil antes de cotizar, la primera respuesta puede tardar más de 2 horas.",
     detail: "Recibirás un email cuando haya una respuesta. No se ha cobrado ninguna tarifa de reserva mientras esperas."
   };
   return claimed ? {
-    title: "Request sent. We’re waiting for the Pro.",
-    body: "VeroTask has already notified this Pro. Many available Pros respond within about 2 hours during normal business hours, although response times can vary. Nights, weekends and holidays may take longer.",
+    title: "Request received. The Pro notification is processing.",
+    body: "VeroTask received your request and queued a secure notification for this Pro. Many available Pros respond within about 2 hours during normal business hours, although response times can vary. Nights, weekends and holidays may take longer.",
     detail: "We’ll email you as soon as the Pro sends a quote or declines. No VeroTask booking fee has been charged while you wait."
   } : {
-    title: "Request sent to the Pro.",
-    body: "VeroTask emailed the business address associated with this profile. Because the professional must confirm access to the profile before sending a quote, the first response can take longer than 2 hours.",
+    title: "Request received. The notification is processing.",
+    body: "VeroTask received your request and queued a secure notification for the business address associated with this profile. Because the professional must confirm access to the profile before sending a quote, the first response can take longer than 2 hours.",
     detail: "We’ll email you as soon as there is a response. No VeroTask booking fee has been charged while you wait."
   };
 }
@@ -74,13 +76,23 @@ export default async function BookingPage({
   const query = await searchParams;
   const locale = localeFrom(query.lang);
   const user = await getCurrentUser();
-  if (!user) redirect(`/signin?next=${encodeURIComponent(`/bookings/${id}${query.lang ? `?lang=${query.lang}` : ""}`)}`);
+  const adminActor = disputeAdminActor(user, user && ["admin", "support"].includes(user.role) ? false : await isAdminSession());
+  if (!user && !adminActor.allowed) redirect(`/signin?next=${encodeURIComponent(`/bookings/${id}${query.lang ? `?lang=${query.lang}` : ""}`)}`);
 
-  const access = await bookingAccess(id, user.id);
-  if (!access?.allowed) notFound();
+  const participantAccess = user ? await bookingAccess(id, user.id) : null;
+  if (!participantAccess?.allowed && !adminActor.allowed) notFound();
+  const context = participantAccess?.allowed ? participantAccess : await getBookingContext(id);
+  if (!context) notFound();
+  const adminReadOnly = !participantAccess?.allowed && adminActor.allowed;
+  const access = participantAccess?.allowed ? participantAccess : {
+    ...context,
+    isCustomer: false,
+    isProvider: false,
+    allowed: true
+  };
 
   const db = getDb();
-  const [service, evidence, openDispute, evidenceSummary, counterpartReputation, providerCustomerRating, latestArrivalRequest, latestArrivalVerified, providerActivePhoto] = await Promise.all([
+  const [service, evidence, openDispute, evidenceSummary, counterpartReputation, providerCustomerRating, latestArrivalRequest, latestArrivalVerified, providerActivePhoto, latestRefund] = await Promise.all([
     access.booking.serviceId ? db.select().from(services).where(eq(services.id, access.booking.serviceId)).limit(1).then((rows) => rows[0] ?? null) : Promise.resolve(null),
     db.select().from(bookingEvidence).where(eq(bookingEvidence.bookingId, id)),
     db.select({ id: disputes.id, reason: disputes.reason, status: disputes.status }).from(disputes).where(and(eq(disputes.bookingId, id), isNull(disputes.resolvedAt))).limit(1).then((rows) => rows[0] ?? null),
@@ -99,7 +111,9 @@ export default async function BookingPage({
     db.select({ id: providerProfilePhotos.id }).from(providerProfilePhotos).where(and(
       eq(providerProfilePhotos.businessId, access.business.id),
       eq(providerProfilePhotos.active, true)
-    )).limit(1).then((rows) => rows[0] ?? null)
+    )).limit(1).then((rows) => rows[0] ?? null),
+    db.select({ status: refunds.status, amountCents: refunds.amountCents }).from(refunds)
+      .where(eq(refunds.bookingId, id)).orderBy(desc(refunds.createdAt)).limit(1).then((rows) => rows[0] ?? null)
   ]);
 
   const role = access.isProvider ? "provider" as const : "customer" as const;
@@ -112,11 +126,11 @@ export default async function BookingPage({
   const showPayment = access.isCustomer && ["accepted", "payment_authorized"].includes(access.booking.status);
   const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? null;
   const brief = parseQuoteRequestBrief(access.booking.customerNotes);
-  const addressReleased = access.isCustomer || ADDRESS_RELEASE_STATUSES.has(access.booking.status);
+  const addressReleased = adminReadOnly || access.isCustomer || ADDRESS_RELEASE_STATUSES.has(access.booking.status);
   const displayedAddress = addressReleased
     ? access.booking.serviceAddress
     : maskedServiceLocation(brief, access.business.city, access.business.state);
-  const displayedBusinessName = access.isProvider || ADDRESS_RELEASE_STATUSES.has(access.booking.status)
+  const displayedBusinessName = adminReadOnly || access.isProvider || ADDRESS_RELEASE_STATUSES.has(access.booking.status)
     ? access.business.name
     : publicProviderName(access.business.id, locale);
   const displayedServiceName = brief?.task ?? service?.name ?? "Local service";
@@ -137,7 +151,16 @@ export default async function BookingPage({
       </header>
 
       <section className="container-shell space-y-6 py-8 sm:py-10">
-        {access.isProvider && query.claimed === "1" && (
+        {latestRefund && <div role="status" className="card p-5 text-sm font-bold">
+          {locale === "pt-br" ? "Reembolso da taxa de reserva" : locale === "es" ? "Reembolso de la tarifa de reserva" : "Booking-fee refund"}: {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(latestRefund.amountCents / 100)} — {latestRefund.status === "succeeded"
+            ? (locale === "pt-br" ? "confirmado pelo Stripe" : locale === "es" ? "confirmado por Stripe" : "confirmed by Stripe")
+            : latestRefund.status === "failed"
+              ? (locale === "pt-br" ? "falhou; entre em contato com o suporte para revisão" : locale === "es" ? "falló; contacta al soporte para revisión" : "failed; contact support for review")
+              : (locale === "pt-br" ? "em processamento; ainda não concluído" : locale === "es" ? "en proceso; aún no completado" : "processing; not yet completed")}
+          <Link href="/support" className="ml-3 underline">{locale === "pt-br" ? "Suporte" : locale === "es" ? "Soporte" : "Support"}</Link>
+        </div>}
+        {adminReadOnly && <div className="card border-sky-200 bg-sky-50 p-5 text-sm font-bold text-sky-950">Admin review mode is read-only. Booking details and evidence are visible; customer and provider actions remain disabled.</div>}
+        {!adminReadOnly && access.isProvider && query.claimed === "1" && (
           <div className="card border-emerald-200 bg-emerald-50 p-6">
             <div className="font-black text-emerald-950">Your provider profile is now claimed</div>
             <p className="mt-2 text-sm leading-6 text-emerald-900">Your business email verified ownership automatically. Review the opportunity below. You can also check or edit your provider information before sending a quote.</p>
@@ -145,7 +168,7 @@ export default async function BookingPage({
           </div>
         )}
 
-        {access.isCustomer && access.booking.status === "requested" && (() => {
+        {!adminReadOnly && access.isCustomer && access.booking.status === "requested" && (() => {
           const waiting = requestWaitingCopy(locale, Boolean(access.business.ownerUserId));
           return (
             <div className={`card p-6 ${query.requested === "1" ? "border-sky-300 bg-sky-50" : "border-slate-200 bg-white"}`}>
@@ -182,20 +205,20 @@ export default async function BookingPage({
           </div>
         )}
 
-        <BookingRequestDecision bookingId={id} role={role} status={access.booking.status} customerRating={access.isProvider ? counterpartReputation.rating : 5} customerRatingCount={access.isProvider ? counterpartReputation.ratingCount : 0} customerCompletedJobs={access.isProvider ? counterpartReputation.completedJobs : 0} customerLabel={access.isProvider ? counterpartReputation.label : "New"} providerPhotoReady={Boolean(providerActivePhoto)} providerSetupHref={`/dashboard/providers/${access.business.id}/onboarding`} />
+        {!adminReadOnly && <BookingRequestDecision bookingId={id} role={role} status={access.booking.status} customerRating={access.isProvider ? counterpartReputation.rating : 5} customerRatingCount={access.isProvider ? counterpartReputation.ratingCount : 0} customerCompletedJobs={access.isProvider ? counterpartReputation.completedJobs : 0} customerLabel={access.isProvider ? counterpartReputation.label : "New"} providerPhotoReady={Boolean(providerActivePhoto)} providerSetupHref={`/dashboard/providers/${access.business.id}/onboarding`} />}
 
-        {showPayment && <AcceptedBookingPayment bookingId={id} publishableKey={publishableKey} bookingFeeCents={access.booking.marketplaceFeeCents} servicePriceCents={access.booking.subtotalCents} />}
+        {!adminReadOnly && showPayment && <AcceptedBookingPayment bookingId={id} publishableKey={publishableKey} bookingFeeCents={access.booking.marketplaceFeeCents} servicePriceCents={access.booking.subtotalCents} />}
 
-        {access.isProvider && ["accepted", "payment_authorized"].includes(access.booking.status) && (
+        {!adminReadOnly && access.isProvider && ["accepted", "payment_authorized"].includes(access.booking.status) && (
           <div className="card p-6">
             <div className="font-black">Quote sent</div>
             <p className="mt-2 text-sm leading-6 text-[var(--muted)]">The customer can now review your price and pay the VeroTask booking fee. The exact street address remains hidden until payment confirms the booking.</p>
           </div>
         )}
 
-        <MutualReputationPanel bookingId={id} role={role} counterpartRating={counterpartReputation.rating} counterpartRatingCount={counterpartReputation.ratingCount} counterpartCompletedJobs={counterpartReputation.completedJobs} counterpartLabel={counterpartReputation.label} canRateCustomer={canRateCustomer} customerAlreadyRated={Boolean(providerCustomerRating)} locale={locale} />
+        {!adminReadOnly && <MutualReputationPanel bookingId={id} role={role} counterpartRating={counterpartReputation.rating} counterpartRatingCount={counterpartReputation.ratingCount} counterpartCompletedJobs={counterpartReputation.completedJobs} counterpartLabel={counterpartReputation.label} canRateCustomer={canRateCustomer} customerAlreadyRated={Boolean(providerCustomerRating)} locale={locale} />}
 
-        <BookingWorkflowPanel bookingId={id} role={role} status={access.booking.status} serviceName={displayedServiceName} businessName={displayedBusinessName} serviceAddress={displayedAddress} scheduledStart={access.booking.scheduledStart.toISOString()} scheduledEnd={access.booking.scheduledEnd?.toISOString() ?? null} subtotalCents={access.booking.subtotalCents} marketplaceFeeCents={access.booking.marketplaceFeeCents} protectionDeadline={access.booking.protectionDeadline?.toISOString() ?? null} servicePin={pin} evidenceScore={evidenceSummary.score} evidenceConfidence={evidenceSummary.confidence} evidence={evidence.map((item) => ({ id: item.id, type: item.type, note: item.note, capturedAt: item.capturedAt.toISOString(), hasFile: Boolean(item.objectUrl) }))} openDispute={openDispute} locale={locale} addressReleased={addressReleased} arrivalRequestPending={arrivalRequestPending} />
+        <BookingWorkflowPanel bookingId={id} role={role} readOnly={adminReadOnly} status={access.booking.status} serviceName={displayedServiceName} businessName={displayedBusinessName} serviceAddress={displayedAddress} scheduledStart={access.booking.scheduledStart.toISOString()} scheduledEnd={access.booking.scheduledEnd?.toISOString() ?? null} subtotalCents={access.booking.subtotalCents} marketplaceFeeCents={access.booking.marketplaceFeeCents} protectionDeadline={access.booking.protectionDeadline?.toISOString() ?? null} servicePin={pin} evidenceScore={evidenceSummary.score} evidenceConfidence={evidenceSummary.confidence} evidence={evidence.map((item) => ({ id: item.id, type: item.type, note: item.note, capturedAt: item.capturedAt.toISOString(), hasFile: Boolean(item.objectUrl) }))} openDispute={openDispute} locale={locale} addressReleased={addressReleased} arrivalRequestPending={arrivalRequestPending} />
       </section>
     </main>
   );

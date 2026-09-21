@@ -73,7 +73,7 @@ export async function LocationHubPage({ locale, locationSlug }: { locale: Public
       "@type": "CollectionPage",
       name: c.title(data.location.label),
       url: `${base}${path}`,
-      inLanguage: locale === "en" ? "en-US" : locale === "pt-br" ? "pt-US" : "es-US",
+      inLanguage: locale === "en" ? "en-US" : locale === "pt-br" ? "pt-BR" : "es-US",
       spatialCoverage: {
         "@type": "City",
         name: data.location.city,
@@ -110,7 +110,7 @@ export async function LocationHubPage({ locale, locationSlug }: { locale: Public
 
   return (
     <main className="min-h-screen bg-[var(--background)]">
-      <SiteHeader locale={locale} currentPath={path} />
+      <SiteHeader locale={locale} currentPath={`/locations/${locationSlug}`} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
 
       <section className="border-b border-slate-200 bg-white py-14 lg:py-20">

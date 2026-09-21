@@ -1,8 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { LAUNCH_LOCATIONS, locationBySlug } from "@/lib/locations";
 import type { PublicLocale } from "@/lib/site-copy";
+import { PUBLICLY_HIDDEN_PROVIDER_STATUSES } from "@/lib/provider-visibility";
 
 export async function loadLocalServicePage(categorySlug: string, locationSlug: string, locale: PublicLocale) {
   const location = locationBySlug(locationSlug);
@@ -19,7 +20,8 @@ export async function loadLocalServicePage(categorySlug: string, locationSlug: s
       eq(businessCategories.categoryId, category.id),
       eq(businesses.city, location.city),
       eq(businesses.state, location.state),
-      eq(businesses.active, true)
+      eq(businesses.active, true),
+      notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
     ));
 
   if (providers.length === 0) return null;
@@ -40,7 +42,8 @@ export async function loadLocationHub(locationSlug: string, locale: PublicLocale
       .where(and(
         eq(businesses.city, location.city),
         eq(businesses.state, location.state),
-        eq(businesses.active, true)
+        eq(businesses.active, true),
+        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
       )),
     db.selectDistinct({
       slug: categories.slug,
@@ -55,6 +58,7 @@ export async function loadLocationHub(locationSlug: string, locale: PublicLocale
         eq(businesses.city, location.city),
         eq(businesses.state, location.state),
         eq(businesses.active, true),
+        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]),
         eq(categories.active, true)
       ))
   ]);
@@ -79,7 +83,10 @@ export async function loadActiveLaunchLocations() {
     const db = getDb();
     const rows = await db.selectDistinct({ city: businesses.city, state: businesses.state })
       .from(businesses)
-      .where(eq(businesses.active, true));
+      .where(and(
+        eq(businesses.active, true),
+        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
+      ));
     const active = new Set(rows.map((row) => `${row.city}|${row.state}`));
     return LAUNCH_LOCATIONS.filter((location) => active.has(`${location.city}|${location.state}`));
   } catch {

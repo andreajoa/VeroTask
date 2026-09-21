@@ -22,6 +22,10 @@ export function canCustomerStartPayment(status: string) {
   return status === "accepted" || status === "payment_authorized";
 }
 
+export function canCancelBooking(status: string) {
+  return ["requested", "accepted", "payment_authorized", "scheduled"].includes(status);
+}
+
 export function isScheduleBlockingStatus(status: string) {
   return (SCHEDULE_BLOCKING_STATUSES as readonly string[]).includes(status);
 }

@@ -36,7 +36,7 @@ async function bookingContext(bookingId: string) {
   return { db, booking, business, customer, service };
 }
 
-export async function sendProviderNewRequestNotification(bookingId: string) {
+export async function sendProviderNewRequestNotification(bookingId: string, idempotencyKey?: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.business?.ownerUserId) return false;
   const [owner] = await ctx.db.select().from(users).where(eq(users.id, ctx.business.ownerUserId)).limit(1);
@@ -49,6 +49,7 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
   const scope = brief ? `${quoteRequestLabel(brief.scope)} · ${quoteRequestLabel(brief.jobLength)} · ${quoteRequestLabel(brief.timeline)}` : "Review request details in VeroTask";
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   return sendTransactionalEmail({
+    idempotencyKey,
     to: owner.email,
     subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
@@ -61,7 +62,7 @@ export async function sendProviderNewRequestNotification(bookingId: string) {
   });
 }
 
-export async function sendUnclaimedProviderOpportunityNotification(bookingId: string, to: string, magicLink: string) {
+export async function sendUnclaimedProviderOpportunityNotification(bookingId: string, to: string, magicLink: string, idempotencyKey?: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.business) return false;
   const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
@@ -71,6 +72,7 @@ export async function sendUnclaimedProviderOpportunityNotification(bookingId: st
   const scope = brief ? `${quoteRequestLabel(brief.scope)} · ${quoteRequestLabel(brief.jobLength)} · ${quoteRequestLabel(brief.timeline)}` : "Review the request in VeroTask";
 
   return sendTransactionalEmail({
+    idempotencyKey,
     to,
     subject: `VeroTask: New job request for you · ${task}`,
     html: emailShell(
@@ -83,7 +85,7 @@ export async function sendUnclaimedProviderOpportunityNotification(bookingId: st
   });
 }
 
-export async function sendCustomerRequestReceivedNotification(bookingId: string) {
+export async function sendCustomerRequestReceivedNotification(bookingId: string, idempotencyKey?: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.customer || !ctx.business) return false;
   const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
@@ -92,15 +94,16 @@ export async function sendCustomerRequestReceivedNotification(bookingId: string)
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   const claimed = Boolean(ctx.business.ownerUserId);
   const expectation = claimed
-    ? "We notified this Pro about your request. Many available Pros respond within about 2 hours during normal business hours, although response times can vary."
-    : "We emailed the business address associated with this public listing. Because this Pro must first confirm access to the profile before quoting, the first response can take longer than 2 hours.";
+    ? "We queued a secure notification for this Pro. Many available Pros respond within about 2 hours during normal business hours, although response times can vary."
+    : "We queued a secure notification to the business address associated with this public listing. Because this Pro must first confirm access to the profile before quoting, the first response can take longer than 2 hours.";
 
   return sendTransactionalEmail({
+    idempotencyKey,
     to: ctx.customer.email,
     subject: `VeroTask received your request · ${task}`,
     html: emailShell(
       "Your request was sent",
-      `<p>We sent your request for <strong>${esc(task)}</strong> to <strong>${esc(providerLabel)}</strong>.</p><p>${esc(expectation)}</p><p>You will receive another VeroTask email as soon as the Pro sends a quote or declines the request. <strong>You have not been charged a VeroTask booking fee.</strong> If you need someone sooner, you can keep this request open and compare other local Pros at any time.</p>`,
+      `<p>We recorded your request for <strong>${esc(task)}</strong> to <strong>${esc(providerLabel)}</strong>.</p><p>${esc(expectation)}</p><p>You will receive another VeroTask email as soon as the Pro sends a quote or declines the request. <strong>You have not been charged a VeroTask booking fee.</strong> If you need someone sooner, you can keep this request open and compare other local Pros at any time.</p>`,
       url,
       "Track this request",
       `Your VeroTask request for ${task} was sent to the Pro.`
@@ -108,7 +111,7 @@ export async function sendCustomerRequestReceivedNotification(bookingId: string)
   });
 }
 
-export async function sendCustomerAcceptedNotification(bookingId: string) {
+export async function sendCustomerAcceptedNotification(bookingId: string, idempotencyKey?: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.customer || !ctx.business) return false;
   const brief = parseQuoteRequestBrief(ctx.booking.customerNotes);
@@ -116,6 +119,7 @@ export async function sendCustomerAcceptedNotification(bookingId: string) {
   const providerLabel = publicProviderName(ctx.business.id, "en");
   const url = `${appUrl()}/bookings/${ctx.booking.id}`;
   return sendTransactionalEmail({
+    idempotencyKey,
     to: ctx.customer.email,
     subject: `Your VeroTask quote is ready · ${task}`,
     html: emailShell(
@@ -127,10 +131,11 @@ export async function sendCustomerAcceptedNotification(bookingId: string) {
   });
 }
 
-export async function sendCustomerDeclinedNotification(bookingId: string) {
+export async function sendCustomerDeclinedNotification(bookingId: string, idempotencyKey?: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.customer || !ctx.business) return false;
   return sendTransactionalEmail({
+    idempotencyKey,
     to: ctx.customer.email,
     subject: `VeroTask request update · ${publicProviderName(ctx.business.id, "en")}`,
     html: emailShell(
@@ -167,16 +172,17 @@ export async function sendOpportunityEmailVerification({
 }
 
 
-export async function sendCustomerArrivalConfirmationRequest(bookingId: string, to: string, magicLink: string) {
+export async function sendCustomerArrivalConfirmationRequest(bookingId: string, to: string, magicLink: string, idempotencyKey?: string) {
   const ctx = await bookingContext(bookingId);
   if (!ctx?.business) return false;
   const when = ctx.booking.scheduledStart.toLocaleString("en-US", { timeZone: "America/New_York", dateStyle: "medium", timeStyle: "short" });
   return sendTransactionalEmail({
+    idempotencyKey,
     to,
     subject: "VeroTask: Confirm your Pro has arrived",
     html: emailShell(
       "Is your Pro with you now?",
-      `<p><strong>${esc(publicProviderName(ctx.business.id, "en"))}</strong> says they have arrived for your booking scheduled for <strong>${esc(when)}</strong>.</p><p>Only confirm if the professional is physically at the service location now. VeroTask has also recorded the professional's geolocation near the booked address.</p><p>This confirmation is a fallback for cases where you cannot access the service PIN. Confirming arrival proves the professional showed up for this booking. It does not confirm that the service has been completed or that you are satisfied with the work.</p>`,
+      `<p><strong>${esc(publicProviderName(ctx.business.id, "en"))}</strong> says they have arrived for your booking scheduled for <strong>${esc(when)}</strong>.</p><p>This secure link expires in 15 minutes. Only confirm if the professional is physically at the service location now. VeroTask has also recorded the professional's geolocation near the booked address.</p><p>This confirmation is a fallback for cases where you cannot access the service PIN. Confirming arrival proves the professional showed up for this booking. It does not confirm that the service has been completed or that you are satisfied with the work.</p>`,
       magicLink,
       "Open booking and confirm arrival",
       "Your Pro is requesting arrival confirmation for this booking."

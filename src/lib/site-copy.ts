@@ -34,7 +34,26 @@ export const publicCopy = {
     choose: "Choose plan",
     month: "/month",
     commission: "customer booking fee",
-    footer: "VeroTask is a marketplace for local services. Providers are independent businesses or professionals."
+    footer: "VeroTask is a marketplace for local services. Providers are independent businesses or professionals.",
+    home: {
+      howEyebrow: "Simple from request to done",
+      howBody: "VeroTask helps define the job before matching, so both sides start with clearer expectations.",
+      howLink: "See the complete process",
+      protectionEyebrow: "Booking protection",
+      protectionLink: "Read the full protection rules",
+      providerEyebrow: "Built for independent local professionals",
+      providerPrimaryCta: "Explore VeroTask for providers",
+      providerSecondaryCta: "Join free",
+      providerBenefits: [
+        ["No monthly fee required", "Start on the Free plan."],
+        ["Choose your work", "Control services and availability."],
+        ["Direct service payment", "The customer pays your service price directly to you."]
+      ],
+      locationsTitle: "Find help across Central Florida",
+      organizationDescription: "Local services marketplace focused on Orlando and Central Florida, United States.",
+      serviceName: "VeroTask local services marketplace",
+      serviceType: "Local service discovery, quote requests and booking coordination"
+    }
   },
   "pt-br": {
     nav: { find: "Encontrar meu Pro", how: "Como funciona", pricing: "Para profissionais", protection: "Proteção", signIn: "Entrar" },
@@ -67,7 +86,26 @@ export const publicCopy = {
     choose: "Escolher plano",
     month: "/mês",
     commission: "taxa de reserva do cliente",
-    footer: "A VeroTask é um marketplace de serviços locais. Os prestadores são empresas ou profissionais independentes."
+    footer: "A VeroTask é um marketplace de serviços locais. Os prestadores são empresas ou profissionais independentes.",
+    home: {
+      howEyebrow: "Simples do pedido à conclusão",
+      howBody: "A VeroTask ajuda a definir o serviço antes de encontrar profissionais, para que todos comecem com expectativas mais claras.",
+      howLink: "Veja o processo completo",
+      protectionEyebrow: "Proteção da reserva",
+      protectionLink: "Leia todas as regras de proteção",
+      providerEyebrow: "Feito para profissionais locais independentes",
+      providerPrimaryCta: "Conheça a VeroTask para profissionais",
+      providerSecondaryCta: "Comece grátis",
+      providerBenefits: [
+        ["Sem mensalidade obrigatória", "Comece pelo plano Grátis."],
+        ["Escolha seus serviços", "Controle os serviços e a disponibilidade."],
+        ["Pagamento direto pelo serviço", "O cliente paga o valor do serviço diretamente a você."]
+      ],
+      locationsTitle: "Encontre ajuda em toda a Flórida Central",
+      organizationDescription: "Marketplace de serviços locais para Orlando e Flórida Central, Estados Unidos.",
+      serviceName: "Marketplace de serviços locais VeroTask",
+      serviceType: "Busca de serviços locais, solicitação de orçamentos e coordenação de reservas"
+    }
   },
   es: {
     nav: { find: "Encontrar mi Pro", how: "Cómo funciona", pricing: "Para proveedores", protection: "Protección", signIn: "Ingresar" },
@@ -100,7 +138,26 @@ export const publicCopy = {
     choose: "Elegir plan",
     month: "/mes",
     commission: "tarifa de reserva del cliente",
-    footer: "VeroTask es un marketplace de servicios locales. Los proveedores son empresas o profesionales independientes."
+    footer: "VeroTask es un marketplace de servicios locales. Los proveedores son empresas o profesionales independientes.",
+    home: {
+      howEyebrow: "Simple desde la solicitud hasta el final",
+      howBody: "VeroTask ayuda a definir el trabajo antes de encontrar profesionales, para que ambas partes comiencen con expectativas más claras.",
+      howLink: "Ver el proceso completo",
+      protectionEyebrow: "Protección de la reserva",
+      protectionLink: "Leer todas las reglas de protección",
+      providerEyebrow: "Creado para profesionales locales independientes",
+      providerPrimaryCta: "Conoce VeroTask para profesionales",
+      providerSecondaryCta: "Empieza gratis",
+      providerBenefits: [
+        ["Sin mensualidad obligatoria", "Empieza con el plan Gratis."],
+        ["Elige tus servicios", "Controla los servicios y tu disponibilidad."],
+        ["Pago directo por el servicio", "El cliente te paga directamente el precio del servicio."]
+      ],
+      locationsTitle: "Encuentra ayuda en toda Florida Central",
+      organizationDescription: "Marketplace de servicios locales para Orlando y Florida Central, Estados Unidos.",
+      serviceName: "Marketplace de servicios locales VeroTask",
+      serviceType: "Búsqueda de servicios locales, solicitudes de cotización y coordinación de reservas"
+    }
   }
 } as const;
 
@@ -108,4 +165,14 @@ export function localePath(locale: PublicLocale, path = "") {
   const clean = path.startsWith("/") ? path : `/${path}`;
   if (locale === "en") return clean === "/" ? "/" : clean;
   return `/${locale}${clean === "/" ? "" : clean}`;
+}
+
+export function publicWorkflowPath(locale: PublicLocale, path: string, query: object = {}) {
+  const params = new URLSearchParams();
+  if (locale !== "en") params.set("locale", locale);
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value === "string" && value) params.set(key, value);
+  }
+  const queryString = params.toString();
+  return `${path}${queryString ? `?${queryString}` : ""}`;
 }
