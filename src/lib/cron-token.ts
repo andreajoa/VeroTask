@@ -10,6 +10,17 @@ function equal(a: string, b: string) {
 }
 
 /**
+ * Reports whether the hashed credential for a job has been provisioned in this
+ * deployment's database. A monitor that is silently unauthorized looks exactly
+ * like a monitor that is passing, so the refusal has to say which it is.
+ */
+export async function hashedCronCredentialExists(secretId: string) {
+  const [credential] = await getDb().select({ id: platformSecrets.id }).from(platformSecrets)
+    .where(eq(platformSecrets.id, secretId)).limit(1);
+  return Boolean(credential);
+}
+
+/**
  * Authorizes a scheduled job with either CRON_SECRET or a hashed credential
  * scoped to one job. Each `secretId` stands for exactly one endpoint so a token
  * handed to GitHub cannot be replayed against settlement, CRM or email.
