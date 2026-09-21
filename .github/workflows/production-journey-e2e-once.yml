@@ -113,13 +113,25 @@ jobs:
             args: ["--no-sandbox"]
           });
 
+          // The lead popup opens 28 seconds after any public page loads and covers
+          // the whole viewport, so on a slow production run it swallows clicks that
+          // have nothing to do with it. Seeding its dismissal key reproduces what a
+          // returning visitor's browser already carries.
+          async function newJourneyContext(options = {}) {
+            const context = await browser.newContext({ viewport: { width: 1365, height: 900 }, ...options });
+            await context.addInitScript(() => {
+              try { localStorage.setItem("verotask_interest_popup_dismissed_v1", String(Date.now())); } catch {}
+            });
+            return context;
+          }
+
           let provider;
           let customer;
           try {
             const providerMailbox = await createMailbox("verotask-provider-e2e");
             const customerMailbox = await createMailbox("verotask-customer-e2e");
 
-            const providerContext = await browser.newContext({ viewport: { width: 1365, height: 900 } });
+            const providerContext = await newJourneyContext();
             provider = await providerContext.newPage();
             provider.setDefaultTimeout(60000);
 
@@ -203,7 +215,7 @@ jobs:
             assert(!publicBody?.includes(`VeroTask QA ${unique}`), "real provider identity leaked on public profile");
             pass("Public provider profile is contact-private and quote enabled", { serviceId });
 
-            const customerContext = await browser.newContext({ viewport: { width: 1365, height: 900 } });
+            const customerContext = await newJourneyContext();
             customer = await customerContext.newPage();
             customer.setDefaultTimeout(60000);
 
