@@ -179,17 +179,31 @@ The Vercel API and CLI return **403** for this project, and the app exposes no c
 
 ---
 
-## 12. Known open issue (as of 2026-09-21)
+## 12. What is proven and what is not (as of 2026-09-21)
 
-No Stripe event has ever been observed reaching production: all 22 bookings have `stripe_payment_intent_id = null`, every "expired" checkout session was expired by the app's own cancellation path, and one live session that lapsed on 2026-09-20 was still `open` a day later. Most likely cause: the webhook endpoint is registered in Stripe **Test** mode while production runs **Live** keys.
+Measured through `/api/monitoring/stripe-webhook` against the production database:
 
-Until a real end-to-end payment is observed, treat the post-payment half of the product as unverified.
+```
+lastInboundEventType: "checkout_expired"   at 2026-09-20T20:49:03Z
+confirmedPayments:    0
+lapsedOpenSessions:   []
+```
+
+**Stripe reaches production.** A live event arrived, passed signature verification and was written by the handler. The endpoint is registered in Live mode and the secret matches. This is not an assumption — it is a row the webhook alone can write.
+
+**No booking fee has ever settled.** `payment_succeeded` has never been written, so `markBookingPaid` has never run in production. Everything downstream of it — `scheduled`, address release, real business name, the customer's PIN, the thank-you email — has never executed against real money. That is not a defect; nobody has paid yet. Do not confuse the two: delivery working and payment working are separate claims, and the only thing that can prove the second is one real card.
+
+### The mistake this section replaces
+
+The previous version of this section claimed no Stripe event had ever reached production. That was measured against the database in `.env.local`, **which is not the production database** — it is a dev copy holding the same older rows, so every query looked plausible. The proof: a marked event posted to `POST https://www.verotask.online/api/analytics/collect` returned 200 and never appeared in that database, and a credential written into its `platform_secrets` came back as `credentialProvisioned: false` from production.
+
+**Before reporting anything about production data, prove which database you are reading.** The marked-analytics-event test above takes thirty seconds. Production's connection string lives only in Vercel, which returns 403 (§11), so the supported way to read production state is an endpoint authorised by a hashed credential in `platform_secrets` — that is what the monitor does.
 
 ---
 
 ## 13. Rules for changes
 
-1. Do not claim something works because the build, types or tests are green. Measure the behaviour where it runs.
+1. Do not claim something works because the build, types or tests are green. Measure the behaviour where it runs — and prove *where* you measured it (§12) before reporting it as production.
 2. Do not widen the money path (amounts, refunds, statuses) without a test in `scripts/verify-payment-recovery.ts`.
 3. Do not add a second writer for any status the webhook owns.
 4. Keep the exact service address, real business name and PIN gated behind `scheduled`.
