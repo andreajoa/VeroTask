@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { count, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents } from "@/db/schema";
@@ -39,6 +39,8 @@ export type StripeWebhookLiveness = {
   windowHours: number;
   lapsedOpenSessions: LapsedCheckoutSession[];
   lastInboundEventAt: string | null;
+  lastInboundEventType: string | null;
+  confirmedPayments: number;
 };
 
 /**
@@ -74,14 +76,18 @@ export function lapsedOpenCheckoutSessions(sessions: OpenCheckoutSession[], now:
  */
 export async function checkStripeWebhookLiveness(now = new Date()): Promise<StripeWebhookLiveness> {
   const db = getDb();
-  const [bookingRows, providerRows, [lastInbound]] = await Promise.all([
+  const [bookingRows, providerRows, [lastInbound], [payments]] = await Promise.all([
     db.select({ stripeSessionId: bookingCheckoutSessions.stripeSessionId, expiresAt: bookingCheckoutSessions.expiresAt })
       .from(bookingCheckoutSessions).where(eq(bookingCheckoutSessions.status, "open")).limit(200),
     db.select({ stripeSessionId: providerCheckoutSessions.stripeSessionId, expiresAt: providerCheckoutSessions.expiresAt })
       .from(providerCheckoutSessions).where(eq(providerCheckoutSessions.status, "open")).limit(200),
-    db.select({ createdAt: bookingEvents.createdAt }).from(bookingEvents)
+    db.select({ createdAt: bookingEvents.createdAt, eventType: bookingEvents.eventType }).from(bookingEvents)
       .where(inArray(bookingEvents.eventType, WEBHOOK_ONLY_EVENT_TYPES))
-      .orderBy(desc(bookingEvents.createdAt)).limit(1)
+      .orderBy(desc(bookingEvents.createdAt)).limit(1),
+    // Whether the booking fee has ever actually settled in this environment.
+    // `checkout_expired` alone proves delivery works; only `payment_succeeded`
+    // proves the post-payment half of the product has ever run.
+    db.select({ total: count() }).from(bookingEvents).where(eq(bookingEvents.eventType, "payment_succeeded"))
   ]);
 
   const lapsed = lapsedOpenCheckoutSessions([
@@ -95,6 +101,8 @@ export async function checkStripeWebhookLiveness(now = new Date()): Promise<Stri
     graceMinutes: LAPSED_SESSION_GRACE_MINUTES,
     windowHours: LAPSED_SESSION_WINDOW_HOURS,
     lapsedOpenSessions: lapsed,
-    lastInboundEventAt: lastInbound?.createdAt?.toISOString() ?? null
+    lastInboundEventAt: lastInbound?.createdAt?.toISOString() ?? null,
+    lastInboundEventType: lastInbound?.eventType ?? null,
+    confirmedPayments: payments?.total ?? 0
   };
 }
