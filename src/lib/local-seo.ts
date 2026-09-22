@@ -3,7 +3,7 @@ import { getDb } from "@/db";
 import { businessCategories, businesses, categories } from "@/db/schema";
 import { LAUNCH_LOCATIONS, locationBySlug } from "@/lib/locations";
 import type { PublicLocale } from "@/lib/site-copy";
-import { PUBLICLY_HIDDEN_PROVIDER_STATUSES } from "@/lib/provider-visibility";
+import { PUBLICLY_HIDDEN_PROVIDER_STATUSES, notQaFixture } from "@/lib/provider-visibility";
 
 export async function loadLocalServicePage(categorySlug: string, locationSlug: string, locale: PublicLocale) {
   const location = locationBySlug(locationSlug);
@@ -21,7 +21,7 @@ export async function loadLocalServicePage(categorySlug: string, locationSlug: s
       eq(businesses.city, location.city),
       eq(businesses.state, location.state),
       eq(businesses.active, true),
-      notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
+      notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture()
     ));
 
   if (providers.length === 0) return null;
@@ -43,7 +43,7 @@ export async function loadLocationHub(locationSlug: string, locale: PublicLocale
         eq(businesses.city, location.city),
         eq(businesses.state, location.state),
         eq(businesses.active, true),
-        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
+        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture()
       )),
     db.selectDistinct({
       slug: categories.slug,
@@ -58,7 +58,7 @@ export async function loadLocationHub(locationSlug: string, locale: PublicLocale
         eq(businesses.city, location.city),
         eq(businesses.state, location.state),
         eq(businesses.active, true),
-        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]),
+        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture(),
         eq(categories.active, true)
       ))
   ]);
@@ -85,7 +85,7 @@ export async function loadActiveLaunchLocations() {
       .from(businesses)
       .where(and(
         eq(businesses.active, true),
-        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
+        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture()
       ));
     const active = new Set(rows.map((row) => `${row.city}|${row.state}`));
     return LAUNCH_LOCATIONS.filter((location) => active.has(`${location.city}|${location.state}`));

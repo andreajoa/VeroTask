@@ -7,6 +7,7 @@ import { getDb } from "@/db";
 import { businessCategories, businesses, categories, providerProfilePhotos } from "@/db/schema";
 import { distanceMiles } from "@/lib/distance";
 import { geocodeUsPostalCode } from "@/lib/geocoding";
+import { notQaFixture } from "@/lib/provider-visibility";
 import { publicProviderDescription, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
 import { classifyServiceRequest, parseSearchLocation } from "@/lib/service-search";
 import { localePath, publicWorkflowPath, type PublicLocale } from "@/lib/site-copy";
@@ -28,7 +29,7 @@ function humanize(value?: string) {
 async function findBusinesses(q: string, location: string) {
   const db = getDb();
   const place = parseSearchLocation(location);
-  const conditions = [eq(businesses.active, true), notInArray(businesses.status, ["suspended", "paused"])];
+  const conditions = [eq(businesses.active, true), notInArray(businesses.status, ["suspended", "paused"]), notQaFixture()];
   const matchedCategories = classifyServiceRequest(q);
 
   if (q) {

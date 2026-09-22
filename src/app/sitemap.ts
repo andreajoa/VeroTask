@@ -5,7 +5,7 @@ import { businessCategories, businesses, categories, providerProfilePhotos } fro
 import { canonicalAppUrl } from "@/lib/app-url";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 import { publicProviderSlug } from "@/lib/public-provider";
-import { PUBLICLY_HIDDEN_PROVIDER_STATUSES } from "@/lib/provider-visibility";
+import { PUBLICLY_HIDDEN_PROVIDER_STATUSES, notQaFixture } from "@/lib/provider-visibility";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = canonicalAppUrl();
@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .where(and(
           eq(businesses.active, true),
           isNotNull(businesses.ownerUserId),
-          notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES])
+          notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture()
         )),
       db.select({
         categorySlug: categories.slug,
@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .innerJoin(businesses, eq(businesses.id, businessCategories.businessId))
         .where(and(
           eq(businesses.active, true),
-          notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]),
+          notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture(),
           eq(categories.active, true)
         ))
     ]);
