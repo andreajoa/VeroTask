@@ -179,19 +179,25 @@ The Vercel API and CLI return **403** for this project, and the app exposes no c
 
 ---
 
-## 12. What is proven and what is not (as of 2026-09-21)
+## 12. What is proven and what is not (as of 2026-09-22)
 
 Measured through `/api/monitoring/stripe-webhook` against the production database:
 
 ```
-lastInboundEventType: "checkout_expired"   at 2026-09-20T20:49:03Z
-confirmedPayments:    0
+lastInboundEventType: "payment_succeeded"   at 2026-09-22T00:45:58Z
+confirmedPayments:    1
 lapsedOpenSessions:   []
 ```
 
-**Stripe reaches production.** A live event arrived, passed signature verification and was written by the handler. The endpoint is registered in Live mode and the secret matches. This is not an assumption — it is a row the webhook alone can write.
+**The booking-fee path works end to end, with real money.** A real card paid a real booking fee on production. `markBookingPaid` ran, the booking reached `scheduled`, the exact address was released to the provider, and the six-digit PIN was issued to the customer, who read it off the page. Both halves are proven: Stripe reaches this deployment, *and* everything gated behind the payment executes. The failure mode described in §3 — card charged, nothing delivered, nothing looking broken — did not occur.
 
-**No booking fee has ever settled.** `payment_succeeded` has never been written, so `markBookingPaid` has never run in production. Everything downstream of it — `scheduled`, address release, real business name, the customer's PIN, the thank-you email — has never executed against real money. That is not a defect; nobody has paid yet. Do not confuse the two: delivery working and payment working are separate claims, and the only thing that can prove the second is one real card.
+The test was deliberately the cheapest one the code permits rather than a special case: `payment-session` rejects a fee under 50c (`:30`) and a quote under $10.00 (`:52`), so a $10.00 quote at the Free plan's 15% yields a $1.50 fee. Nothing on the money path was modified to make it fit.
+
+**Still never exercised with real money.** Do not let the paragraph above be read as covering these:
+
+- **Refunds and disputes.** `refund.updated` has never fired in production.
+- **Provider plan subscriptions.** A *different* flow (`api/stripe/subscriptions/checkout`, `mode: "subscription"`) with a *different* set of webhook events (`customer.subscription.*`). No provider has ever been charged, and no renewal has ever occurred. This is the path a recruited provider hits first, so proving the booking fee says nothing about it.
+- **Check-in.** Needs the PIN plus a GPS fix inside the geofence, so it cannot be proven remotely.
 
 ### The mistake this section replaces
 
