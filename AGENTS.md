@@ -110,6 +110,10 @@ customer.subscription.created | updated | deleted
 
 Never "clean up" `businesses` with `status = 'unclaimed'`. Deleting them deletes the inventory.
 
+**The opposite case: QA fixtures are real rows that must not be public.** The production journey E2E signs up a brand-new provider on every run and never removes it, so they accumulate in the live database — eight by 2026-09-22, each describing itself as an automated QA profile. `notQaFixture()` (`src/lib/provider-visibility.ts`) excludes them by name prefix from `/services`, the local-SEO queries and the sitemap. They are filtered, not deleted: the journey needs a real business to exercise and its bookings are referenced by other rows. Detail pages still resolve by direct URL, which is what the journey navigates to (`production-journey-e2e-once.yml:204`) — so do not extend this filter to `/providers/[slug]` or the journey breaks.
+
+**Consequence worth knowing before judging SEO:** the sitemap only lists a provider that has an *active profile photo* (`sitemap.ts:47`). Every provider page it used to emit was a QA fixture, because the E2E uploads a photo and real providers so far have not. After the filter, the sitemap contains zero provider URLs. That is the honest state, not a regression — it turns back on when a real provider uploads a photo.
+
 ---
 
 ## 6. Database access — two drivers, not interchangeable
