@@ -10,9 +10,10 @@ export const PUBLICLY_HIDDEN_PROVIDER_STATUSES = ["suspended", "paused"] as cons
 //
 // They are excluded from discovery rather than deleted, for two reasons: the
 // journey needs a real business to exercise, and their bookings are real rows
-// that other records point at. They must never render as public provider detail
-// pages either: production E2E can use authenticated dashboard and booking
-// routes without publishing a synthetic professional to visitors or crawlers.
+// that other records point at. They must never render to anonymous visitors or
+// crawlers as public provider detail pages. The owning QA session may still
+// preview its own profile so the production journey can exercise the real UI
+// without publishing a synthetic professional to the open web.
 export const QA_FIXTURE_NAME_PREFIX = "VeroTask QA ";
 
 export function isQaFixtureName(name: string) {
