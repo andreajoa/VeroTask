@@ -11,12 +11,13 @@ import { businessCategories, businesses, categories, providerProfilePhotos, serv
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 import { localePath, publicWorkflowPath, type PublicLocale } from "@/lib/site-copy";
 import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
+import { isQaFixtureName } from "@/lib/provider-visibility";
 
 export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slug: string }) {
   const db = getDb();
   const publicId = publicProviderId(slug);
   const [business] = await db.select().from(businesses).where(publicId ? eq(businesses.id, publicId) : eq(businesses.slug, slug)).limit(1);
-  if (!business || !business.active || ["suspended", "paused"].includes(business.status)) notFound();
+  if (!business || !business.active || ["suspended", "paused"].includes(business.status) || isQaFixtureName(business.name)) notFound();
 
   const publicSlug = publicProviderSlug(business.id);
   if (slug !== publicSlug) redirect(localePath(locale, `/providers/${publicSlug}`));
