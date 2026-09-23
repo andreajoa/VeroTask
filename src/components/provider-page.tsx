@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
+import { getCurrentUser } from "@/lib/auth";
 import { businessCategories, businesses, categories, providerProfilePhotos, services } from "@/db/schema";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
 import { localePath, publicWorkflowPath, type PublicLocale } from "@/lib/site-copy";
@@ -17,7 +18,11 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
   const db = getDb();
   const publicId = publicProviderId(slug);
   const [business] = await db.select().from(businesses).where(publicId ? eq(businesses.id, publicId) : eq(businesses.slug, slug)).limit(1);
-  if (!business || !business.active || ["suspended", "paused"].includes(business.status) || isQaFixtureName(business.name)) notFound();
+  if (!business || !business.active || ["suspended", "paused"].includes(business.status)) notFound();
+  if (isQaFixtureName(business.name)) {
+    const currentUser = await getCurrentUser();
+    if (!currentUser || currentUser.id !== business.ownerUserId) notFound();
+  }
 
   const publicSlug = publicProviderSlug(business.id);
   if (slug !== publicSlug) redirect(localePath(locale, `/providers/${publicSlug}`));
