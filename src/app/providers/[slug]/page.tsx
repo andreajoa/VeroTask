@@ -4,6 +4,7 @@ import { ProviderPage } from "@/components/provider-page";
 import { getDb } from "@/db";
 import { businesses } from "@/db/schema";
 import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
+import { isQaFixtureName } from "@/lib/provider-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ async function providerForSlug(slug: string) {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const business = await providerForSlug(slug);
-  if (!business || !business.active || ["suspended", "paused"].includes(business.status)) {
+  if (!business || !business.active || ["suspended", "paused"].includes(business.status) || isQaFixtureName(business.name)) {
     return { title: "Professional not found", robots: { index: false, follow: false } };
   }
 
