@@ -10,10 +10,14 @@ export const PUBLICLY_HIDDEN_PROVIDER_STATUSES = ["suspended", "paused"] as cons
 //
 // They are excluded from discovery rather than deleted, for two reasons: the
 // journey needs a real business to exercise, and their bookings are real rows
-// that other records point at. Detail pages still resolve by direct URL, which
-// is exactly what the journey navigates to; only browsing and crawling skip
-// them.
+// that other records point at. They must never render as public provider detail
+// pages either: production E2E can use authenticated dashboard and booking
+// routes without publishing a synthetic professional to visitors or crawlers.
 export const QA_FIXTURE_NAME_PREFIX = "VeroTask QA ";
+
+export function isQaFixtureName(name: string) {
+  return name.toLowerCase().startsWith(QA_FIXTURE_NAME_PREFIX.toLowerCase());
+}
 
 /** Drizzle predicate: keep QA fixtures out of any public listing or sitemap. */
 export function notQaFixture(): SQL {
