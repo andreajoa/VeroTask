@@ -5,6 +5,7 @@ import { ProviderPage } from "@/components/provider-page";
 import { getDb } from "@/db";
 import { businesses } from "@/db/schema";
 import { publicProviderDescription, publicProviderId, publicProviderName, publicProviderSlug, publicServiceText } from "@/lib/public-provider";
+import { isQaFixtureName } from "@/lib/provider-visibility";
 import type { PublicLocale } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   if (!supported.has(locale as PublicLocale)) return { robots: { index: false, follow: false } };
   const safeLocale = locale as PublicLocale;
   const business = await providerForSlug(slug);
-  if (!business || !business.active || ["suspended", "paused"].includes(business.status)) {
+  if (!business || !business.active || ["suspended", "paused"].includes(business.status) || isQaFixtureName(business.name)) {
     return { title: "Professional not found", robots: { index: false, follow: false } };
   }
 
