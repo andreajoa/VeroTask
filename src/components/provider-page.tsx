@@ -114,11 +114,9 @@ export async function ProviderPage({ locale, slug }: { locale: PublicLocale; slu
           <div>
             {photoReady && <Image src={`/api/providers/${business.id}/photo`} alt="Recent profile photo of this professional" width={128} height={128} unoptimized className="mb-5 h-32 w-32 rounded-3xl border border-slate-200 object-cover shadow-sm" />}
             <div className="flex flex-wrap items-center gap-2">
-              {verified ? (
-                <span className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><BadgeCheck size={14} /> Claimed provider</span>
-              ) : (
-                <span className="badge bg-slate-100 text-slate-700">Unclaimed public listing</span>
-              )}
+              {/* Claim status matters to the professional, not the customer: customers can request a quote either way
+                  (the unclaimed business is emailed and claims the profile to reply), so only the positive badge is public. */}
+              {verified && <span className="badge bg-[var(--brand-soft)] text-[var(--brand)]"><BadgeCheck size={14} /> Claimed provider</span>}
               {business.plan !== "free" && verified && <span className="badge bg-amber-50 text-amber-900">{business.plan.toUpperCase()}</span>}
             </div>
 

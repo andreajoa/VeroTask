@@ -34,7 +34,6 @@ const copy = {
     prepTitle: "What to include in your request",
     listedTitle: "Professionals listed here",
     verified: "Claimed provider",
-    unclaimed: "Unclaimed public listing",
     noReviews: "New · No reviews yet",
     view: "View profile",
     otherServices: (place: string) => `Other services in ${place}`,
@@ -65,7 +64,6 @@ const copy = {
     prepTitle: "O que incluir no pedido",
     listedTitle: "Profissionais listados aqui",
     verified: "Perfil reivindicado",
-    unclaimed: "Perfil público não reivindicado",
     noReviews: "Novo · Sem avaliações ainda",
     view: "Ver perfil",
     otherServices: (place: string) => `Outros serviços em ${place}`,
@@ -96,7 +94,6 @@ const copy = {
     prepTitle: "Qué incluir en tu solicitud",
     listedTitle: "Profesionales listados aquí",
     verified: "Perfil reclamado",
-    unclaimed: "Perfil público no reclamado",
     noReviews: "Nuevo · Sin reseñas aún",
     view: "Ver perfil",
     otherServices: (place: string) => `Otros servicios en ${place}`,
@@ -264,7 +261,7 @@ export async function LocalServicePage({ locale, categorySlug, locationSlug }: {
               return (
                 <article key={business.id} className="card p-6">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`badge ${verified ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-600"}`}><BadgeCheck size={14} /> {verified ? c.verified : c.unclaimed}</span>
+                    {verified && <span className="badge bg-emerald-50 text-emerald-800"><BadgeCheck size={14} /> {c.verified}</span>}
                     {business.reviewCount > 0
                       ? <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-700"><Star size={14} fill="currentColor" /> {Number(business.averageRating).toFixed(1)} ({business.reviewCount})</span>
                       : <span className="text-sm font-bold text-slate-500">{c.noReviews}</span>}

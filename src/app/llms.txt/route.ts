@@ -44,7 +44,7 @@ ${locationLines}
 - Robots: ${base}/robots.txt
 
 ## Listing transparency
-Publicly sourced commercial listings are labeled as unclaimed until the business owner completes VeroTask claim/verification. Unclaimed listings cannot receive VeroTask marketplace booking requests.
+Some listings start from public business information. Customers can request a quote from any listed professional: VeroTask notifies the business, which claims and verifies its profile before sending a quote. Customers only pay the VeroTask booking fee after accepting a quote.
 `;
   return new NextResponse(body, { headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "public, max-age=3600" } });
 }
