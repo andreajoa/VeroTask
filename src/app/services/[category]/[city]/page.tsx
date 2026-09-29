@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LocalServicePage } from "@/components/local-service-page";
 import { loadLocalServicePage } from "@/lib/local-seo";
+import { localServiceMetaDescription } from "@/lib/local-guides";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ category:
   const path = `/services/${category}/${city}`;
   return {
     title: `${data.categoryName} in ${data.location.label}`,
-    description: `Compare local ${data.categoryName.toLowerCase()} professionals serving ${data.location.label}, United States. View local profiles and request quotes through VeroTask.`,
+    description: localServiceMetaDescription("en", category, city, data.categoryName, data.location.label),
     alternates: {
       canonical: path,
       languages: {

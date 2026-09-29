@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { businessCategories, businesses, categories, providerProfilePhotos } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
+import { loadActiveCategorySlugs } from "@/lib/local-seo";
 import { publicProviderSlug } from "@/lib/public-provider";
 import { PUBLICLY_HIDDEN_PROVIDER_STATUSES, notQaFixture } from "@/lib/provider-visibility";
 
@@ -80,45 +81,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
 
+    // Every launch city and every active service × city page is public (local guide + request form),
+    // not only the combinations that already have a listed provider.
+    const activeSlugs = await loadActiveCategorySlugs();
     const combinationUpdated = new Map<string, Date>();
     const locationUpdated = new Map<string, Date>();
-
     for (const row of combinationRows) {
       const location = LAUNCH_LOCATIONS.find((item) => item.city === row.city && item.state === row.state);
       if (!location) continue;
-
-      const combinationKey = `${row.categorySlug}|${location.slug}`;
-      const previousCombination = combinationUpdated.get(combinationKey);
-      if (!previousCombination || row.updatedAt > previousCombination) {
-        combinationUpdated.set(combinationKey, row.updatedAt);
-      }
-
-      const previousLocation = locationUpdated.get(location.slug);
-      if (!previousLocation || row.updatedAt > previousLocation) {
-        locationUpdated.set(location.slug, row.updatedAt);
-      }
+      const key = `${row.categorySlug}|${location.slug}`;
+      if (!combinationUpdated.get(key) || row.updatedAt > combinationUpdated.get(key)!) combinationUpdated.set(key, row.updatedAt);
+      if (!locationUpdated.get(location.slug) || row.updatedAt > locationUpdated.get(location.slug)!) locationUpdated.set(location.slug, row.updatedAt);
     }
 
-    for (const [locationSlug, updatedAt] of locationUpdated) {
+    for (const location of LAUNCH_LOCATIONS) {
       for (const prefix of ["", "/pt-br", "/es"]) {
         entries.push({
-          url: `${base}${prefix}/locations/${locationSlug}`,
-          lastModified: updatedAt,
-          changeFrequency: "daily",
+          url: `${base}${prefix}/locations/${location.slug}`,
+          lastModified: locationUpdated.get(location.slug),
+          changeFrequency: "weekly",
           priority: prefix ? 0.72 : 0.88
         });
       }
-    }
-
-    for (const [key, updatedAt] of combinationUpdated) {
-      const [category, city] = key.split("|");
-      for (const prefix of ["", "/pt-br", "/es"]) {
-        entries.push({
-          url: `${base}${prefix}/services/${category}/${city}`,
-          lastModified: updatedAt,
-          changeFrequency: "daily",
-          priority: prefix ? 0.7 : 0.85
-        });
+      for (const category of activeSlugs) {
+        const listed = combinationUpdated.get(`${category}|${location.slug}`);
+        for (const prefix of ["", "/pt-br", "/es"]) {
+          entries.push({
+            url: `${base}${prefix}/services/${category}/${location.slug}`,
+            lastModified: listed,
+            changeFrequency: listed ? "daily" : "weekly",
+            priority: Math.round(((listed ? 0.85 : 0.7) - (prefix ? 0.15 : 0)) * 100) / 100
+          });
+        }
       }
     }
   } catch {

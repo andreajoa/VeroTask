@@ -130,3 +130,48 @@ button:disabled { cursor: not-allowed; opacity: .58; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Local guide pages (service × city, city hubs) ─────────────────────────
+   Scroll Craft devices kept quiet for a working marketplace: depth hero, neighborhood marquee,
+   ink-in intro, price band that fills on view, stacking tip cards. All static under reduced motion. */
+.lg-hero { position: relative; min-height: min(78vh, 720px); overflow: hidden; background: #0a2a3d; color: #fff; isolation: isolate; }
+.lg-hero-plane { position: absolute; inset: -6% 0 0 0; will-change: transform; transform: scale(1.08); }
+.lg-hero-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 42, 61, .10) 0%, rgba(10, 42, 61, .25) 40%, rgba(8, 26, 38, .88) 100%); }
+.lg-hero-card { max-width: 46rem; }
+.lg-hero-card h1 { text-shadow: 0 2px 24px rgba(0, 0, 0, .35); }
+.lg-credit { position: absolute; right: 12px; bottom: 8px; z-index: 11; font-size: 11px; color: rgba(255, 255, 255, .78); text-decoration: none; background: rgba(0, 0, 0, .35); padding: 2px 8px; border-radius: 999px; }
+.lg-credit:hover, .lg-credit:focus-visible { color: #fff; text-decoration: underline; }
+.lg-chip { display: inline-flex; align-items: center; gap: .45rem; border-radius: 999px; padding: .4rem .8rem; font-size: .8rem; font-weight: 800; background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .28); color: #fff; backdrop-filter: blur(6px); }
+
+.lg-marquee { overflow: hidden; border-block: 1px solid var(--line); background: #fff; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.lg-marquee-track { display: flex; gap: 2.25rem; width: max-content; padding: .95rem 0; animation: lgMarquee 48s linear infinite; }
+.lg-marquee:hover .lg-marquee-track { animation-play-state: paused; }
+.lg-marquee-track span { white-space: nowrap; font-weight: 800; color: var(--brand); font-size: .92rem; }
+.lg-marquee-track span::before { content: "•"; margin-right: 2.25rem; color: var(--accent); }
+@keyframes lgMarquee { to { transform: translateX(-50%); } }
+
+.lg-word { transition: opacity .2s linear; }
+
+.lg-band { position: relative; height: 10px; border-radius: 999px; background: #e7edf2; overflow: hidden; }
+.lg-band > span { position: absolute; inset: 0 auto 0 var(--from, 20%); width: var(--span, 50%); border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--brand)); transform-origin: left; transition: transform 1.1s cubic-bezier(.16, 1, .3, 1); }
+.lg-js [data-reveal]:not(.is-in) .lg-band > span { transform: scaleX(0); }
+.lg-rise { transition: opacity .7s ease, transform .7s cubic-bezier(.16, 1, .3, 1); }
+.lg-js [data-reveal]:not(.is-in) .lg-rise { opacity: 0; transform: translateY(14px); }
+
+.lg-stack { display: grid; gap: 1rem; }
+.lg-stack-card { border-radius: 20px; border: 1px solid var(--line); background: #fff; padding: 1.6rem 1.6rem 1.8rem; box-shadow: 0 -8px 28px rgba(15, 23, 42, .06); }
+@media (min-width: 1024px) {
+  .lg-stack-card { position: sticky; top: calc(96px + var(--i, 0) * 18px); min-height: 190px; }
+}
+
+.lg-form { border-radius: 24px; border: 1px solid var(--line); background: #fff; padding: 1.5rem; box-shadow: 0 18px 48px rgba(15, 23, 42, .08); }
+@media (min-width: 640px) { .lg-form { padding: 2.25rem; } }
+.lg-label { display: block; font-size: .78rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: #475569; margin-bottom: .4rem; }
+.lg-input { width: 100%; border-radius: 14px; border: 1px solid #cbd5e1; background: #fff; padding: .8rem .9rem; font-size: 1rem; color: #0f172a; }
+.lg-input:focus-visible { outline: 3px solid rgba(23, 120, 159, .35); outline-offset: 1px; border-color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-hero-plane { transform: none !important; }
+  .lg-marquee-track { animation: none; flex-wrap: wrap; width: auto; }
+  .lg-js [data-reveal]:not(.is-in) .lg-band > span, .lg-js [data-reveal]:not(.is-in) .lg-rise { opacity: 1; transform: none; }
+}

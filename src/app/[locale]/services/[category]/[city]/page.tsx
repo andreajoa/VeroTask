@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { LocalServicePage } from "@/components/local-service-page";
 import { loadLocalServicePage } from "@/lib/local-seo";
+import { localServiceMetaDescription } from "@/lib/local-guides";
 import { SUPPORTED_LOCALES, type PublicLocale } from "@/lib/site-copy";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const prefix = locale === "pt-br" ? "em" : "en";
   return {
     title: `${data.categoryName} ${prefix} ${data.location.label}`,
-    description: locale === "pt-br"
-      ? `Compare prestadores locais de ${data.categoryName.toLowerCase()} em ${data.location.label}, com perfis transparentes e reservas protegidas pela VeroTask.`
-      : `Compara proveedores locales de ${data.categoryName.toLowerCase()} en ${data.location.label}, con perfiles transparentes y reservas protegidas por VeroTask.`,
+    description: localServiceMetaDescription(locale, category, city, data.categoryName, data.location.label),
     alternates: {
       canonical: current,
       languages: {

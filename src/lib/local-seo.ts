@@ -13,6 +13,7 @@ export async function loadLocalServicePage(categorySlug: string, locationSlug: s
   const [category] = await db.select().from(categories).where(and(eq(categories.slug, categorySlug), eq(categories.active, true))).limit(1);
   if (!category) return null;
 
+  // Every active service × launch city has a page: local guide content and the request form work without providers.
   const providers = await db.select({ business: businesses })
     .from(businessCategories)
     .innerJoin(businesses, eq(businesses.id, businessCategories.businessId))
@@ -24,10 +25,14 @@ export async function loadLocalServicePage(categorySlug: string, locationSlug: s
       notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture()
     ));
 
-  if (providers.length === 0) return null;
   const name = locale === "pt-br" ? category.namePtBr : locale === "es" ? category.nameEs : category.nameEn;
   const description = locale === "pt-br" ? category.descriptionPtBr : locale === "es" ? category.descriptionEs : category.descriptionEn;
-  return { category, categoryName: name, categoryDescription: description, location, providers: providers.map((row) => row.business) };
+  const related = (await db.select({ slug: categories.slug, nameEn: categories.nameEn, namePtBr: categories.namePtBr, nameEs: categories.nameEs })
+    .from(categories).where(eq(categories.active, true)))
+    .filter((row) => row.slug !== category.slug)
+    .map((row) => ({ slug: row.slug, name: locale === "pt-br" ? row.namePtBr : locale === "es" ? row.nameEs : row.nameEn }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return { category, categoryName: name, categoryDescription: description, location, providers: providers.map((row) => row.business), related };
 }
 
 
@@ -45,25 +50,16 @@ export async function loadLocationHub(locationSlug: string, locale: PublicLocale
         eq(businesses.active, true),
         notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture()
       )),
-    db.selectDistinct({
+    // All active services are requestable in every launch city, with or without a listed provider yet.
+    db.select({
       slug: categories.slug,
       nameEn: categories.nameEn,
       namePtBr: categories.namePtBr,
       nameEs: categories.nameEs
     })
-      .from(businessCategories)
-      .innerJoin(categories, eq(categories.id, businessCategories.categoryId))
-      .innerJoin(businesses, eq(businesses.id, businessCategories.businessId))
-      .where(and(
-        eq(businesses.city, location.city),
-        eq(businesses.state, location.state),
-        eq(businesses.active, true),
-        notInArray(businesses.status, [...PUBLICLY_HIDDEN_PROVIDER_STATUSES]), notQaFixture(),
-        eq(categories.active, true)
-      ))
+      .from(categories)
+      .where(eq(categories.active, true))
   ]);
-
-  if (providerRows.length === 0) return null;
 
   const categoryLabel = (row: typeof categoryRows[number]) =>
     locale === "pt-br" ? row.namePtBr : locale === "es" ? row.nameEs : row.nameEn;
@@ -92,4 +88,11 @@ export async function loadActiveLaunchLocations() {
   } catch {
     return LAUNCH_LOCATIONS.filter((location) => location.slug === "orlando-fl");
   }
+}
+
+
+export async function loadActiveCategorySlugs() {
+  const db = getDb();
+  const rows = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.active, true));
+  return rows.map((row) => row.slug);
 }
