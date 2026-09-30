@@ -8,6 +8,7 @@ import { checkProviderAvailability } from "@/lib/availability";
 import { requireProviderBooking } from "@/lib/booking-access";
 import { canProviderAccept } from "@/lib/booking-state";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
+import { applyVolumeRate, VOLUME_RATE_EVENT } from "@/lib/volume-rate";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 import { algorithmReputationScore } from "@/lib/reputation-score";
 import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
@@ -67,7 +68,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: availability.reason }, { status: 409 });
   }
 
-  const amounts = calculateBookingAmounts(parsed.data.quoteCents, access.business.plan as PlanKey);
+  // A volume rate granted to this customer was recorded on the booking when it was requested; it lowers only the
+  // VeroTask booking fee, and the lowered fee is what gets stored and later charged (validateBookingPayment).
+  const [volumeRateEvent] = await db.select({ metadata: bookingEvents.metadata }).from(bookingEvents).where(and(
+    eq(bookingEvents.bookingId, id),
+    eq(bookingEvents.eventType, VOLUME_RATE_EVENT)
+  )).limit(1);
+  const volumeRateOffBps = Number(volumeRateEvent?.metadata?.offBps) || 0;
+  const amounts = applyVolumeRate(calculateBookingAmounts(parsed.data.quoteCents, access.business.plan as PlanKey), volumeRateOffBps);
   const reputation = await getCustomerReputationSummary(access.booking.customerId);
   const reputationScore = algorithmReputationScore({
     rating: reputation.rating,
@@ -97,6 +105,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         metadata: {
           quoteCents: amounts.totalCents,
           bookingFeeCents: amounts.marketplaceFeeCents,
+          volumeRateOffBps,
           customerRating: reputation.rating,
           customerRatingCount: reputation.ratingCount,
           customerCompletedJobs: reputation.completedJobs,

@@ -11,6 +11,7 @@ import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from 
 import { POLICY_VERSION } from "@/lib/booking-workflow";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
+import { applyVolumeRate, VOLUME_RATE_COOKIE, VOLUME_RATE_EVENT, volumeRateFor } from "@/lib/volume-rate";
 import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
 
 const schema = z.object({
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: availability.reason }, { status: 409 });
   }
 
-  const amounts = calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey);
+  const volumeRate = volumeRateFor(request.cookies.get(VOLUME_RATE_COOKIE)?.value, user.email);
+  const amounts = applyVolumeRate(calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey), volumeRate?.offBps ?? 0);
   const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
 
   const booking = await getTransactionalDb().transaction(async (tx) => {
@@ -90,6 +92,14 @@ export async function POST(request: NextRequest) {
 
     const pin = servicePinForBooking(created.id);
     await tx.insert(bookingSecrets).values({ bookingId: created.id, servicePinHash: hashServicePin(pin) });
+    if (volumeRate) {
+      await tx.insert(bookingEvents).values({
+        bookingId: created.id,
+        actorUserId: user.id,
+        eventType: VOLUME_RATE_EVENT,
+        metadata: { offBps: volumeRate.offBps, until: volumeRate.until, rateId: volumeRate.id }
+      });
+    }
     await tx.insert(bookingEvents).values({
       bookingId: created.id,
       actorUserId: user.id,

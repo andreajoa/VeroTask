@@ -13,6 +13,7 @@ import { geocodeUsAddress, geocodeUsPostalCode } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { containsDirectContactInfo, containsExactServiceAddress, serializeQuoteRequestBrief } from "@/lib/quote-request";
 import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
+import { VOLUME_RATE_COOKIE, VOLUME_RATE_EVENT, volumeRateFor } from "@/lib/volume-rate";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -157,6 +158,8 @@ export async function POST(request: NextRequest) {
   const plan = business.plan as PlanKey;
   const commissionBps = PROVIDER_PLANS[plan].commissionBps;
 
+  const volumeRate = volumeRateFor(request.cookies.get(VOLUME_RATE_COOKIE)?.value, user.email);
+
   const booking = await getTransactionalDb().transaction(async (tx) => {
   const [booking] = await tx.insert(bookings).values({
     customerId: user.id,
@@ -185,6 +188,14 @@ export async function POST(request: NextRequest) {
 
   const pin = servicePinForBooking(booking.id);
   await tx.insert(bookingSecrets).values({ bookingId: booking.id, servicePinHash: hashServicePin(pin) });
+  if (volumeRate) {
+    await tx.insert(bookingEvents).values({
+      bookingId: booking.id,
+      actorUserId: user.id,
+      eventType: VOLUME_RATE_EVENT,
+      metadata: { offBps: volumeRate.offBps, until: volumeRate.until, rateId: volumeRate.id }
+    });
+  }
   await tx.insert(bookingEvents).values({
     bookingId: booking.id,
     actorUserId: user.id,
