@@ -32,6 +32,8 @@ VeroTask pays the provider ... nothing, ever
 
 **Invariant:** the booking fee is the only amount VeroTask may ever charge or refund on a booking. `validateBookingPayment` rejects a payment whose `amount_received` is not exactly `marketplaceFeeCents`.
 
+**Volume rate (added 30/09/2026).** High-volume customers (property managers, hosts) can get a percentage off the booking fee — never off the provider's price. The outreach system signs an Ed25519 code bound to the customer's email hash (`src/lib/volume-rate.ts`; only the public key is in this public repo, the private key lives with the outreach system). `/api/rate/activate?code=` stores it in the `vt_volume_rate` cookie; the quote-request and checkout routes record it on the booking as a `volume_rate_applied` booking event; the accept route and checkout apply it with `applyVolumeRate` *before* writing `marketplaceFeeCents`. Do not apply it later (for example as a Stripe coupon): the charged amount must stay equal to the stored fee.
+
 ---
 
 ## 2. Status vocabulary — read this table before touching booking state
