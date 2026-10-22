@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BadgeCheck, Mail, ShieldCheck } from "lucide-react";
 import { getCurrentUser, safeRedirectPath } from "@/lib/auth";
 import { requestMagicLink } from "./actions";
+import { signInErrorMessage } from "@/lib/signin-feedback";
 
 export const metadata: Metadata = {
   title: "Secure Sign In",
@@ -16,13 +17,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const currentUser = await getCurrentUser();
   if (currentUser) redirect(nextPath);
 
-  const errorMessage = params.error === "rate-limited"
-    ? "Too many sign-in links were requested for this email. Please wait a few minutes and try again."
-    : params.error === "email-unavailable"
-      ? "Email delivery is temporarily unavailable. Please try again shortly."
-      : params.error
-        ? "We could not process that sign-in request. Please check your email and try again."
-        : null;
+  const errorMessage = signInErrorMessage(params.error);
 
   return (
     <main className="min-h-screen bg-white">
