@@ -1,0 +1,9 @@
+name = "verotask-d1-staging"
+main = "worker/index.ts"
+compatibility_date = "2026-10-22"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "verotask-migration-staging"
+database_id = "e989dd70-1805-48b4-88f3-1214985802ab"

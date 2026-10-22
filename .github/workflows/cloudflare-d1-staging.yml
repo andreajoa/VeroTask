@@ -1,0 +1,23 @@
+name: Cloudflare D1 Staging Schema
+on:
+  pull_request:
+    paths:
+      - 'scripts/cloudflare/**'
+      - 'cloudflare/**'
+      - 'drizzle/**'
+      - '.github/workflows/cloudflare-d1-staging.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate and verify staging D1 schema
+        run: |
+          python3 scripts/cloudflare/generate_d1_schema.py
+          git diff --exit-code -- cloudflare/d1/0001_schema.sql
+      - name: SQLite relational integrity and booking tests
+        run: python3 -m unittest discover -s cloudflare/d1/tests -v
