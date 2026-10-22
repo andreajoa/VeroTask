@@ -20,7 +20,7 @@ test('D1 provider onboarding rejects malformed and out-of-region data before dat
 });
 
 test('D1 provider onboarding rejects a mismatch between logged-in user and persisted email',async()=>{
-  const statement={bind(){return this},async raw(){return [['other@example.invalid']]}};
+  const statement={bind(){return this},async raw<T=unknown>():Promise<T[][]>{return [['other@example.invalid']] as unknown as T[][]}};
   const db={prepare(){return statement},batch():never{throw new Error('batch_not_expected')}};
   const result=await createProviderAtomic(db,valid);
   assert.equal(result.status,403);
