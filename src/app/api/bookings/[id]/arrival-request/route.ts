@@ -2,13 +2,14 @@ import { randomUUID } from "node:crypto";
 import { and, eq, gte } from "drizzle-orm";
 import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, getTransactionalDb } from "@/db";
-import { bookingEvidence, bookingEvents, users } from "@/db/schema";
+import { getDb } from "@/db";
+import { requestArrivalAtomic } from "@/db/transactional-arrival";
+import { bookingEvents, users } from "@/db/schema";
 import { requireProviderBooking } from "@/lib/booking-access";
 import { haversineDistanceMeters } from "@/lib/booking";
 import { DEFAULT_GEOFENCE_METERS } from "@/lib/trust";
 import { getCurrentUser } from "@/lib/auth";
-import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
+import { kickTransactionalEmailOutbox } from "@/lib/transactional-email-outbox";
 
 const bodySchema = z.object({
   latitude: z.number().min(-90).max(90),
@@ -74,44 +75,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const [customer] = await db.select().from(users).where(eq(users.id, booking.customerId)).limit(1);
   if (!customer) return NextResponse.json({ error: "customer_not_found" }, { status: 404 });
 
-  await getTransactionalDb().transaction(async (tx) => {
-    const [geoEvidence] = await tx.insert(bookingEvidence).values({
-      bookingId: id,
-      submittedByUserId: user.id,
-      type: "geo_check_in",
-      latitude: parsed.data.latitude,
-      longitude: parsed.data.longitude,
-      distanceFromServiceMeters: distance,
-      metadata: {
-        accuracyMeters: parsed.data.accuracyMeters,
-        geofenceMeters,
-        geofenceVerified: true,
-        verificationMethod: "customer_confirmation_pending",
-        arrivalRequestId: requestId
-      }
-    }).returning();
-    await tx.insert(bookingEvents).values({
-      bookingId: id,
-      actorUserId: user.id,
-      eventType: "provider_arrival_confirmation_requested",
-      previousStatus: "scheduled",
-      nextStatus: "scheduled",
-      metadata: {
-        requestId,
-        distanceMeters: distance,
-        geofenceMeters,
-        geoEvidenceId: geoEvidence.id,
-        requestedAt: new Date().toISOString()
-      }
-    });
-    await queueBookingEmail(tx, {
-      kind: "customer_arrival_confirmation_request",
-      bookingId: id,
-      recipientEmail: customer.email,
-      idempotencyKey: `booking:${id}:arrival-confirmation:${requestId}`,
-      payload: { requestId },
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000)
-    });
+  await requestArrivalAtomic({
+    bookingId:id,actorUserId:user.id,requestId,
+    latitude:parsed.data.latitude,longitude:parsed.data.longitude,
+    accuracyMeters:parsed.data.accuracyMeters??null,
+    distanceMeters:distance,geofenceMeters,recipientEmail:customer.email
   });
 
   after(() => kickTransactionalEmailOutbox(id));

@@ -1,6 +1,6 @@
 {
-  "description": "D1 app compile errors after atomic evidence adapter: 21 diagnostics across six remaining transaction modules (2026-10-22).",
-  "maxCurrentErrors": 21,
+  "description": "D1 app compile baseline: 19 errors, 5 transaction modules, after arrival request adapter (2026-10-22)",
+  "maxCurrentErrors": 19,
   "expectedErrorCodes": [
     "TS2305",
     "TS7006",
@@ -8,7 +8,6 @@
   ],
   "currentKnownBlockerFiles": [
     "src/app/api/bookings/[id]/accept/route.ts",
-    "src/app/api/bookings/[id]/arrival-request/route.ts",
     "src/app/api/bookings/checkout/route.ts",
     "src/app/api/bookings/quote-request/route.ts",
     "src/app/api/stripe/webhook/route.ts",

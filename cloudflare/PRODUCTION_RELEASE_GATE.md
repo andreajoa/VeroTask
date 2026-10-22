@@ -71,3 +71,7 @@ A genuine Cloudflare D1 private login flow now passes signed remote tests, inclu
 ## D1 evidence audit (October 22, 2026)
 
 The evidence API now has separate PostgreSQL/D1 atomic implementations. D1 adds unique R2 object references, in-batch authorization/status checks, and an atomic matching event. Twenty SQLite tests pass; full D1 app compilation remains blocked by **21 errors in 6 modules**. The evidence write endpoint is disabled by default in the Worker; this is not a customer release.
+
+## Arrival request D1 port (October 22, 2026)
+
+Provider arrival requests are now backend-abstracted into PostgreSQL and D1 atomic operations with geofence validation, three-state audit writes and email outbox rollback. 23 SQLite tests pass. D1 compilation remains blocked by **19 diagnostics in 5 transaction modules**. Production Worker write route remains disabled.
