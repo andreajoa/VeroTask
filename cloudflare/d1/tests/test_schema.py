@@ -6,6 +6,7 @@ from pathlib import Path
 
 SCHEMA = Path(__file__).resolve().parents[1] / '0001_schema.sql'
 GUARDS = Path(__file__).resolve().parents[1] / '0002_enum_guards.sql'
+BOOKING_GUARDS = Path(__file__).resolve().parents[1] / '0003_booking_interval_guards.sql'
 
 class TestD1Schema(unittest.TestCase):
     def setUp(self):
@@ -13,6 +14,7 @@ class TestD1Schema(unittest.TestCase):
         self.db.execute('PRAGMA foreign_keys = ON')
         self.db.executescript(SCHEMA.read_text())
         self.db.executescript(GUARDS.read_text())
+        self.db.executescript(BOOKING_GUARDS.read_text())
 
     def tearDown(self):
         self.db.close()
@@ -54,6 +56,90 @@ class TestD1Schema(unittest.TestCase):
             self.db.execute("UPDATE bookings SET scheduled_start='2026-10-24T14:45:00Z' WHERE scheduled_start='2026-10-24T15:00:00Z'")
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.execute(query, ('missing',business,'accepted','2026-10-25T14:00:00Z','2026-10-25T15:00:00Z','Orlando',10000,1500,8500,1500))
+
+    def test_open_ended_booking_interval_cannot_double_book(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('openended@example.invalid')")
+        customer = self.db.execute('SELECT id FROM users').fetchone()[0]
+        self.db.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','openended','Orlando')")
+        business = self.db.execute('SELECT id FROM businesses').fetchone()[0]
+        query = 'INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        tail = ('Orlando',10000,1500,8500,1500)
+        self.db.execute(query,(customer,business,'scheduled','2026-11-01T16:00:00Z',None,*tail))
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'provider_booking_overlap'):
+            self.db.execute(query,(customer,business,'scheduled','2026-11-02T16:00:00Z','2026-11-02T17:00:00Z',*tail))
+        self.db.execute(query,(customer,business,'cancelled','2026-11-02T16:00:00Z','2026-11-02T17:00:00Z',*tail))
+
+    def test_timezones_are_compared_as_instants(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('timezones@example.invalid')")
+        customer = self.db.execute('SELECT id FROM users').fetchone()[0]
+        self.db.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','timezones','Orlando')")
+        business = self.db.execute('SELECT id FROM businesses').fetchone()[0]
+        query = 'INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        tail = ('Orlando',10000,1500,8500,1500)
+        self.db.execute(query,(customer,business,'accepted','2026-11-05T15:00:00Z','2026-11-05T16:00:00Z',*tail))
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'provider_booking_overlap'):
+            self.db.execute(query,(customer,business,'accepted','2026-11-05T10:30:00-05:00','2026-11-05T11:15:00-05:00',*tail))
+        self.db.execute(query,(customer,business,'accepted','2026-11-05T16:00:00Z','2026-11-05T17:00:00Z',*tail))
+
+    def test_invalid_date_or_reversed_interval_is_rejected(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('badtime@example.invalid')")
+        customer = self.db.execute('SELECT id FROM users').fetchone()[0]
+        self.db.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','badtime','Orlando')")
+        business = self.db.execute('SELECT id FROM businesses').fetchone()[0]
+        query = 'INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        tail = ('Orlando',10000,1500,8500,1500)
+        for start, end in [('not-a-date','2026-11-05T17:00:00Z'),('2026-11-05T17:00:00Z','2026-11-05T16:00:00Z'),('2026-11-05T16:00:00Z','2026-11-05T16:00:00Z')]:
+            with self.assertRaisesRegex(sqlite3.IntegrityError,'invalid_booking_interval'):
+                self.db.execute(query,(customer,business,'requested',start,end,*tail))
+
+
+    def test_multiple_requests_cannot_be_accepted_for_same_slot(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('state@example.invalid')")
+        customer = self.db.execute('SELECT id FROM users').fetchone()[0]
+        self.db.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','state','Orlando')")
+        business = self.db.execute('SELECT id FROM businesses').fetchone()[0]
+        query = 'INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        args = (customer,business,'requested','2026-11-10T12:00:00Z','2026-11-10T13:00:00Z','Orlando',10000,1500,8500,1500)
+        self.db.execute(query,args)
+        self.db.execute(query,args)
+        first,second = [r[0] for r in self.db.execute('SELECT id FROM bookings ORDER BY rowid')]
+        self.db.execute("UPDATE bookings SET status='accepted' WHERE id=?",(first,))
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'provider_booking_overlap'):
+            self.db.execute("UPDATE bookings SET status='accepted' WHERE id=?",(second,))
+        self.assertEqual([r[0] for r in self.db.execute('SELECT status FROM bookings ORDER BY rowid')], ['accepted','requested'])
+
+    def test_concurrent_sqlite_connections_only_accept_one_booking(self):
+        import concurrent.futures
+        import tempfile
+        from threading import Barrier
+        with tempfile.TemporaryDirectory() as tmp:
+            filename = str(Path(tmp) / 'concurrent.sqlite')
+            with sqlite3.connect(filename) as seed:
+                seed.executescript(SCHEMA.read_text())
+                seed.executescript(GUARDS.read_text())
+                seed.executescript(BOOKING_GUARDS.read_text())
+                seed.execute("INSERT INTO users (email) VALUES ('race@example.invalid')")
+                customer = seed.execute('SELECT id FROM users').fetchone()[0]
+                seed.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','race','Orlando')")
+                business = seed.execute('SELECT id FROM businesses').fetchone()[0]
+            barrier = Barrier(2)
+            def attempt(_):
+                with sqlite3.connect(filename,timeout=5) as connection:
+                    connection.execute('PRAGMA foreign_keys = ON')
+                    barrier.wait(timeout=5)
+                    try:
+                        connection.execute('INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)',
+                            (customer,business,'accepted','2026-11-12T13:00:00Z','2026-11-12T14:00:00Z','Orlando',10000,1500,8500,1500))
+                        connection.commit()
+                        return 'accepted'
+                    except sqlite3.IntegrityError as error:
+                        self.assertIn('provider_booking_overlap',str(error))
+                        return 'conflict'
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                outcomes = list(pool.map(attempt,range(2)))
+            self.assertEqual(sorted(outcomes), ['accepted','conflict'])
+            with sqlite3.connect(filename) as verify:
+                self.assertEqual(verify.execute('SELECT COUNT(*) FROM bookings').fetchone()[0],1)
 
 if __name__ == '__main__':
     unittest.main()

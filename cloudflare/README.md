@@ -10,6 +10,7 @@ Neon HTTP and pg sessions, row locking, exclusion constraints and interactive bo
 - `d1/0001_schema.sql`: generated SQLite schema for the 43 PostgreSQL tables, with 85 indexes,
   64 foreign keys and two basic overlapping-booking triggers.
 - `d1/0002_enum_guards.sql`: 32 SQLite triggers enforcing PostgreSQL enum domains.
+- `d1/0003_booking_interval_guards.sql`: safe UTC-aware overlap constraints, including open-ended reservations and invalid timestamp rejection.
 - `d1/tests/test_schema.py`: offline SQLite tests for schema, UUIDs, uniqueness, FKs and overlapping bookings.
 - `worker/index.ts`: deliberately restricted Worker health endpoint; no public SQL/query API.
 
@@ -18,9 +19,11 @@ Commands:
 ```sh
 python3 scripts/cloudflare/generate_d1_schema.py
 python3 scripts/cloudflare/generate_d1_enum_guards.py
+python3 scripts/cloudflare/generate_d1_booking_guards.py
 python3 -m unittest discover -s cloudflare/d1/tests -v
 wrangler d1 execute verotask-migration-staging --remote --file cloudflare/d1/0001_schema.sql
 wrangler d1 execute verotask-migration-staging --remote --file cloudflare/d1/0002_enum_guards.sql
+wrangler d1 execute verotask-migration-staging --remote --file cloudflare/d1/0003_booking_interval_guards.sql
 wrangler deploy --config cloudflare/wrangler.toml
 ```
 
@@ -71,3 +74,17 @@ atomic batches and protect every settlement against concurrency/replay.
 
 No production customer, provider or payment data is present in staging, and no
 existing Stripe webhook or Vercel environment variable has been modified.
+
+## Release gate
+
+Run `python3 scripts/cloudflare/production_gate.py` for an intentionally
+read-only public HTTP smoke test. Exit code 1 means **do not promote**.
+The authenticated `GET /api/monitoring/stripe-webhook` must subsequently be
+validated with the correct cron credential; the public unauthenticated check
+should return a clean 401, not an unhandled 500.
+
+As of 2026-10-22: production remains **NO_GO** due to Neon compute quota,
+`/api/ready` HTTP 503 and `/api/monitoring/stripe-webhook` HTTP 500.
+Live Stripe payment, refunds, disputes, email magic links and migration row
+reconciliation have NOT been certified on D1. Passing schema tests or `next
+build` never establishes payment safety.
