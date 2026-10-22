@@ -67,3 +67,7 @@ The provider decline flow now has separate original PostgreSQL transaction and D
 ## D1 authentication staging verified (2026-10-22)
 
 A genuine Cloudflare D1 private login flow now passes signed remote tests, including single-use magic links, atomic user/session creation, rate limits, token/session revocation and replay prevention. Tests only create fake `@example.invalid` identities; those fixtures were deleted. Production remains on PostgreSQL. See `cloudflare/D1_AUTH_STATUS.md` for the fail-closed rollout steps and blockers.
+
+## D1 evidence audit (October 22, 2026)
+
+The evidence API now has separate PostgreSQL/D1 atomic implementations. D1 adds unique R2 object references, in-batch authorization/status checks, and an atomic matching event. Twenty SQLite tests pass; full D1 app compilation remains blocked by **21 errors in 6 modules**. The evidence write endpoint is disabled by default in the Worker; this is not a customer release.

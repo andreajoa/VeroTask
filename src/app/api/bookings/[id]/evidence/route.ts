@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, getTransactionalDb } from "@/db";
-import { bookingEvidence, bookingEvents, bookings } from "@/db/schema";
+import { getDb } from "@/db";
+import { createBookingEvidenceAtomic } from "@/db/transactional-evidence";
+import { bookingEvidence } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { bookingAccess } from "@/lib/booking-access";
 import { canSubmitBookingEvidence, normalizeEvidenceMetadata, type SubmittedEvidenceType } from "@/lib/evidence-policy";
@@ -76,34 +77,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     | { ok: true; evidenceId: string }
     | { ok: false; error: "booking_not_found" | "evidence_not_available_for_actor_or_status" | "photo_upload_already_attached" };
   try {
-    result = await getTransactionalDb().transaction(async (tx) => {
-      const [currentBooking] = await tx.select({ status: bookings.status }).from(bookings)
-        .where(eq(bookings.id, id)).for("update").limit(1);
-      if (!currentBooking) return { ok: false as const, error: "booking_not_found" as const };
-      if (!canSubmitBookingEvidence({ actor, status: currentBooking.status, type: parsed.data.type as SubmittedEvidenceType })) {
-        return { ok: false as const, error: "evidence_not_available_for_actor_or_status" as const };
-      }
-      if (parsed.data.objectRef) {
-        const [attached] = await tx.select({ id: bookingEvidence.id }).from(bookingEvidence)
-          .where(eq(bookingEvidence.objectUrl, parsed.data.objectRef)).limit(1);
-        if (attached) return { ok: false as const, error: "photo_upload_already_attached" as const };
-      }
-
-      const [evidence] = await tx.insert(bookingEvidence).values({
-        bookingId: id,
-        submittedByUserId: user.id,
-        type: parsed.data.type,
-        objectUrl: parsed.data.objectRef,
-        note: parsed.data.note,
-        metadata: normalizeEvidenceMetadata(parsed.data.type as SubmittedEvidenceType, verifiedPhoto)
-      }).returning();
-      await tx.insert(bookingEvents).values({
-        bookingId: id,
-        actorUserId: user.id,
-        eventType: `evidence_${parsed.data.type}`,
-        metadata: { evidenceId: evidence.id }
-      });
-      return { ok: true as const, evidenceId: evidence.id };
+    result = await createBookingEvidenceAtomic({
+      bookingId:id,
+      actorUserId:user.id,
+      actor,
+      type:parsed.data.type,
+      objectRef:parsed.data.objectRef??null,
+      note:parsed.data.note??null,
+      metadata:normalizeEvidenceMetadata(parsed.data.type as SubmittedEvidenceType, verifiedPhoto)
     });
   } catch (error) {
     await deleteUnattachedPhotoUpload({ bookingId: id, objectRef: parsed.data.objectRef, type: parsed.data.type });
