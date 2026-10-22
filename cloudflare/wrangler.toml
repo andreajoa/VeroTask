@@ -7,3 +7,8 @@ workers_dev = true
 binding = "DB"
 database_name = "verotask-migration-staging"
 database_id = "e989dd70-1805-48b4-88f3-1214985802ab"
+
+[vars]
+# Only fake @example.invalid identities are accepted by staging auth.
+# Never set D1_AUTH_REAL_ENABLED before all original Neon data are reconciled.
+D1_AUTH_STAGING_ENABLED = "true"

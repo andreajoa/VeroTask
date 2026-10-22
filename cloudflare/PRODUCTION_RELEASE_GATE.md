@@ -63,3 +63,7 @@ The dedicated D1 provider-onboarding signed Worker operation was tested against 
 ## D1 provider decline staging test (2026-10-22)
 
 The provider decline flow now has separate original PostgreSQL transaction and D1 Worker-backed atomic batch implementations. Two new SQLite tests prove idempotent cancellation and full rollback of booking status and event when notification enqueue fails. Worker real declining is intentionally disabled by default until data reconciliation. Remaining SQLite full-application compile debt: **23 diagnostics in 7 transaction modules**.
+
+## D1 authentication staging verified (2026-10-22)
+
+A genuine Cloudflare D1 private login flow now passes signed remote tests, including single-use magic links, atomic user/session creation, rate limits, token/session revocation and replay prevention. Tests only create fake `@example.invalid` identities; those fixtures were deleted. Production remains on PostgreSQL. See `cloudflare/D1_AUTH_STATUS.md` for the fail-closed rollout steps and blockers.
