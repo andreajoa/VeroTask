@@ -5,12 +5,14 @@ import unittest
 from pathlib import Path
 
 SCHEMA = Path(__file__).resolve().parents[1] / '0001_schema.sql'
+GUARDS = Path(__file__).resolve().parents[1] / '0002_enum_guards.sql'
 
 class TestD1Schema(unittest.TestCase):
     def setUp(self):
         self.db = sqlite3.connect(':memory:')
         self.db.execute('PRAGMA foreign_keys = ON')
         self.db.executescript(SCHEMA.read_text())
+        self.db.executescript(GUARDS.read_text())
 
     def tearDown(self):
         self.db.close()
@@ -27,6 +29,14 @@ class TestD1Schema(unittest.TestCase):
         self.assertRegex(user_id, r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
         with self.assertRaises(sqlite3.IntegrityError):
             self.db.execute("INSERT INTO users (email) VALUES ('test@example.com')")
+
+    def test_enum_guards_reject_invalid_statuses(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('good@example.invalid')")
+        with self.assertRaisesRegex(sqlite3.IntegrityError, 'invalid_enum_users_role'):
+            self.db.execute("INSERT INTO users (email, role) VALUES ('bad@example.invalid', 'superuser')")
+        with self.assertRaisesRegex(sqlite3.IntegrityError, 'invalid_enum_users_role'):
+            self.db.execute("UPDATE users SET role = 'superuser' WHERE email = 'good@example.invalid'")
+        self.assertEqual(self.db.execute("SELECT role FROM users WHERE email='good@example.invalid'").fetchone()[0], 'customer')
 
     def test_booking_overlap_and_foreign_keys(self):
         self.db.execute("INSERT INTO users (email) VALUES ('customer@example.com')")

@@ -9,6 +9,7 @@ Neon HTTP and pg sessions, row locking, exclusion constraints and interactive bo
 - `verotask-migration-staging`: separate Cloudflare D1 database (Eastern North America), no customer data.
 - `d1/0001_schema.sql`: generated SQLite schema for the 43 PostgreSQL tables, with 85 indexes,
   64 foreign keys and two basic overlapping-booking triggers.
+- `d1/0002_enum_guards.sql`: 32 SQLite triggers enforcing PostgreSQL enum domains.
 - `d1/tests/test_schema.py`: offline SQLite tests for schema, UUIDs, uniqueness, FKs and overlapping bookings.
 - `worker/index.ts`: deliberately restricted Worker health endpoint; no public SQL/query API.
 
@@ -16,8 +17,10 @@ Commands:
 
 ```sh
 python3 scripts/cloudflare/generate_d1_schema.py
+python3 scripts/cloudflare/generate_d1_enum_guards.py
 python3 -m unittest discover -s cloudflare/d1/tests -v
 wrangler d1 execute verotask-migration-staging --remote --file cloudflare/d1/0001_schema.sql
+wrangler d1 execute verotask-migration-staging --remote --file cloudflare/d1/0002_enum_guards.sql
 wrangler deploy --config cloudflare/wrangler.toml
 ```
 

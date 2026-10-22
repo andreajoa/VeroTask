@@ -18,6 +18,7 @@ jobs:
       - name: Generate and verify staging D1 schema
         run: |
           python3 scripts/cloudflare/generate_d1_schema.py
-          git diff --exit-code -- cloudflare/d1/0001_schema.sql
+          python3 scripts/cloudflare/generate_d1_enum_guards.py
+          git diff --exit-code -- cloudflare/d1/0001_schema.sql cloudflare/d1/0002_enum_guards.sql
       - name: SQLite relational integrity and booking tests
         run: python3 -m unittest discover -s cloudflare/d1/tests -v
