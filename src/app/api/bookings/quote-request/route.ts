@@ -1,10 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { addMinutes } from "date-fns";
 import { and, count, eq, gte } from "drizzle-orm";
 import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, getTransactionalDb } from "@/db";
-import { bookingSecrets } from "@/db/operations-schema";
-import { bookingEvents, bookings, businesses, services } from "@/db/schema";
+import { getDb } from "@/db";
+import { createQuoteRequestAtomic } from "@/db/transactional-quote-request";
+import { bookings, businesses, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
@@ -12,8 +13,8 @@ import { distanceMiles } from "@/lib/distance";
 import { geocodeUsAddress, geocodeUsPostalCode } from "@/lib/geocoding";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { containsDirectContactInfo, containsExactServiceAddress, serializeQuoteRequestBrief } from "@/lib/quote-request";
-import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
-import { VOLUME_RATE_COOKIE, VOLUME_RATE_EVENT, volumeRateFor } from "@/lib/volume-rate";
+import { kickTransactionalEmailOutbox } from "@/lib/transactional-email-outbox";
+import { VOLUME_RATE_COOKIE, volumeRateFor } from "@/lib/volume-rate";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -160,76 +161,27 @@ export async function POST(request: NextRequest) {
 
   const volumeRate = volumeRateFor(request.cookies.get(VOLUME_RATE_COOKIE)?.value, user.email);
 
-  const booking = await getTransactionalDb().transaction(async (tx) => {
-  const [booking] = await tx.insert(bookings).values({
-    customerId: user.id,
-    businessId: business.id,
-    serviceId: service?.id,
-    status: "requested",
-    scheduledStart,
-    scheduledEnd,
-    serviceAddress: parsed.data.serviceAddress,
-    serviceLatitude: geocoded?.latitude,
-    serviceLongitude: geocoded?.longitude,
-    customerNotes: serializeQuoteRequestBrief({
-      task: parsed.data.task,
-      scope: parsed.data.scope,
-      jobLength: parsed.data.jobLength,
-      timeline: parsed.data.timeline,
-      postalCode: parsed.data.postalCode,
-      details: parsed.data.details
-    }),
-    subtotalCents: 0,
-    marketplaceFeeCents: 0,
-    providerAmountCents: 0,
-    currency: "usd",
-    commissionBpsSnapshot: commissionBps
-  }).returning();
-
-  const pin = servicePinForBooking(booking.id);
-  await tx.insert(bookingSecrets).values({ bookingId: booking.id, servicePinHash: hashServicePin(pin) });
-  if (volumeRate) {
-    await tx.insert(bookingEvents).values({
-      bookingId: booking.id,
-      actorUserId: user.id,
-      eventType: VOLUME_RATE_EVENT,
-      metadata: { offBps: volumeRate.offBps, until: volumeRate.until, rateId: volumeRate.id }
-    });
-  }
-  await tx.insert(bookingEvents).values({
-    bookingId: booking.id,
-    actorUserId: user.id,
-    eventType: "quote_requested",
-    nextStatus: "requested",
-    metadata: {
-      task: parsed.data.task,
-      scope: parsed.data.scope,
-      jobLength: parsed.data.jobLength,
-      timeline: parsed.data.timeline,
-      postalCode: parsed.data.postalCode,
-      exactAddressWithheldFromProvider: true,
-      customerContactWithheld: true,
-      providerClaimedAtRequest: Boolean(business.ownerUserId),
-      serviceDistanceMiles: serviceDistanceMiles === null ? null : Number(serviceDistanceMiles.toFixed(2)),
-      providerServiceRadiusMiles: business.serviceRadiusMiles,
-      paymentModel: "booking_fee_only"
-    }
-  });
-
-  await queueBookingEmail(tx, {
-    kind: business.ownerUserId ? "provider_new_request" : "unclaimed_provider_opportunity",
-    bookingId: booking.id,
-    recipientEmail: business.ownerUserId ? null : business.publicEmail,
-    idempotencyKey: `booking:${booking.id}:provider-request`,
-    expiresAt: scheduledStart
-  });
-  await queueBookingEmail(tx, {
-    kind: "customer_request_received",
-    bookingId: booking.id,
-    idempotencyKey: `booking:${booking.id}:customer-request`
-  });
-
-  return booking;
+  const bookingId=randomUUID();
+  const booking=await createQuoteRequestAtomic({
+    bookingId,customerId:user.id,businessId:business.id,serviceId:service?.id??null,
+    scheduledStart:scheduledStart.toISOString(),scheduledEnd:scheduledEnd.toISOString(),
+    serviceAddress:parsed.data.serviceAddress,serviceLatitude:geocoded?.latitude??null,
+    serviceLongitude:geocoded?.longitude??null,
+    customerNotes:serializeQuoteRequestBrief({task:parsed.data.task,scope:parsed.data.scope,
+      jobLength:parsed.data.jobLength,timeline:parsed.data.timeline,postalCode:parsed.data.postalCode,
+      details:parsed.data.details}),
+    commissionBps,servicePinHash:hashServicePin(servicePinForBooking(bookingId)),
+    volumeRateEvent:volumeRate?{offBps:volumeRate.offBps,until:volumeRate.until,rateId:volumeRate.id}:null,
+    quoteEvent:{
+      task:parsed.data.task,scope:parsed.data.scope,jobLength:parsed.data.jobLength,
+      timeline:parsed.data.timeline,postalCode:parsed.data.postalCode,
+      exactAddressWithheldFromProvider:true,customerContactWithheld:true,
+      providerClaimedAtRequest:Boolean(business.ownerUserId),
+      serviceDistanceMiles:serviceDistanceMiles===null?null:Number(serviceDistanceMiles.toFixed(2)),
+      providerServiceRadiusMiles:business.serviceRadiusMiles,paymentModel:'booking_fee_only'
+    },
+    providerRecipientEmail:business.ownerUserId?null:business.publicEmail,
+    providerClaimed:Boolean(business.ownerUserId)
   });
 
   after(() => kickTransactionalEmailOutbox(booking.id));
