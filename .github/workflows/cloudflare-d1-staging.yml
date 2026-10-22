@@ -20,7 +20,7 @@ jobs:
           python3 scripts/cloudflare/generate_d1_schema.py
           python3 scripts/cloudflare/generate_d1_enum_guards.py
           python3 scripts/cloudflare/generate_d1_booking_guards.py
-          git diff --exit-code -- cloudflare/d1/0001_schema.sql cloudflare/d1/0002_enum_guards.sql cloudflare/d1/0003_booking_interval_guards.sql cloudflare/d1/0004_payment_guardrails.sql
+          git diff --exit-code -- cloudflare/d1/0001_schema.sql cloudflare/d1/0002_enum_guards.sql cloudflare/d1/0003_booking_interval_guards.sql cloudflare/d1/0004_payment_guardrails.sql cloudflare/d1/0005_auth_session_guards.sql
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

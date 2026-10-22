@@ -5,12 +5,13 @@
 import { settleTestBooking } from './settlement';
 import { createSyntheticProvider, createProviderAtomic } from './provider-onboarding';
 import { declineBookingD1 } from './booking-decline';
+import { authD1 } from './auth';
 
 type Scalar = string | number | boolean | null;
 interface ReadQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' }
 interface D1Statement { bind(...values: Scalar[]): D1Statement; raw<T>(): Promise<T[][]> }
 interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ results: unknown[] }>> }
-interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string }
+interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string }
 
 const corsFree = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 const json = (body: unknown, status: number) => Response.json(body, { status, headers: corsFree });
@@ -46,7 +47,7 @@ export default {
         return json({ ok: count === 43, service: 'verotask-d1-staging', tables: count, production: false }, count === 43 ? 200 : 503);
       } catch { return json({ ok: false, service: 'verotask-d1-staging', production: false }, 503); }
     }
-    if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
+    if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking', '/internal/auth/issue', '/internal/auth/consume', '/internal/auth/session', '/internal/auth/signout', '/internal/auth/revoke'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > 32_768) return json({ error: 'invalid_payload' }, 413);
     const raw = await request.text();
@@ -54,6 +55,12 @@ export default {
     if (!env.DB_BRIDGE_SECRET || !(await authenticate(request, env.DB_BRIDGE_SECRET, raw))) return json({ error: 'unauthorized' }, 401);
     try {
       const payload: unknown = JSON.parse(raw);
+      if (url.pathname.startsWith('/internal/auth/')) {
+        if (env.D1_AUTH_STAGING_ENABLED !== 'true' && env.D1_AUTH_REAL_ENABLED !== 'true') return json({error:'migration_not_ready'},503);
+        const mode=url.pathname.split('/').at(-1)!;
+        const result=await authD1(env.DB,mode,payload,env.D1_AUTH_REAL_ENABLED==='true');
+        return json(result.body,result.status);
+      }
       if (url.pathname === '/internal/decline-booking') {
         if (env.D1_REAL_DECLINES_ENABLED !== 'true') return json({error:'migration_not_ready'},503);
         const result=await declineBookingD1(env.DB,payload);

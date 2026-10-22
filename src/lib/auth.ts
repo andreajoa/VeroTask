@@ -10,6 +10,7 @@ import { clearSessionCookieOptions, SESSION_COOKIE, SESSION_DAYS, sessionCookieO
 import { sessionKeyHash } from "@/lib/visitor-privacy";
 import { ensureCrmContactForUser } from "@/lib/crm-automation";
 import { sendCrmEmail } from "@/lib/crm-email";
+import { createMagicLinkD1, consumeMagicLinkD1, getCurrentUserD1, revokeMagicLinkD1, signOutD1 } from "@/lib/d1-auth";
 import { claimAnonymousPersonalizationForUser } from "@/lib/personalization";
 
 const MAGIC_LINK_WINDOW_MS = 15 * 60 * 1000;
@@ -25,6 +26,7 @@ export function safeRedirectPath(value?: string | null) {
 }
 
 export async function createMagicLink(emailInput: string, redirectPath?: string | null, requestOrigin?: string | null) {
+  if (process.env.AUTH_STORE === "d1") return createMagicLinkD1(emailInput, redirectPath, requestOrigin);
   const email = emailInput.trim().toLowerCase();
   const db = getDb();
   const since = new Date(Date.now() - MAGIC_LINK_WINDOW_MS);
@@ -50,6 +52,7 @@ export async function createRetryableMagicLink(
   idempotencySeed: string,
   requestOrigin?: string | null
 ) {
+  if (process.env.AUTH_STORE === "d1") throw new Error("d1_outbox_auth_not_migrated");
   const secret = process.env.AUTH_SECRET;
   if (!secret || secret.length < 24) throw new Error("AUTH_SECRET is not configured");
   const email = emailInput.trim().toLowerCase();
@@ -74,6 +77,7 @@ export function retryableMagicLinkSlot(now = Date.now()) {
 }
 
 export async function revokeMagicLink(link: string) {
+  if (process.env.AUTH_STORE === "d1") return revokeMagicLinkD1(link);
   const rawToken = new URL(link).searchParams.get("token");
   if (!rawToken) return false;
   const deleted = await getDb().delete(authTokens).where(and(
@@ -96,6 +100,7 @@ export async function createSessionForUser(userId: string) {
 }
 
 export async function consumeMagicLink(rawToken: string) {
+  if (process.env.AUTH_STORE === "d1") return consumeMagicLinkD1(rawToken);
   const db = getDb();
   const tokenHash = hashToken(rawToken);
   const now = new Date();
@@ -137,6 +142,7 @@ export async function consumeMagicLink(rawToken: string) {
 }
 
 export async function getCurrentUser() {
+  if (process.env.AUTH_STORE === "d1") return getCurrentUserD1();
   const cookieStore = await cookies();
   const rawSession = cookieStore.get(SESSION_COOKIE)?.value;
   if (!rawSession) return null;
@@ -153,6 +159,7 @@ export async function getCurrentUser() {
 }
 
 export async function signOut() {
+  if (process.env.AUTH_STORE === "d1") return signOutD1();
   const cookieStore = await cookies();
   const rawSession = cookieStore.get(SESSION_COOKIE)?.value;
   if (rawSession) {
