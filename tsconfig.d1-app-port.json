@@ -24,6 +24,7 @@
     "node_modules",
     "src/db/transactional-provider.ts",
     "src/db/transactional-decline.ts",
-    "src/db/transactional-evidence.ts"
+    "src/db/transactional-evidence.ts",
+    "src/db/transactional-arrival.ts"
   ]
 }
