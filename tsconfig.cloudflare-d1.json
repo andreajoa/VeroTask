@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/db/sqlite/**/*.ts", "cloudflare/worker/**/*.ts"],
+  "exclude": ["node_modules", "src/db/sqlite/**/*.test.ts"]
+}

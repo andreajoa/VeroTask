@@ -20,5 +20,15 @@ jobs:
           python3 scripts/cloudflare/generate_d1_schema.py
           python3 scripts/cloudflare/generate_d1_enum_guards.py
           git diff --exit-code -- cloudflare/d1/0001_schema.sql cloudflare/d1/0002_enum_guards.sql
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate generated SQLite Drizzle models
+        run: |
+          python3 scripts/cloudflare/generate_d1_drizzle_schema.py
+          git diff --exit-code -- src/db/sqlite/*-schema.ts
+          npx tsc --noEmit --project tsconfig.cloudflare-d1.json
       - name: SQLite relational integrity and booking tests
         run: python3 -m unittest discover -s cloudflare/d1/tests -v
