@@ -51,3 +51,7 @@ An HTTP 200 from the homepage is **not** enough to approve production. No creden
 - To enable live plan upgrades/downgrades, create verified USD recurring prices ($39/$99) in Stripe and securely configure both USD price IDs in Vercel. **Do not** modify existing subscriptions until their billing currency and proration are reviewed. The old BRL prices can remain for historical reconciliation.
 
 No live charges, refunds, transfers, or subscription changes were executed during this Stripe audit. Live purchase processing is **NO-GO** while the Neon production database is suspended.
+
+## D1 full-application compatibility audit (2026-10-22)
+
+An isolated complete application SQLite typecheck runs via `tsconfig.d1-app-port.json`, without changing production TypeScript aliases. It initially found 29 errors in 11 modules, mostly PostgreSQL transactions. Portable readiness probes and safe single-operation email enqueue reduced this to **27 errors in 9 transactional modules**. Strict D1 application portability is **not passing**. See `cloudflare/D1_APP_PORTABILITY.md` and `scripts/cloudflare/check_d1_app_port.mjs --strict`. This debt is tracked on an experimental branch rather than on production.
