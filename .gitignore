@@ -10,3 +10,8 @@ next-env.d.ts
 scrollcraft/builds/*/verification/
 *.log
 .DS_Store
+
+# Cloudflare staging local build/cache
+.wrangler/
+__pycache__/
+*.pyc
