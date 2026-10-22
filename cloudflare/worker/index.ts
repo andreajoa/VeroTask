@@ -2,6 +2,8 @@
  * This intentionally rejects all writes until the transactional booking/payment
  * invariants have been ported and independently verified on D1.
  */
+import { settleTestBooking } from './settlement';
+
 type Scalar = string | number | boolean | null;
 interface ReadQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' }
 interface D1Statement { bind(...values: Scalar[]): D1Statement; raw<T>(): Promise<T[][]> }
@@ -42,7 +44,7 @@ export default {
         return json({ ok: count === 43, service: 'verotask-d1-staging', tables: count, production: false }, count === 43 ? 200 : 503);
       } catch { return json({ ok: false, service: 'verotask-d1-staging', production: false }, 503); }
     }
-    if (url.pathname !== '/internal/sqlite-read' || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
+    if (!['/internal/sqlite-read', '/internal/test-settle-booking'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > 32_768) return json({ error: 'invalid_payload' }, 413);
     const raw = await request.text();
@@ -50,6 +52,14 @@ export default {
     if (!env.DB_BRIDGE_SECRET || !(await authenticate(request, env.DB_BRIDGE_SECRET, raw))) return json({ error: 'unauthorized' }, 401);
     try {
       const payload: unknown = JSON.parse(raw);
+      if (url.pathname === '/internal/test-settle-booking') {
+        try {
+          const result = await settleTestBooking(env.DB, payload);
+          return json(result.body, result.status);
+        } catch {
+          return json({ ok:false,disposition:'test_settlement_error' }, 500);
+        }
+      }
       if (!payload || typeof payload !== 'object') return json({ error: 'invalid_payload' }, 400);
       const packet = payload as { queries?: ReadQuery[]; query?: ReadQuery };
       if (packet.queries) {

@@ -8,6 +8,7 @@ import { requestAppUrl } from "@/lib/app-url";
 import { getCurrentUser } from "@/lib/auth";
 import { PROVIDER_PLANS } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
+import { matchesUsdProviderPlanPrice } from "@/lib/stripe-plan-price";
 
 const schema = z.object({ businessId: z.string().uuid(), plan: z.enum(["pro", "elite"]) });
 
@@ -30,6 +31,10 @@ export async function POST(request: NextRequest) {
   if (subscription?.stripeSubscriptionId) return NextResponse.json({ error: "subscription_already_active" }, { status: 409 });
 
   const stripe = getStripe();
+  if (priceId) {
+    const price = await stripe.prices.retrieve(priceId);
+    if (!matchesUsdProviderPlanPrice(price, parsed.data.plan)) return NextResponse.json({ error: "invalid_usd_plan_price" }, { status: 503 });
+  }
   const [existing] = await db.select().from(providerCheckoutSessions).where(eq(providerCheckoutSessions.businessId, business.id)).limit(1);
   if (existing?.status === "open" && existing.expiresAt > new Date()) {
     const previous = await stripe.checkout.sessions.retrieve(existing.stripeSessionId);

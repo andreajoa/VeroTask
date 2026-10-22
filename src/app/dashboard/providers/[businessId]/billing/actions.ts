@@ -7,6 +7,7 @@ import { businesses, providerSubscriptions } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
+import { matchesUsdProviderPlanPrice } from "@/lib/stripe-plan-price";
 
 async function ownedBusiness(businessId: string) {
   const user = await getCurrentUser();
@@ -47,10 +48,12 @@ export async function changePaidPlan(businessId: string, plan: Exclude<PlanKey, 
 
   if (!active?.stripeSubscriptionId) redirect(`/dashboard/providers/${businessId}/billing?plan=${plan}`);
 
-  const priceId = plan === "pro" ? process.env.STRIPE_PRICE_PRO_MONTHLY : process.env.STRIPE_PRICE_ELITE_MONTHLY;
+  const priceId = plan === "pro" ? process.env.STRIPE_PRICE_PRO_USD_MONTHLY : process.env.STRIPE_PRICE_ELITE_USD_MONTHLY;
   if (!priceId) redirect(`/dashboard/providers/${businessId}/billing?error=price-not-configured`);
 
   const stripe = getStripe();
+  const price = await stripe.prices.retrieve(priceId);
+  if (!matchesUsdProviderPlanPrice(price, plan)) redirect(`/dashboard/providers/${businessId}/billing?error=invalid-usd-price`);
   const subscription = await stripe.subscriptions.retrieve(active.stripeSubscriptionId);
   const item = subscription.items.data[0];
   if (!item) redirect(`/dashboard/providers/${businessId}/billing?error=subscription-item-missing`);

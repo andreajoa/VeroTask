@@ -39,3 +39,15 @@ npm run build
 ```
 
 An HTTP 200 from the homepage is **not** enough to approve production. No credentials, card information, customer exports, or live tokens belong in this report.
+
+## Stripe Dashboard cross-check (2026-10-22)
+
+- Verified in the authenticated **VeroTask** live Stripe Dashboard in Chrome.
+- Production webhook destination is **Active** and points to `https://www.verotask.online/api/stripe/webhook`, listening to nine event types.
+- The webhook's overview displayed 0 deliveries and 0 failures for *this week* (a 0% error indicator is not evidence of recent successful deliveries); the delivery tab currently displayed no deliveries.
+- Stripe Transactions shows one successful live **USD $1.50** payment on 2026-09-21. This confirms Stripe collected it, not that today's production DB can record new payments.
+- Existing Stripe catalog products VeroTask Pro and Elite are **BRL 39/month and BRL 99/month**, while the Orlando marketplace publicly displays **USD $39/month and USD $99/month**. Vercel currently has no `STRIPE_PRICE_PRO_USD_MONTHLY` / `STRIPE_PRICE_ELITE_USD_MONTHLY` env keys.
+- The existing provider *plan-change* server action referenced legacy `STRIPE_PRICE_PRO_MONTHLY` / `STRIPE_PRICE_ELITE_MONTHLY`, risking BRL billing inconsistent with UI. This staging branch changes that path to **USD-specific env keys only** and requires Stripe Price verification (active, USD, monthly, correct amount). New-subscription Checkout similarly validates any configured USD price.
+- To enable live plan upgrades/downgrades, create verified USD recurring prices ($39/$99) in Stripe and securely configure both USD price IDs in Vercel. **Do not** modify existing subscriptions until their billing currency and proration are reviewed. The old BRL prices can remain for historical reconciliation.
+
+No live charges, refunds, transfers, or subscription changes were executed during this Stripe audit. Live purchase processing is **NO-GO** while the Neon production database is suspended.

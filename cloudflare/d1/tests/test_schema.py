@@ -7,6 +7,7 @@ from pathlib import Path
 SCHEMA = Path(__file__).resolve().parents[1] / '0001_schema.sql'
 GUARDS = Path(__file__).resolve().parents[1] / '0002_enum_guards.sql'
 BOOKING_GUARDS = Path(__file__).resolve().parents[1] / '0003_booking_interval_guards.sql'
+PAYMENT_GUARDS = Path(__file__).resolve().parents[1] / '0004_payment_guardrails.sql'
 
 class TestD1Schema(unittest.TestCase):
     def setUp(self):
@@ -15,6 +16,7 @@ class TestD1Schema(unittest.TestCase):
         self.db.executescript(SCHEMA.read_text())
         self.db.executescript(GUARDS.read_text())
         self.db.executescript(BOOKING_GUARDS.read_text())
+        self.db.executescript(PAYMENT_GUARDS.read_text())
 
     def tearDown(self):
         self.db.close()
@@ -140,6 +142,44 @@ class TestD1Schema(unittest.TestCase):
             self.assertEqual(sorted(outcomes), ['accepted','conflict'])
             with sqlite3.connect(filename) as verify:
                 self.assertEqual(verify.execute('SELECT COUNT(*) FROM bookings').fetchone()[0],1)
+
+
+    def test_payment_settlement_atomic_receipt_and_replay(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('payer@example.invalid')")
+        customer = self.db.execute('SELECT id FROM users').fetchone()[0]
+        self.db.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','payer','Orlando')")
+        business = self.db.execute('SELECT id FROM businesses').fetchone()[0]
+        args = (customer,business,'accepted','2026-11-15T16:00:00Z','2026-11-15T17:00:00Z','Orlando',10000,1500,10000,1500)
+        self.db.execute('INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)', args)
+        booking = self.db.execute('SELECT id FROM bookings').fetchone()[0]
+        self.db.execute("INSERT INTO booking_checkout_sessions (booking_id,stripe_session_id,expires_at) VALUES (?,?,?)",(booking,'cs_test_proof','2026-11-15T16:00:00Z'))
+        with self.assertRaisesRegex(sqlite3.IntegrityError, 'missing_payment_intent'):
+            self.db.execute("UPDATE bookings SET status='scheduled' WHERE id=?",(booking,))
+        self.assertEqual(self.db.execute('SELECT status FROM bookings').fetchone()[0],'accepted')
+        self.db.execute('UPDATE bookings SET status=?, stripe_payment_intent_id=?, stripe_charge_id=? WHERE id=?',('scheduled','pi_test_paid','ch_test_paid',booking))
+        self.assertEqual(self.db.execute('SELECT status FROM bookings').fetchone()[0],'scheduled')
+        self.assertEqual(self.db.execute('SELECT status FROM booking_checkout_sessions').fetchone()[0],'complete')
+        event = self.db.execute("SELECT event_type,json_extract(metadata,'$.paymentIntentId') FROM booking_events").fetchone()
+        self.assertEqual(event,('payment_succeeded','pi_test_paid'))
+        self.db.execute("UPDATE bookings SET status='scheduled' WHERE id=?",(booking,))
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM booking_events').fetchone()[0],1)
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'paid_booking_immutable'):
+            self.db.execute("UPDATE bookings SET stripe_payment_intent_id='pi_test_different' WHERE id=?",(booking,))
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'paid_booking_immutable'):
+            self.db.execute("UPDATE bookings SET marketplace_fee_cents=5000 WHERE id=?",(booking,))
+        self.assertEqual(self.db.execute('PRAGMA foreign_key_check').fetchall(), [])
+
+    def test_unpaid_cancelled_booking_cannot_be_scheduled(self):
+        self.db.execute("INSERT INTO users (email) VALUES ('cancelpayer@example.invalid')")
+        customer=self.db.execute('SELECT id FROM users').fetchone()[0]
+        self.db.execute("INSERT INTO businesses (name,slug,city) VALUES ('Pro','cancelpayer','Orlando')")
+        business=self.db.execute('SELECT id FROM businesses').fetchone()[0]
+        self.db.execute('INSERT INTO bookings (customer_id,business_id,status,scheduled_start,scheduled_end,service_address,subtotal_cents,marketplace_fee_cents,provider_amount_cents,commission_bps_snapshot) VALUES (?,?,?,?,?,?,?,?,?,?)',
+            (customer,business,'cancelled','2026-11-16T16:00:00Z','2026-11-16T17:00:00Z','Orlando',10000,1500,10000,1500))
+        with self.assertRaisesRegex(sqlite3.IntegrityError,'invalid_paid_transition'):
+            self.db.execute("UPDATE bookings SET status='scheduled', stripe_payment_intent_id='pi_test_fake'")
+        self.assertEqual(self.db.execute('SELECT status FROM bookings').fetchone()[0],'cancelled')
+        self.assertEqual(self.db.execute('SELECT COUNT(*) FROM booking_events').fetchone()[0],0)
 
 if __name__ == '__main__':
     unittest.main()
