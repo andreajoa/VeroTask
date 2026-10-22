@@ -1,18 +1,19 @@
+import { randomUUID } from "node:crypto";
 import { addMinutes } from "date-fns";
 import { and, eq } from "drizzle-orm";
 import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, getTransactionalDb } from "@/db";
-import { bookingSecrets } from "@/db/operations-schema";
-import { bookingEvents, bookings, businesses, services } from "@/db/schema";
+import { getDb } from "@/db";
+import { createBookingAtomic } from "@/db/transactional-create-booking";
+import { businesses, services } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { checkProviderAvailability } from "@/lib/availability";
 import { hashServicePin, parseServiceLocalDateTime, servicePinForBooking } from "@/lib/booking";
 import { POLICY_VERSION } from "@/lib/booking-workflow";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
-import { applyVolumeRate, VOLUME_RATE_COOKIE, VOLUME_RATE_EVENT, volumeRateFor } from "@/lib/volume-rate";
-import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
+import { applyVolumeRate, VOLUME_RATE_COOKIE, volumeRateFor } from "@/lib/volume-rate";
+import { kickTransactionalEmailOutbox } from "@/lib/transactional-email-outbox";
 
 const schema = z.object({
   businessId: z.string().uuid(),
@@ -71,60 +72,22 @@ export async function POST(request: NextRequest) {
   const amounts = applyVolumeRate(calculateBookingAmounts(service.basePriceCents, business.plan as PlanKey), volumeRate?.offBps ?? 0);
   const geocoded = await geocodeUsAddress(parsed.data.serviceAddress);
 
-  const booking = await getTransactionalDb().transaction(async (tx) => {
-    const [created] = await tx.insert(bookings).values({
-      customerId: user.id,
-      businessId: business.id,
-      serviceId: service.id,
-      status: "requested",
-      scheduledStart,
-      scheduledEnd,
-      serviceAddress: parsed.data.serviceAddress,
-      serviceLatitude: geocoded?.latitude,
-      serviceLongitude: geocoded?.longitude,
-      customerNotes: parsed.data.customerNotes,
-      subtotalCents: amounts.totalCents,
-      marketplaceFeeCents: amounts.marketplaceFeeCents,
-      providerAmountCents: amounts.providerAmountCents,
-      currency: "usd",
-      commissionBpsSnapshot: amounts.commissionBps
-    }).returning();
-
-    const pin = servicePinForBooking(created.id);
-    await tx.insert(bookingSecrets).values({ bookingId: created.id, servicePinHash: hashServicePin(pin) });
-    if (volumeRate) {
-      await tx.insert(bookingEvents).values({
-        bookingId: created.id,
-        actorUserId: user.id,
-        eventType: VOLUME_RATE_EVENT,
-        metadata: { offBps: volumeRate.offBps, until: volumeRate.until, rateId: volumeRate.id }
-      });
+  const bookingId = randomUUID();
+  const booking = await createBookingAtomic({
+    bookingId,customerId:user.id,businessId:business.id,serviceId:service.id,
+    scheduledStart:scheduledStart.toISOString(),scheduledEnd:scheduledEnd.toISOString(),
+    serviceAddress:parsed.data.serviceAddress,serviceLatitude:geocoded?.latitude??null,
+    serviceLongitude:geocoded?.longitude??null,customerNotes:parsed.data.customerNotes??null,
+    subtotalCents:amounts.totalCents,marketplaceFeeCents:amounts.marketplaceFeeCents,
+    providerAmountCents:amounts.providerAmountCents,commissionBps:amounts.commissionBps,
+    servicePinHash:hashServicePin(servicePinForBooking(bookingId)),
+    volumeRateEvent:volumeRate?{offBps:volumeRate.offBps,until:volumeRate.until,rateId:volumeRate.id}:null,
+    requestedEvent:{
+      serviceName:service.name,policyAccepted:true,policyVersion:POLICY_VERSION,
+      customerProtectionHours:24,serviceGeocoded:Boolean(geocoded),geocodingSource:geocoded?.source??null,
+      matchedAddress:geocoded?.matchedAddress??null,providerDecisionRequiredBeforePayment:true,
+      paymentModel:'booking_fee_only',providerPaidDirectlyByCustomer:true
     }
-    await tx.insert(bookingEvents).values({
-      bookingId: created.id,
-      actorUserId: user.id,
-      eventType: "booking_requested",
-      nextStatus: "requested",
-      metadata: {
-        serviceName: service.name,
-        policyAccepted: true,
-        policyVersion: POLICY_VERSION,
-        customerProtectionHours: 24,
-        serviceGeocoded: Boolean(geocoded),
-        geocodingSource: geocoded?.source ?? null,
-        matchedAddress: geocoded?.matchedAddress ?? null,
-        providerDecisionRequiredBeforePayment: true,
-        paymentModel: "booking_fee_only",
-        providerPaidDirectlyByCustomer: true
-      }
-    });
-    await queueBookingEmail(tx, {
-      kind: "provider_new_request",
-      bookingId: created.id,
-      idempotencyKey: `booking:${created.id}:provider-request`,
-      expiresAt: scheduledStart
-    });
-    return created;
   });
 
   after(() => kickTransactionalEmailOutbox(booking.id));

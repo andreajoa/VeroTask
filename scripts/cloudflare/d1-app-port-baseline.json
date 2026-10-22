@@ -1,13 +1,12 @@
 {
-  "description": "D1 app compile debt after atomic provider quote acceptance adapter: 17 diagnostics in 4 modules (2026-10-22)",
-  "maxCurrentErrors": 17,
+  "description": "After D1 fixed-price booking creation adapter: 15 TypeScript errors in three transaction modules (2026-10-22)",
+  "maxCurrentErrors": 15,
   "expectedErrorCodes": [
     "TS2305",
     "TS7006",
     "TS2339"
   ],
   "currentKnownBlockerFiles": [
-    "src/app/api/bookings/checkout/route.ts",
     "src/app/api/bookings/quote-request/route.ts",
     "src/app/api/stripe/webhook/route.ts",
     "src/lib/dispute-workflow.ts"
