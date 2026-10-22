@@ -75,3 +75,7 @@ The evidence API now has separate PostgreSQL/D1 atomic implementations. D1 adds 
 ## Arrival request D1 port (October 22, 2026)
 
 Provider arrival requests are now backend-abstracted into PostgreSQL and D1 atomic operations with geofence validation, three-state audit writes and email outbox rollback. 23 SQLite tests pass. D1 compilation remains blocked by **19 diagnostics in 5 transaction modules**. Production Worker write route remains disabled.
+
+## Provider quote D1 transition (October 22, 2026)
+
+Quote acceptance now has separate PostgreSQL and D1 conditional atomic adapters. New D1 tests verify exactly one quote event and queued email, required profile photo, and rollback on outbox constraint errors. The D1 Worker endpoint remains disabled for real clients. Remaining D1 compile debt: **17 diagnostics in 4 modules**.

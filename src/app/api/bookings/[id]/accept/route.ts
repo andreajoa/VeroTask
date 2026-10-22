@@ -1,8 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { after, NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getDb, getTransactionalDb } from "@/db";
-import { bookingEvents, bookings, providerProfilePhotos } from "@/db/schema";
+import { getDb } from "@/db";
+import { acceptQuoteAtomic } from "@/db/transactional-accept";
+import { bookingEvents, providerProfilePhotos } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { checkProviderAvailability } from "@/lib/availability";
 import { requireProviderBooking } from "@/lib/booking-access";
@@ -11,7 +12,7 @@ import { calculateBookingAmounts, type PlanKey } from "@/lib/plans";
 import { applyVolumeRate, VOLUME_RATE_EVENT } from "@/lib/volume-rate";
 import { getCustomerReputationSummary } from "@/lib/reputation";
 import { algorithmReputationScore } from "@/lib/reputation-score";
-import { kickTransactionalEmailOutbox, queueBookingEmail } from "@/lib/transactional-email-outbox";
+import { kickTransactionalEmailOutbox } from "@/lib/transactional-email-outbox";
 
 const schema = z.object({
   quoteCents: z.number().int().min(1000).max(5_000_000)
@@ -85,41 +86,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   let claimed;
   try {
-    claimed = await getTransactionalDb().transaction(async (tx) => {
-      const [updated] = await tx.update(bookings).set({
-        status: "accepted",
-        subtotalCents: amounts.totalCents,
-        marketplaceFeeCents: amounts.marketplaceFeeCents,
-        providerAmountCents: amounts.providerAmountCents,
-        commissionBpsSnapshot: amounts.commissionBps,
-        updatedAt: new Date()
-      }).where(and(eq(bookings.id, id), eq(bookings.status, "requested"))).returning();
-      if (!updated) return null;
-
-      await tx.insert(bookingEvents).values({
-        bookingId: id,
-        actorUserId: user.id,
-        eventType: "provider_quote_submitted",
-        previousStatus: "requested",
-        nextStatus: "accepted",
-        metadata: {
-          quoteCents: amounts.totalCents,
-          bookingFeeCents: amounts.marketplaceFeeCents,
-          volumeRateOffBps,
-          customerRating: reputation.rating,
-          customerRatingCount: reputation.ratingCount,
-          customerCompletedJobs: reputation.completedJobs,
-          customerReputationLabel: reputation.label,
-          customerAlgorithmReputationScore: reputationScore,
-          exactAddressStillWithheld: true
-        }
-      });
-      await queueBookingEmail(tx, {
-        kind: "customer_quote_ready",
-        bookingId: id,
-        idempotencyKey: `booking:${id}:customer-quote-ready`
-      });
-      return updated;
+    claimed = await acceptQuoteAtomic({
+      bookingId:id,actorUserId:user.id,
+      subtotalCents:amounts.totalCents,marketplaceFeeCents:amounts.marketplaceFeeCents,
+      providerAmountCents:amounts.providerAmountCents,commissionBps:amounts.commissionBps,
+      metadata:{
+        quoteCents:amounts.totalCents,bookingFeeCents:amounts.marketplaceFeeCents,
+        volumeRateOffBps,customerRating:reputation.rating,customerRatingCount:reputation.ratingCount,
+        customerCompletedJobs:reputation.completedJobs,customerReputationLabel:reputation.label,
+        customerAlgorithmReputationScore:reputationScore,exactAddressStillWithheld:true
+      }
     });
   } catch (error) {
     if (postgresErrorCode(error) === "23P01") {
