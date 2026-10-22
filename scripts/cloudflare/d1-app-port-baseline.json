@@ -1,13 +1,12 @@
 {
-  "description": "Remaining D1 compile debt is 13 TypeScript diagnostics in Stripe webhook and dispute-workflow modules; 2026-10-22",
-  "maxCurrentErrors": 13,
+  "description": "Finance staging migration: 10 TypeScript errors remain in dispute/refund workflow only, 2026-10-22.",
+  "maxCurrentErrors": 10,
   "expectedErrorCodes": [
     "TS2305",
     "TS7006",
     "TS2339"
   ],
   "currentKnownBlockerFiles": [
-    "src/app/api/stripe/webhook/route.ts",
     "src/lib/dispute-workflow.ts"
   ]
 }

@@ -87,3 +87,7 @@ The fixed-price `/api/bookings/checkout` route now has a PostgreSQL-preserving a
 ## D1 multi-quote request adaptation (October 22, 2026)
 
 The quote-request route now has a separate D1 atomic backend for booking, PIN, price/discount event, privacy-preserving request event, and two notification queues. **32 SQLite tests and PostgreSQL source typecheck pass.** D1 source compatibility has **13 remaining diagnostics in two modules**, specifically live Stripe webhooks and dispute/refund workflow. The historical Neon 402 quota barrier and production runtime integration remain. No live write flags have been enabled.
+
+## Stripe finance bridge verification (October 22, 2026)
+
+A staged server-signed D1 payment settlement adapter preserves the old PostgreSQL transactional implementation and adds durable, single-use payment receipts and refund-required tracking. 37 SQLite tests, including five new payment settlement/rollback cases, pass. **Live D1 finance flag D1_REAL_PAYMENT_SETTLEMENT_ENABLED is unset and must remain unset pending reconciliation.** The app still needs a full live Stripe delivery/replay audit; the connected Stripe account available to this session is named CoreUnit rather than VeroTask, so no billing account was modified. The sole remaining TypeScript compatibility module is `src/lib/dispute-workflow.ts` (10 diagnostics); this is NOT a full production rollout.
