@@ -59,3 +59,7 @@ An isolated complete application SQLite typecheck runs via `tsconfig.d1-app-port
 ## Provider signups D1 staging test (2026-10-22)
 
 The dedicated D1 provider-onboarding signed Worker operation was tested against synthetic records under concurrent requests; one business/category/user role transaction committed, the duplicate request returned the same business, unauthorized calls were rejected, and fake fixtures were removed. Real provider onboarding is explicitly DISABLED in D1 until authentication and all other database flows are ready. After factoring PostgreSQL and D1 provider creation into distinct implementations, the full D1 compatibility audit improved to **25 errors in 8 modules**.
+
+## D1 provider decline staging test (2026-10-22)
+
+The provider decline flow now has separate original PostgreSQL transaction and D1 Worker-backed atomic batch implementations. Two new SQLite tests prove idempotent cancellation and full rollback of booking status and event when notification enqueue fails. Worker real declining is intentionally disabled by default until data reconciliation. Remaining SQLite full-application compile debt: **23 diagnostics in 7 transaction modules**.

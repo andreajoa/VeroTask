@@ -1,6 +1,6 @@
 {
-  "description": "Full D1 application typecheck baseline after portable readiness, email outbox and provider onboarding adapters, 2026-10-22.",
-  "maxCurrentErrors": 25,
+  "description": "D1 source typecheck baseline after ready, email outbox, provider signup and provider decline adapters, 2026-10-22.",
+  "maxCurrentErrors": 23,
   "expectedErrorCodes": [
     "TS2305",
     "TS7006",
@@ -9,7 +9,6 @@
   "currentKnownBlockerFiles": [
     "src/app/api/bookings/[id]/accept/route.ts",
     "src/app/api/bookings/[id]/arrival-request/route.ts",
-    "src/app/api/bookings/[id]/decline/route.ts",
     "src/app/api/bookings/[id]/evidence/route.ts",
     "src/app/api/bookings/checkout/route.ts",
     "src/app/api/bookings/quote-request/route.ts",
