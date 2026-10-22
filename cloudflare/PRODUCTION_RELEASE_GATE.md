@@ -55,3 +55,7 @@ No live charges, refunds, transfers, or subscription changes were executed durin
 ## D1 full-application compatibility audit (2026-10-22)
 
 An isolated complete application SQLite typecheck runs via `tsconfig.d1-app-port.json`, without changing production TypeScript aliases. It initially found 29 errors in 11 modules, mostly PostgreSQL transactions. Portable readiness probes and safe single-operation email enqueue reduced this to **27 errors in 9 transactional modules**. Strict D1 application portability is **not passing**. See `cloudflare/D1_APP_PORTABILITY.md` and `scripts/cloudflare/check_d1_app_port.mjs --strict`. This debt is tracked on an experimental branch rather than on production.
+
+## Provider signups D1 staging test (2026-10-22)
+
+The dedicated D1 provider-onboarding signed Worker operation was tested against synthetic records under concurrent requests; one business/category/user role transaction committed, the duplicate request returned the same business, unauthorized calls were rejected, and fake fixtures were removed. Real provider onboarding is explicitly DISABLED in D1 until authentication and all other database flows are ready. After factoring PostgreSQL and D1 provider creation into distinct implementations, the full D1 compatibility audit improved to **25 errors in 8 modules**.

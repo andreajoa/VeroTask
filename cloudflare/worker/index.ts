@@ -3,12 +3,13 @@
  * invariants have been ported and independently verified on D1.
  */
 import { settleTestBooking } from './settlement';
+import { createSyntheticProvider, createProviderAtomic } from './provider-onboarding';
 
 type Scalar = string | number | boolean | null;
 interface ReadQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' }
 interface D1Statement { bind(...values: Scalar[]): D1Statement; raw<T>(): Promise<T[][]> }
 interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ results: unknown[] }>> }
-interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string }
+interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string }
 
 const corsFree = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 const json = (body: unknown, status: number) => Response.json(body, { status, headers: corsFree });
@@ -44,7 +45,7 @@ export default {
         return json({ ok: count === 43, service: 'verotask-d1-staging', tables: count, production: false }, count === 43 ? 200 : 503);
       } catch { return json({ ok: false, service: 'verotask-d1-staging', production: false }, 503); }
     }
-    if (!['/internal/sqlite-read', '/internal/test-settle-booking'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
+    if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > 32_768) return json({ error: 'invalid_payload' }, 413);
     const raw = await request.text();
@@ -52,6 +53,15 @@ export default {
     if (!env.DB_BRIDGE_SECRET || !(await authenticate(request, env.DB_BRIDGE_SECRET, raw))) return json({ error: 'unauthorized' }, 401);
     try {
       const payload: unknown = JSON.parse(raw);
+      if (url.pathname === '/internal/create-provider') {
+        if (env.D1_REAL_ONBOARDING_ENABLED !== 'true') return json({error:'migration_not_ready'},503);
+        const result = await createProviderAtomic(env.DB,payload);
+        return json(result.body,result.status);
+      }
+      if (url.pathname === '/internal/test-create-provider') {
+        const result = await createSyntheticProvider(env.DB, payload);
+        return json(result.body, result.status);
+      }
       if (url.pathname === '/internal/test-settle-booking') {
         try {
           const result = await settleTestBooking(env.DB, payload);
