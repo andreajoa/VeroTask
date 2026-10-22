@@ -1,7 +1,8 @@
 import { and, desc, eq, isNull, ne } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getDb, getTransactionalDb } from "@/db";
+import { getDb } from "@/db";
+import { recordVerifiedBookingPayment, recordUnexpectedBookingFeeRefunded } from "@/db/transactional-payment";
 import { bookingCheckoutSessions, providerCheckoutSessions } from "@/db/operations-schema";
 import { bookingEvents, bookings, businesses, disputes, providerSubscriptions, refunds } from "@/db/schema";
 import { sendBookingThankYou, sendProviderPlanThankYou } from "@/lib/crm-automation";
@@ -9,7 +10,6 @@ import { refundBookingPayment } from "@/lib/booking-workflow";
 import { finalizeDisputeResolutionForRefund } from "@/lib/dispute-workflow";
 import { PROVIDER_PLANS, type PlanKey } from "@/lib/plans";
 import { getStripe } from "@/lib/stripe";
-import { bookingPaymentDisposition, validateBookingPayment } from "@/lib/payment-policy";
 
 export const runtime = "nodejs";
 
@@ -49,39 +49,7 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
     : paymentIntentInput;
   const latestCharge = paymentIntent.latest_charge;
   const chargeId = typeof latestCharge === "string" ? latestCharge : latestCharge?.id;
-  const action = await getTransactionalDb().transaction(async (tx) => {
-    const [booking] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).for("update").limit(1);
-    if (!booking) return null;
-    const invalid = validateBookingPayment(booking, paymentIntent);
-    if (invalid) throw new Error(invalid);
-    const disposition = bookingPaymentDisposition(booking, paymentIntent.id);
-
-    if (disposition === "already_processed") {
-      const [pending] = await tx.select({ id: bookingEvents.id }).from(bookingEvents)
-        .where(and(eq(bookingEvents.bookingId, bookingId), eq(bookingEvents.eventType, "payment_requires_refund"))).limit(1);
-      const [completed] = await tx.select({ id: bookingEvents.id }).from(bookingEvents)
-        .where(and(eq(bookingEvents.bookingId, bookingId), eq(bookingEvents.eventType, "unexpected_booking_fee_refunded"))).limit(1);
-      return pending && !completed ? { refund: true, amount: booking.marketplaceFeeCents } : null;
-    }
-
-    const shouldSchedule = disposition === "schedule" || disposition === "recover_schedule";
-    await tx.update(bookings).set({
-      status: shouldSchedule ? "scheduled" : booking.status,
-      stripePaymentIntentId: paymentIntent.id,
-      stripeChargeId: chargeId ?? booking.stripeChargeId,
-      updatedAt: new Date()
-    }).where(eq(bookings.id, bookingId));
-    await tx.update(bookingCheckoutSessions).set({ status: "complete", updatedAt: new Date() })
-      .where(eq(bookingCheckoutSessions.bookingId, bookingId));
-    await tx.insert(bookingEvents).values({
-      bookingId,
-      eventType: shouldSchedule ? "payment_succeeded" : "payment_requires_refund",
-      previousStatus: booking.status,
-      nextStatus: shouldSchedule ? "scheduled" : booking.status,
-      metadata: { paymentIntentId: paymentIntent.id, chargeId: chargeId ?? null }
-    });
-    return { refund: !shouldSchedule, amount: booking.marketplaceFeeCents };
-  });
+  const action = await recordVerifiedBookingPayment(bookingId,paymentIntent,chargeId??null);
   if (!action) return;
   if (!action.refund) {
     await safely("booking-thank-you", () => sendBookingThankYou(bookingId));
@@ -97,21 +65,7 @@ async function markBookingPaid(bookingId: string, paymentIntentInput: string | S
   });
   if (refund.status !== "succeeded") throw new Error("booking_fee_refund_not_completed");
 
-  await getTransactionalDb().transaction(async (tx) => {
-    const [current] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).for("update").limit(1);
-    if (!current || current.stripePaymentIntentId !== paymentIntent.id) return;
-    const [recorded] = await tx.select({ id: bookingEvents.id }).from(bookingEvents)
-      .where(and(eq(bookingEvents.bookingId, bookingId), eq(bookingEvents.eventType, "unexpected_booking_fee_refunded"))).limit(1);
-    if (recorded) return;
-    await tx.update(bookings).set({ status: "refunded", updatedAt: new Date() }).where(eq(bookings.id, bookingId));
-    await tx.insert(bookingEvents).values({
-      bookingId,
-      eventType: "unexpected_booking_fee_refunded",
-      previousStatus: current.status,
-      nextStatus: "refunded",
-      metadata: { paymentIntentId: paymentIntent.id, amountCents: action.amount }
-    });
-  });
+  await recordUnexpectedBookingFeeRefunded(bookingId,paymentIntent.id,action.amount);
 }
 
 async function markCheckoutExpired(session: Stripe.Checkout.Session) {
