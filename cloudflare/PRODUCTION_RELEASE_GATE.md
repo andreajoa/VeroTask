@@ -79,3 +79,7 @@ Provider arrival requests are now backend-abstracted into PostgreSQL and D1 atom
 ## Provider quote D1 transition (October 22, 2026)
 
 Quote acceptance now has separate PostgreSQL and D1 conditional atomic adapters. New D1 tests verify exactly one quote event and queued email, required profile photo, and rollback on outbox constraint errors. The D1 Worker endpoint remains disabled for real clients. Remaining D1 compile debt: **17 diagnostics in 4 modules**.
+
+## Fixed-price booking route port (October 22, 2026)
+
+The fixed-price `/api/bookings/checkout` route now has a PostgreSQL-preserving adapter and a staged atomic D1 writer for new booking, PIN, audit and email. Three new SQLite tests pass; D1 full application compatibility still has **15 errors in 3 modules**. Real D1 new-booking operations remain DISABLED.

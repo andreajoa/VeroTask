@@ -26,6 +26,7 @@
     "src/db/transactional-decline.ts",
     "src/db/transactional-evidence.ts",
     "src/db/transactional-arrival.ts",
-    "src/db/transactional-accept.ts"
+    "src/db/transactional-accept.ts",
+    "src/db/transactional-create-booking.ts"
   ]
 }
