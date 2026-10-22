@@ -1,0 +1,18 @@
+{
+  "description": "D1 source typecheck baseline after ready, email outbox, provider signup and provider decline adapters, 2026-10-22.",
+  "maxCurrentErrors": 23,
+  "expectedErrorCodes": [
+    "TS2305",
+    "TS7006",
+    "TS2339"
+  ],
+  "currentKnownBlockerFiles": [
+    "src/app/api/bookings/[id]/accept/route.ts",
+    "src/app/api/bookings/[id]/arrival-request/route.ts",
+    "src/app/api/bookings/[id]/evidence/route.ts",
+    "src/app/api/bookings/checkout/route.ts",
+    "src/app/api/bookings/quote-request/route.ts",
+    "src/app/api/stripe/webhook/route.ts",
+    "src/lib/dispute-workflow.ts"
+  ]
+}
