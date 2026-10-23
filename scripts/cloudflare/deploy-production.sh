@@ -36,8 +36,11 @@ if [ ! -f "$secrets_file" ]; then
     echo "D1_BRIDGE_SECRET=$(openssl rand -hex 32)"
   } > "$secrets_file"
 fi
+# Export them: the Node helper below builds the Worker secret JSON from process.env.
+set -a
 # shellcheck disable=SC1090
 source "$secrets_file"
+set +a
 
 echo "== 1/6 D1 database"
 DB_ID=$($WR d1 list --json | node -e "const l=JSON.parse(require('fs').readFileSync(0,'utf8'));const d=l.find(x=>x.name==='$DB_NAME');process.stdout.write(d?d.uuid:'')")
@@ -79,7 +82,7 @@ node -e "
 const e=process.env;const o={STRIPE_SECRET_KEY:e.STRIPE_SECRET_KEY,STRIPE_WEBHOOK_SECRET:e.STRIPE_WEBHOOK_SECRET,RESEND_API_KEY:e.RESEND_API_KEY,
 AUTH_SECRET:e.AUTH_SECRET,ADMIN_SESSION_SECRET:e.ADMIN_SESSION_SECRET,ADMIN_PASSWORD_HASH:process.argv[1],AUDIT_ENCRYPTION_KEY:e.AUDIT_ENCRYPTION_KEY,
 AUDIT_HASH_SECRET:e.AUDIT_HASH_SECRET,UNSUBSCRIBE_SECRET:e.UNSUBSCRIBE_SECRET,CRON_SECRET:e.CRON_SECRET,UPLOAD_SIGNING_SECRET:e.UPLOAD_SIGNING_SECRET,
-D1_STAGING_BRIDGE_SECRET:e.D1_BRIDGE_SECRET};if(e.MAPS_API_KEY)o.MAPS_API_KEY=e.MAPS_API_KEY;
+D1_STAGING_BRIDGE_SECRET:e.D1_BRIDGE_SECRET};const missing=Object.keys(o).filter(k=>!o[k]);if(missing.length){console.error('missing secrets: '+missing.join(', '));process.exit(1)}if(e.MAPS_API_KEY)o.MAPS_API_KEY=e.MAPS_API_KEY;
 require('fs').writeFileSync(process.argv[2],JSON.stringify(o),{mode:0o600})" "$ADMIN_PASSWORD_HASH" "$tmp/app.json"
 $WR deploy --config .wrangler.production.rendered.json >/dev/null
 $WR secret bulk "$tmp/app.json" --config .wrangler.production.rendered.json >/dev/null
