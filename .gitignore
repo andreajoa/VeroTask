@@ -15,3 +15,6 @@ scrollcraft/builds/*/verification/
 .wrangler/
 __pycache__/
 *.pyc
+/dist/
+.vinext/
+.cloudflare/
