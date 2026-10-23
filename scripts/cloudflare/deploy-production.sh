@@ -69,6 +69,9 @@ echo "== 3/6 app build (vinext)"
 export NEXT_PUBLIC_APP_URL=https://www.verotask.online NEXT_PUBLIC_APP_NAME=VeroTask NEXT_PUBLIC_SUPPORT_EMAIL=verotask@proton.me
 export NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="$STRIPE_PUBLISHABLE_KEY"
 npm run -s build:vinext >/dev/null
+# Wrangler 4.15x refuses to deploy while .cloudflare/output exists (it expects `cf deploy`),
+# so deploy the same bundle from dist-worker/ instead.
+rm -rf dist-worker && cp -R .cloudflare/output/v0/workers/default dist-worker && rm -rf .cloudflare/output
 
 echo "== 4/6 app Worker (verotask)"
 ADMIN_PASSWORD_HASH=$(ADMIN_PANEL_PASSWORD="$ADMIN_PANEL_PASSWORD" node -e "const c=require('crypto');const s=c.randomBytes(16);process.stdout.write('scrypt\$'+s.toString('hex')+'\$'+c.scryptSync(process.env.ADMIN_PANEL_PASSWORD,s,64).toString('hex'))")

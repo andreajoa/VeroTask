@@ -22,3 +22,4 @@ __pycache__/
 .wrangler.local.json
 .wrangler.production.rendered.json
 cloudflare/.wrangler.production.rendered.toml
+dist-worker/

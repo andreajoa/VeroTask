@@ -1,11 +1,11 @@
 {
   "name": "verotask",
-  "main": ".cloudflare/output/v0/workers/default/bundle/index.js",
+  "main": "dist-worker/bundle/index.js",
   "compatibility_date": "2026-10-22",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "assets": {
-    "directory": ".cloudflare/output/v0/workers/default/assets",
+    "directory": "dist-worker/assets",
     "binding": "ASSETS",
     "html_handling": "none",
     "not_found_handling": "none",
