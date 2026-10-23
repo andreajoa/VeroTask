@@ -15,6 +15,7 @@ export default defineConfig({
       ASSETS: bindings.assets(),
       NEXT_PUBLIC_APP_URL: bindings.text("https://verotask-vinext-preview.andrealmeidashop.workers.dev"),
       NEXT_PUBLIC_SUPPORT_EMAIL: bindings.text("verotask@proton.me"),
+      R2: bindings.r2({ name: "verotask-booking-evidence" }),
       DB: bindings.d1({ name: "verotask-migration-staging", id: "e989dd70-1805-48b4-88f3-1214985802ab" }),
     },
   }),

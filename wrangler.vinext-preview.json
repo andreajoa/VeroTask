@@ -22,5 +22,11 @@
   "vars": {
     "NEXT_PUBLIC_APP_URL": "https://verotask-vinext-preview.andrealmeidashop.workers.dev",
     "NEXT_PUBLIC_SUPPORT_EMAIL": "verotask@proton.me"
-  }
+  },
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "verotask-booking-evidence"
+    }
+  ]
 }
