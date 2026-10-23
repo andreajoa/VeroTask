@@ -12,12 +12,13 @@ import { acceptQuoteD1 } from './accept-quote';
 import { createBookingD1 } from './create-booking';
 import { createQuoteRequestD1 } from './create-quote-request';
 import { recordVerifiedStripePaymentD1, recordRefundedPaymentD1 } from './payment-settlement';
+import { openDisputeD1 } from './open-dispute';
 
 type Scalar = string | number | boolean | null;
 interface ReadQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' }
 interface D1Statement { bind(...values: Scalar[]): D1Statement; raw<T>(): Promise<T[][]> }
 interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ results: unknown[]; meta?: { changes?: number } }>> }
-interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string; D1_REAL_EVIDENCE_ENABLED?: string; D1_REAL_ARRIVALS_ENABLED?: string; D1_REAL_QUOTES_ENABLED?: string; D1_REAL_BOOKING_CREATE_ENABLED?: string; D1_REAL_QUOTE_REQUEST_ENABLED?: string; D1_REAL_PAYMENT_SETTLEMENT_ENABLED?: string }
+interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string; D1_REAL_EVIDENCE_ENABLED?: string; D1_REAL_ARRIVALS_ENABLED?: string; D1_REAL_QUOTES_ENABLED?: string; D1_REAL_BOOKING_CREATE_ENABLED?: string; D1_REAL_QUOTE_REQUEST_ENABLED?: string; D1_REAL_PAYMENT_SETTLEMENT_ENABLED?: string; D1_REAL_DISPUTE_OPEN_ENABLED?: string }
 
 const corsFree = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 const json = (body: unknown, status: number) => Response.json(body, { status, headers: corsFree });
@@ -53,7 +54,7 @@ export default {
         return json({ ok: count === 43, service: 'verotask-d1-staging', tables: count, production: false }, count === 43 ? 200 : 503);
       } catch { return json({ ok: false, service: 'verotask-d1-staging', production: false }, 503); }
     }
-    if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking', '/internal/evidence', '/internal/arrival-request', '/internal/accept-quote', '/internal/create-booking', '/internal/create-quote-request', '/internal/payment-settle', '/internal/payment-refund-confirm', '/internal/auth/issue', '/internal/auth/consume', '/internal/auth/session', '/internal/auth/signout', '/internal/auth/revoke'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
+    if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking', '/internal/evidence', '/internal/arrival-request', '/internal/accept-quote', '/internal/create-booking', '/internal/create-quote-request', '/internal/payment-settle', '/internal/payment-refund-confirm', '/internal/open-dispute', '/internal/auth/issue', '/internal/auth/consume', '/internal/auth/session', '/internal/auth/signout', '/internal/auth/revoke'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > 32_768) return json({ error: 'invalid_payload' }, 413);
     const raw = await request.text();
@@ -61,6 +62,11 @@ export default {
     if (!env.DB_BRIDGE_SECRET || !(await authenticate(request, env.DB_BRIDGE_SECRET, raw))) return json({ error: 'unauthorized' }, 401);
     try {
       const payload: unknown = JSON.parse(raw);
+      if (url.pathname === '/internal/open-dispute') {
+        if (env.D1_REAL_DISPUTE_OPEN_ENABLED !== 'true') return json({error:'migration_not_ready'},503);
+        const result=await openDisputeD1(env.DB,payload);
+        return json(result.body,result.status);
+      }
       if (url.pathname === '/internal/payment-settle' || url.pathname === '/internal/payment-refund-confirm') {
         if (env.D1_REAL_PAYMENT_SETTLEMENT_ENABLED !== 'true') return json({error:'migration_not_ready'},503);
         const result=url.pathname==='/internal/payment-settle'
