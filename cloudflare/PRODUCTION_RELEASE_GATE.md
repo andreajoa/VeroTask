@@ -91,3 +91,7 @@ The quote-request route now has a separate D1 atomic backend for booking, PIN, p
 ## Stripe finance bridge verification (October 22, 2026)
 
 A staged server-signed D1 payment settlement adapter preserves the old PostgreSQL transactional implementation and adds durable, single-use payment receipts and refund-required tracking. 37 SQLite tests, including five new payment settlement/rollback cases, pass. **Live D1 finance flag D1_REAL_PAYMENT_SETTLEMENT_ENABLED is unset and must remain unset pending reconciliation.** The app still needs a full live Stripe delivery/replay audit; the connected Stripe account available to this session is named CoreUnit rather than VeroTask, so no billing account was modified. The sole remaining TypeScript compatibility module is `src/lib/dispute-workflow.ts` (10 diagnostics); this is NOT a full production rollout.
+
+## D1 dispute opening (October 22, 2026)
+
+Dispute opening is now staged using a signed, disabled-by-default D1 Worker endpoint and an atomic SQLite transaction for status, dispute and audit record. The original PostgreSQL transaction is preserved. 41 SQLite tests pass. Dispute resolution, refund creation and cancellation remain PostgreSQL-only; typecheck still reports 9 D1 compatibility diagnostics. Full production settlement is therefore BLOCKED.

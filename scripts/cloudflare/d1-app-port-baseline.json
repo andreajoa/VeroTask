@@ -1,6 +1,6 @@
 {
-  "description": "Finance staging migration: 10 TypeScript errors remain in dispute/refund workflow only, 2026-10-22.",
-  "maxCurrentErrors": 10,
+  "description": "D1 compile debt: 9 TypeScript diagnostics in dispute/refund workflow; staging dispute opening extracted, 2026-10-22.",
+  "maxCurrentErrors": 9,
   "expectedErrorCodes": [
     "TS2305",
     "TS7006",

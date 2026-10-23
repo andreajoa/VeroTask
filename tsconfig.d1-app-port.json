@@ -29,6 +29,7 @@
     "src/db/transactional-accept.ts",
     "src/db/transactional-create-booking.ts",
     "src/db/transactional-quote-request.ts",
-    "src/db/transactional-payment.ts"
+    "src/db/transactional-payment.ts",
+    "src/db/transactional-open-dispute.ts"
   ]
 }
