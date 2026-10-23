@@ -18,3 +18,7 @@ __pycache__/
 /dist/
 .vinext/
 .cloudflare/
+.dev.vars
+.wrangler.local.json
+.wrangler.production.rendered.json
+cloudflare/.wrangler.production.rendered.toml

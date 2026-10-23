@@ -1,5 +1,6 @@
-import { ilike, not, type SQL } from "drizzle-orm";
+import { type SQL } from "drizzle-orm";
 import { businesses } from "@/db/schema";
+import { notIlike } from "@/lib/sql-portable";
 
 export const PUBLICLY_HIDDEN_PROVIDER_STATUSES = ["suspended", "paused"] as const;
 
@@ -22,7 +23,7 @@ export function isQaFixtureName(name: string) {
 
 /** Drizzle predicate: keep QA fixtures out of any public listing or sitemap. */
 export function notQaFixture(): SQL {
-  return not(ilike(businesses.name, `${QA_FIXTURE_NAME_PREFIX}%`));
+  return notIlike(businesses.name, `${QA_FIXTURE_NAME_PREFIX}%`);
 }
 
 export function isProviderPubliclyVisible(provider: { active: boolean; status: string }) {

@@ -52,7 +52,7 @@ export async function createRetryableMagicLink(
   idempotencySeed: string,
   requestOrigin?: string | null
 ) {
-  if (process.env.AUTH_STORE === "d1") throw new Error("d1_outbox_auth_not_migrated");
+  // Same auth_tokens table on D1 and PostgreSQL; the D1 consume path (auth_token_consume_create_session) accepts these rows.
   const secret = process.env.AUTH_SECRET;
   if (!secret || secret.length < 24) throw new Error("AUTH_SECRET is not configured");
   const email = emailInput.trim().toLowerCase();

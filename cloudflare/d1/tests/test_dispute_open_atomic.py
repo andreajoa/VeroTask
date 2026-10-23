@@ -29,7 +29,7 @@ class OpenDisputeD1(unittest.TestCase):
        AND julianday('now')<=julianday(COALESCE(b.scheduled_end,b.scheduled_start),'+72 hours')
        AND (SELECT count(*) FROM disputes d WHERE d.booking_id=b.id AND d.resolved_at IS NULL)=0''',
        (disputeId,actor,'provider_no_show','Provider never showed up',1500,BOOKING,'scheduled',actor,actor)).rowcount
-   self.db.execute("UPDATE bookings SET status='disputed',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=? AND changes()=1",(BOOKING,'scheduled'))
+   self.db.execute("UPDATE bookings SET status='disputed',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status=? AND changes()=1",(BOOKING,'scheduled'))
    self.db.execute("INSERT INTO booking_events(booking_id,actor_user_id,event_type,previous_status,next_status,metadata) SELECT ?,?,'dispute_opened',?,'disputed',? WHERE changes()=1",(BOOKING,actor,'scheduled','{"disputeId":"'+disputeId+'"}'))
   return inserted
  def test_exactly_one_dispute_and_event(self):

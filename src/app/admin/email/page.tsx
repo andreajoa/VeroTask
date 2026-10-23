@@ -19,10 +19,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
   const [campaigns, [stats]] = await Promise.all([
     db.select().from(crmCampaigns).orderBy(desc(crmCampaigns.createdAt)).limit(50),
     db.select({
-      sends: sql<number>`count(distinct ${crmEmailSends.id})::int`,
-      delivered: sql<number>`count(distinct ${crmEmailSends.id}) filter (where ${crmEmailEvents.eventType} = 'email.delivered')::int`,
-      opened: sql<number>`count(distinct ${crmEmailSends.id}) filter (where ${crmEmailEvents.eventType} = 'email.opened')::int`,
-      clicked: sql<number>`count(distinct ${crmEmailSends.id}) filter (where ${crmEmailEvents.eventType} = 'email.clicked')::int`
+      sends: sql<number>`cast(count(distinct ${crmEmailSends.id}) as integer)`,
+      delivered: sql<number>`cast(count(distinct ${crmEmailSends.id}) filter (where ${crmEmailEvents.eventType} = 'email.delivered') as integer)`,
+      opened: sql<number>`cast(count(distinct ${crmEmailSends.id}) filter (where ${crmEmailEvents.eventType} = 'email.opened') as integer)`,
+      clicked: sql<number>`cast(count(distinct ${crmEmailSends.id}) filter (where ${crmEmailEvents.eventType} = 'email.clicked') as integer)`
     }).from(crmEmailSends).leftJoin(crmEmailEvents, sql`${crmEmailEvents.sendId} = ${crmEmailSends.id}`)
   ]);
   const marketing = EMAIL_TEMPLATES.filter((template) => template.kind === "marketing");

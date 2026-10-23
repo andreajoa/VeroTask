@@ -67,8 +67,8 @@ export const users = pgTable("users", {
   role: userRole("role").notNull().default("customer"),
   locale: varchar("locale", { length: 10 }).notNull().default("en-US"),
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("users_email_unique").on(t.email)]);
 
 export const categories = pgTable("categories", {
@@ -84,7 +84,7 @@ export const categories = pgTable("categories", {
   requiresAfterPhotos: boolean("requires_after_photos").notNull().default(false),
   requiresChecklist: boolean("requires_checklist").notNull().default(true),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("categories_slug_unique").on(t.slug)]);
 
 export const businesses = pgTable("businesses", {
@@ -120,8 +120,8 @@ export const businesses = pgTable("businesses", {
   noShowRate: numeric("no_show_rate", { precision: 5, scale: 2 }).notNull().default("0"),
   evidenceReliability: numeric("evidence_reliability", { precision: 5, scale: 2 }).notNull().default("0"),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("businesses_slug_unique").on(t.slug),
   uniqueIndex("businesses_owner_user_unique").on(t.ownerUserId).where(sql`${t.ownerUserId} is not null`),
@@ -140,7 +140,7 @@ export const providerProfilePhotos = pgTable("provider_profile_photos", {
   imageBase64: text("image_base64").notNull(),
   attestedRecent: boolean("attested_recent").notNull().default(false),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   deactivatedAt: timestamp("deactivated_at", { withTimezone: true })
 }, (t) => [
   index("provider_profile_photos_business_idx").on(t.businessId, t.active),
@@ -164,7 +164,7 @@ export const services = pgTable("services", {
   basePriceCents: integer("base_price_cents"),
   durationMinutes: integer("duration_minutes"),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("services_business_slug_unique").on(t.businessId, t.slug),
   index("services_category_idx").on(t.categoryId)
@@ -181,8 +181,8 @@ export const providerSubscriptions = pgTable("provider_subscriptions", {
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("provider_subscription_stripe_unique").on(t.stripeSubscriptionId)]);
 
 export const bookings = pgTable("bookings", {
@@ -209,8 +209,8 @@ export const bookings = pgTable("bookings", {
   customerConfirmedAt: timestamp("customer_confirmed_at", { withTimezone: true }),
   autoCompletedAt: timestamp("auto_completed_at", { withTimezone: true }),
   payoutEligibleAt: timestamp("payout_eligible_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   index("bookings_customer_idx").on(t.customerId, t.createdAt),
   index("bookings_business_idx").on(t.businessId, t.scheduledStart),
@@ -229,8 +229,8 @@ export const bookingEvidence = pgTable("booking_evidence", {
   longitude: doublePrecision("longitude"),
   distanceFromServiceMeters: integer("distance_from_service_meters"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  capturedAt: timestamp("captured_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  capturedAt: timestamp("captured_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [index("booking_evidence_booking_idx").on(t.bookingId, t.type)]);
 
 export const bookingEvents = pgTable("booking_events", {
@@ -241,7 +241,7 @@ export const bookingEvents = pgTable("booking_events", {
   previousStatus: varchar("previous_status", { length: 50 }),
   nextStatus: varchar("next_status", { length: 50 }),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [index("booking_events_booking_idx").on(t.bookingId, t.createdAt)]);
 
 export const disputes = pgTable("disputes", {
@@ -255,9 +255,9 @@ export const disputes = pgTable("disputes", {
   resolutionRefundCents: integer("resolution_refund_cents"),
   resolutionProviderCents: integer("resolution_provider_cents"),
   resolutionNote: text("resolution_note"),
-  openedAt: timestamp("opened_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  openedAt: timestamp("opened_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   index("disputes_booking_idx").on(t.bookingId),
   index("disputes_status_idx").on(t.status),
@@ -272,7 +272,7 @@ export const refunds = pgTable("refunds", {
   amountCents: integer("amount_cents").notNull(),
   reason: text("reason").notNull(),
   stripeRefundId: varchar("stripe_refund_id", { length: 255 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   processedAt: timestamp("processed_at", { withTimezone: true })
 }, (t) => [index("refunds_booking_idx").on(t.bookingId)]);
 
@@ -286,7 +286,7 @@ export const providerTransfers = pgTable("provider_transfers", {
   eligibleAt: timestamp("eligible_at", { withTimezone: true }),
   transferredAt: timestamp("transferred_at", { withTimezone: true }),
   reversedAt: timestamp("reversed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("provider_transfer_booking_unique").on(t.bookingId), index("provider_transfer_status_idx").on(t.status)]);
 
 export const reviews = pgTable("reviews", {
@@ -297,7 +297,7 @@ export const reviews = pgTable("reviews", {
   rating: integer("rating").notNull(),
   comment: text("comment"),
   published: boolean("published").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("reviews_booking_unique").on(t.bookingId), index("reviews_business_idx").on(t.businessId, t.createdAt)]);
 
 export const businessClaims = pgTable("business_claims", {
@@ -307,14 +307,14 @@ export const businessClaims = pgTable("business_claims", {
   status: claimStatus("status").notNull().default("pending"),
   verificationMethod: varchar("verification_method", { length: 80 }),
   verificationMetadata: jsonb("verification_metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true })
 }, (t) => [index("business_claims_business_idx").on(t.businessId, t.status)]);
 
 export const conversations = pgTable("conversations", {
   id: uuid("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("conversation_booking_unique").on(t.bookingId)]);
 
 export const messages = pgTable("messages", {
@@ -322,5 +322,5 @@ export const messages = pgTable("messages", {
   conversationId: uuid("conversation_id").notNull().references(() => conversations.id, { onDelete: "cascade" }),
   senderUserId: uuid("sender_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   body: text("body").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [index("messages_conversation_idx").on(t.conversationId, t.createdAt)]);

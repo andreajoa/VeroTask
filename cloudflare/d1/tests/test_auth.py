@@ -24,7 +24,7 @@ class MagicLinkD1(unittest.TestCase):
             (SELECT count(*) FROM auth_tokens WHERE email=? AND julianday(created_at)>=julianday('now','-15 minutes'))<5 RETURNING id''',
             (self.email,hashvalue or self.token,'/dashboard',iso(),self.email)).fetchall()
     def consume(self,hashvalue=None,session=None):
-        return self.db.execute('''UPDATE auth_tokens SET used_at=CURRENT_TIMESTAMP,
+        return self.db.execute('''UPDATE auth_tokens SET used_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),
             consumed_session_hash=?,consumed_session_expires_at=? WHERE
             token_hash=? AND used_at IS NULL AND julianday(expires_at)>julianday('now') RETURNING email,redirect_path''',
             (session or self.session,iso(minutes=60),hashvalue or self.token)).fetchall()
@@ -39,7 +39,7 @@ class MagicLinkD1(unittest.TestCase):
     def test_atomic_rollback_on_session_constraint_failure(self):
         self.issue()
         with self.assertRaisesRegex(sqlite3.IntegrityError,'missing_session_hash'):
-            self.db.execute('UPDATE auth_tokens SET used_at=CURRENT_TIMESTAMP WHERE token_hash=?',(self.token,))
+            self.db.execute("UPDATE auth_tokens SET used_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE token_hash=?",(self.token,))
         self.assertIsNone(self.db.execute('SELECT used_at FROM auth_tokens').fetchone()[0])
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM sessions').fetchone()[0],0)
         self.assertEqual(self.db.execute('SELECT COUNT(*) FROM users').fetchone()[0],0)

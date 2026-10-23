@@ -10,7 +10,7 @@ export const authTokens = pgTable("auth_tokens", {
   redirectPath: varchar("redirect_path", { length: 500 }).notNull().default("/dashboard"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("auth_tokens_hash_unique").on(t.tokenHash),
   index("auth_tokens_email_idx").on(t.email, t.createdAt)
@@ -21,7 +21,7 @@ export const sessions = pgTable("sessions", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   tokenHash: varchar("token_hash", { length: 64 }).notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("sessions_hash_unique").on(t.tokenHash),
   index("sessions_user_idx").on(t.userId, t.expiresAt)

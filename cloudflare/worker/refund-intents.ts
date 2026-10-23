@@ -71,7 +71,7 @@ export async function recordStripeRefundD1(db:DB,input:unknown){
  if(before[0][0]==='succeeded')return before[0][1]===p.stripeRefundId?ok('already_recorded'):fail(409,'refund_state_conflict');
  const statements=[
    db.prepare(`UPDATE refunds SET stripe_refund_id=?,status=?,
-      processed_at=CASE WHEN ?='succeeded' THEN CURRENT_TIMESTAMP ELSE processed_at END
+      processed_at=CASE WHEN ?='succeeded' THEN strftime('%Y-%m-%dT%H:%M:%fZ','now') ELSE processed_at END
       WHERE id=? AND booking_id=? AND amount_cents=?
       AND status IN ('requested','approved','processing') AND
       (stripe_refund_id IS NULL OR stripe_refund_id=?)`)
@@ -151,11 +151,11 @@ export async function resolveDisputeD1(db:DB,input:unknown){
  const bookedStatus=Number(fee)>0&&Number(p.refundCents)===Number(fee)?'refunded':'customer_confirmed';
  const results=[
    db.prepare(`UPDATE disputes SET status=?,resolution_refund_cents=?,resolution_provider_cents=0,
-     resolution_note=?,resolved_at=CURRENT_TIMESTAMP
+     resolution_note=?,resolved_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
      WHERE id=? AND resolved_at IS NULL AND status IN ('open','awaiting_customer','awaiting_provider','under_review')
      AND EXISTS(SELECT 1 FROM bookings WHERE id=disputes.booking_id AND status='disputed')
      RETURNING id`).bind(status,p.refundCents as number,p.note as string,p.disputeId as string),
-   db.prepare(`UPDATE bookings SET status=?,payout_eligible_at=NULL,updated_at=CURRENT_TIMESTAMP
+   db.prepare(`UPDATE bookings SET status=?,payout_eligible_at=NULL,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
      WHERE id=? AND status='disputed' AND changes()=1`)
      .bind(bookedStatus,String(bookingId)),
    db.prepare(`INSERT INTO booking_events(booking_id,actor_user_id,event_type,previous_status,next_status,metadata)
@@ -264,7 +264,7 @@ export async function cancelBookingD1(db:DB,input:unknown){
  const previous=String(before[0][0]);
  const status=amount>0&&amount===Number(before[0][2])&&refundStatus==='succeeded'?'refunded':'cancelled';
  const result=[
-   db.prepare(`UPDATE bookings SET status=?,payout_eligible_at=NULL,updated_at=CURRENT_TIMESTAMP
+   db.prepare(`UPDATE bookings SET status=?,payout_eligible_at=NULL,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
      WHERE id=? AND status=? AND status IN ('requested','accepted','payment_authorized','scheduled')
      AND NOT EXISTS(SELECT 1 FROM booking_checkout_sessions WHERE booking_id=bookings.id AND status='open')`)
      .bind(status,p.bookingId as string,previous),
@@ -290,7 +290,7 @@ export async function markExpiredCheckoutD1(db:DB,input:unknown){
  if(typeof p.bookingId!=='string'||!uuid.test(p.bookingId)||
    typeof p.stripeSessionId!=='string'||!/^cs_(?:test_|live_)[A-Za-z0-9_]{8,220}$/.test(p.stripeSessionId)||
    p.verifiedStripeStatus!=='expired')return fail(400,'unverified_checkout_expiry');
- const changed=await db.prepare(`UPDATE booking_checkout_sessions SET status='expired',updated_at=CURRENT_TIMESTAMP
+ const changed=await db.prepare(`UPDATE booking_checkout_sessions SET status='expired',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
    WHERE booking_id=? AND stripe_session_id=? AND status='open' RETURNING id`)
    .bind(p.bookingId as string,p.stripeSessionId as string).raw();
  if(changed.length)return ok('checkout_expired');

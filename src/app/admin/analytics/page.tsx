@@ -1,5 +1,6 @@
 import { AnalyticsBreakdown } from "@/components/analytics-breakdown";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { ilike } from "@/lib/sql-portable";
 import { Activity, Filter, Globe2, Search, Timer, UserRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
@@ -43,10 +44,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
     .limit(200);
 
   const [totals] = await db.select({
-    sessions: sql<number>`count(*)::int`,
-    countries: sql<number>`count(distinct ${visitorSessions.countryCode})::int`,
-    avgSeconds: sql<number>`coalesce(avg(${visitorSessions.activeSeconds}), 0)::int`,
-    identified: sql<number>`count(*) filter (where ${visitorSessions.userId} is not null)::int`
+    sessions: sql<number>`cast(count(*) as integer)`,
+    countries: sql<number>`cast(count(distinct ${visitorSessions.countryCode}) as integer)`,
+    avgSeconds: sql<number>`cast(coalesce(avg(${visitorSessions.activeSeconds}), 0) as integer)`,
+    identified: sql<number>`cast(count(*) filter (where ${visitorSessions.userId} is not null) as integer)`
   }).from(visitorSessions);
 
   return (

@@ -25,27 +25,27 @@ export default async function Page() {
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
   const [[visits24], [allVisits], [activeNow], [avgSession], [accountStats], [contacts], [marketable], [activeAbandonments], [bookingStats], [openDisputes], [activeProviders], [emailStats], recentSessions, recentBookings, visitSeries, bookingSeries, topClicks] = await Promise.all([
-    db.select({ value: sql<number>`count(*)::int` }).from(visitorSessions).where(gte(visitorSessions.startedAt, dayAgo)),
-    db.select({ value: sql<number>`count(*)::int` }).from(visitorSessions),
-    db.select({ value: sql<number>`count(*)::int` }).from(visitorSessions).where(gte(visitorSessions.lastSeenAt, fiveMinutesAgo)),
-    db.select({ value: sql<number>`coalesce(avg(${visitorSessions.activeSeconds}), 0)::int` }).from(visitorSessions).where(gte(visitorSessions.startedAt, thirtyDaysAgo)),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(visitorSessions).where(gte(visitorSessions.startedAt, dayAgo)),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(visitorSessions),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(visitorSessions).where(gte(visitorSessions.lastSeenAt, fiveMinutesAgo)),
+    db.select({ value: sql<number>`cast(coalesce(avg(${visitorSessions.activeSeconds}), 0) as integer)` }).from(visitorSessions).where(gte(visitorSessions.startedAt, thirtyDaysAgo)),
     db.select({
-      total: sql<number>`count(*)::int`,
-      customers: sql<number>`count(*) filter (where not exists (select 1 from businesses b where b.owner_user_id = ${users.id}))::int`,
-      pros: sql<number>`count(*) filter (where exists (select 1 from businesses b where b.owner_user_id = ${users.id}))::int`
+      total: sql<number>`cast(count(*) as integer)`,
+      customers: sql<number>`cast(count(*) filter (where not exists (select 1 from businesses b where b.owner_user_id = ${users.id})) as integer)`,
+      pros: sql<number>`cast(count(*) filter (where exists (select 1 from businesses b where b.owner_user_id = ${users.id})) as integer)`
     }).from(users),
-    db.select({ value: sql<number>`count(*)::int` }).from(crmContacts),
-    db.select({ value: sql<number>`count(*)::int` }).from(crmContacts).where(and(sql`${crmContacts.marketingConsent} = true`, sql`${crmContacts.unsubscribedAt} is null`)),
-    db.select({ value: sql<number>`count(*)::int` }).from(crmAbandonments).where(sql`${crmAbandonments.status} = 'active'`),
-    db.select({ count: sql<number>`count(*)::int`, serviceValue: sql<number>`coalesce(sum(${bookings.subtotalCents}) filter (where ${bookings.stripePaymentIntentId} is not null and ${bookings.status} not in ('cancelled','refunded')), 0)::int`, grossFees: sql<number>`coalesce(sum(${bookings.marketplaceFeeCents}) filter (where ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded'), 0)::int` }).from(bookings).where(gte(bookings.createdAt, thirtyDaysAgo)),
-    db.select({ value: sql<number>`count(*)::int` }).from(disputes).where(inArray(disputes.status, ["open", "awaiting_customer", "awaiting_provider", "under_review"])),
-    db.select({ value: sql<number>`count(*)::int` }).from(businesses).where(sql`${businesses.status} = 'active'`),
-    db.select({ delivered: sql<number>`count(distinct ${crmEmailEvents.sendId}) filter (where ${crmEmailEvents.eventType} = 'email.delivered')::int`, opened: sql<number>`count(distinct ${crmEmailEvents.sendId}) filter (where ${crmEmailEvents.eventType} = 'email.opened')::int`, clicked: sql<number>`count(distinct ${crmEmailEvents.sendId}) filter (where ${crmEmailEvents.eventType} = 'email.clicked')::int` }).from(crmEmailEvents).where(gte(crmEmailEvents.occurredAt, thirtyDaysAgo)),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(crmContacts),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(crmContacts).where(and(sql`${crmContacts.marketingConsent} = true`, sql`${crmContacts.unsubscribedAt} is null`)),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(crmAbandonments).where(sql`${crmAbandonments.status} = 'active'`),
+    db.select({ count: sql<number>`cast(count(*) as integer)`, serviceValue: sql<number>`cast(coalesce(sum(${bookings.subtotalCents}) filter (where ${bookings.stripePaymentIntentId} is not null and ${bookings.status} not in ('cancelled','refunded')), 0) as integer)`, grossFees: sql<number>`cast(coalesce(sum(${bookings.marketplaceFeeCents}) filter (where ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded'), 0) as integer)` }).from(bookings).where(gte(bookings.createdAt, thirtyDaysAgo)),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(disputes).where(inArray(disputes.status, ["open", "awaiting_customer", "awaiting_provider", "under_review"])),
+    db.select({ value: sql<number>`cast(count(*) as integer)` }).from(businesses).where(sql`${businesses.status} = 'active'`),
+    db.select({ delivered: sql<number>`cast(count(distinct ${crmEmailEvents.sendId}) filter (where ${crmEmailEvents.eventType} = 'email.delivered') as integer)`, opened: sql<number>`cast(count(distinct ${crmEmailEvents.sendId}) filter (where ${crmEmailEvents.eventType} = 'email.opened') as integer)`, clicked: sql<number>`cast(count(distinct ${crmEmailEvents.sendId}) filter (where ${crmEmailEvents.eventType} = 'email.clicked') as integer)` }).from(crmEmailEvents).where(gte(crmEmailEvents.occurredAt, thirtyDaysAgo)),
     db.select().from(visitorSessions).orderBy(desc(visitorSessions.lastSeenAt)).limit(8),
     db.select({ booking: bookings, businessName: businesses.name }).from(bookings).innerJoin(businesses, sql`${businesses.id} = ${bookings.businessId}`).orderBy(desc(bookings.createdAt)).limit(8),
-    db.select({ day: sql<string>`to_char(date_trunc('day', ${visitorSessions.startedAt}), 'YYYY-MM-DD')`, value: sql<number>`count(*)::int` }).from(visitorSessions).where(gte(visitorSessions.startedAt, fourteenDaysAgo)).groupBy(sql`date_trunc('day', ${visitorSessions.startedAt})`).orderBy(sql`date_trunc('day', ${visitorSessions.startedAt})`),
-    db.select({ day: sql<string>`to_char(date_trunc('day', ${bookings.createdAt}), 'YYYY-MM-DD')`, value: sql<number>`count(*)::int` }).from(bookings).where(gte(bookings.createdAt, fourteenDaysAgo)).groupBy(sql`date_trunc('day', ${bookings.createdAt})`).orderBy(sql`date_trunc('day', ${bookings.createdAt})`),
-    db.select({ label: analyticsEvents.elementLabel, value: sql<number>`count(*)::int` }).from(analyticsEvents).where(and(gte(analyticsEvents.occurredAt, thirtyDaysAgo), sql`${analyticsEvents.eventType} = 'click'`)).groupBy(analyticsEvents.elementLabel).orderBy(desc(sql`count(*)`)).limit(8)
+    db.select({ day: sql<string>`substr(cast(${visitorSessions.startedAt} as text), 1, 10)`, value: sql<number>`cast(count(*) as integer)` }).from(visitorSessions).where(gte(visitorSessions.startedAt, fourteenDaysAgo)).groupBy(sql`substr(cast(${visitorSessions.startedAt} as text), 1, 10)`).orderBy(sql`substr(cast(${visitorSessions.startedAt} as text), 1, 10)`),
+    db.select({ day: sql<string>`substr(cast(${bookings.createdAt} as text), 1, 10)`, value: sql<number>`cast(count(*) as integer)` }).from(bookings).where(gte(bookings.createdAt, fourteenDaysAgo)).groupBy(sql`substr(cast(${bookings.createdAt} as text), 1, 10)`).orderBy(sql`substr(cast(${bookings.createdAt} as text), 1, 10)`),
+    db.select({ label: analyticsEvents.elementLabel, value: sql<number>`cast(count(*) as integer)` }).from(analyticsEvents).where(and(gte(analyticsEvents.occurredAt, thirtyDaysAgo), sql`${analyticsEvents.eventType} = 'click'`)).groupBy(analyticsEvents.elementLabel).orderBy(desc(sql`count(*)`)).limit(8)
   ]);
 
   const openRate = (emailStats?.delivered ?? 0) > 0 ? ((emailStats?.opened ?? 0) / (emailStats?.delivered ?? 1)) * 100 : 0;

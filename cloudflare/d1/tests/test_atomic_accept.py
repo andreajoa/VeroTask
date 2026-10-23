@@ -26,7 +26,7 @@ class QuoteAcceptance(unittest.TestCase):
   self.db.commit()
  def accept(self):
   with self.db:
-   update=self.db.execute("""UPDATE bookings SET status='accepted',subtotal_cents=?,marketplace_fee_cents=?,provider_amount_cents=?,commission_bps_snapshot=?,updated_at=CURRENT_TIMESTAMP
+   update=self.db.execute("""UPDATE bookings SET status='accepted',subtotal_cents=?,marketplace_fee_cents=?,provider_amount_cents=?,commission_bps_snapshot=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id=? AND status='requested' AND julianday(scheduled_start)>julianday('now')
     AND business_id IN (SELECT id FROM businesses WHERE owner_user_id=?)
     AND EXISTS(SELECT 1 FROM provider_profile_photos WHERE business_id=bookings.business_id AND active=1)""",(10000,1500,8500,1500,BOOKING,USER)).rowcount

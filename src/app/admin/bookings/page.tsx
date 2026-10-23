@@ -1,4 +1,5 @@
 import { and, desc, eq, or, sql } from "drizzle-orm";
+import { ilike } from "@/lib/sql-portable";
 import { AlertTriangle, Banknote, CalendarClock, CreditCard, FileSearch, MessageSquareText, Search, ShieldCheck, UserRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
@@ -24,10 +25,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const statuses = ["requested", "accepted", "payment_authorized", "scheduled", "in_progress", "provider_completed", "customer_confirmed", "auto_completed", "disputed", "cancelled", "refunded", "paid_out"] as const;
   const conditions = [];
   if (q) conditions.push(or(
-    sql`${bookings.id}::text ilike ${`%${q}%`}`,
-    sql`${users.email} ilike ${`%${q}%`}`,
-    sql`${businesses.name} ilike ${`%${q}%`}`,
-    sql`${services.name} ilike ${`%${q}%`}`
+    ilike(sql`cast(${bookings.id} as text)`, `%${q}%`),
+    ilike(users.email, `%${q}%`),
+    ilike(businesses.name, `%${q}%`),
+    ilike(services.name, `%${q}%`)
   ));
   if (statuses.includes(query.status as typeof statuses[number])) conditions.push(eq(bookings.status, query.status as typeof statuses[number]));
 
@@ -78,10 +79,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   }
 
   const [stats] = await db.select({
-    total: sql<number>`count(*)::int`,
-    active: sql<number>`count(*) filter (where ${bookings.status} in ('scheduled','in_progress','provider_completed'))::int`,
-    disputed: sql<number>`count(*) filter (where ${bookings.status} = 'disputed')::int`,
-    serviceValue: sql<number>`coalesce(sum(${bookings.subtotalCents}), 0)::int`
+    total: sql<number>`cast(count(*) as integer)`,
+    active: sql<number>`cast(count(*) filter (where ${bookings.status} in ('scheduled','in_progress','provider_completed')) as integer)`,
+    disputed: sql<number>`cast(count(*) filter (where ${bookings.status} = 'disputed') as integer)`,
+    serviceValue: sql<number>`cast(coalesce(sum(${bookings.subtotalCents}), 0) as integer)`
   }).from(bookings);
 
   return (

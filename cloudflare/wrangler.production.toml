@@ -1,0 +1,32 @@
+# VeroTask production D1 operations Worker: signed server-to-server atomic
+# booking, payment, refund and dispute batches, plus the daily cron trigger.
+# DATABASE_ID is filled in by scripts/cloudflare/deploy-production.sh.
+name = "verotask-d1"
+main = "worker/index.ts"
+compatibility_date = "2026-10-22"
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "verotask-production"
+database_id = "__VEROTASK_PRODUCTION_D1_ID__"
+
+[triggers]
+crons = ["17 6 * * *"]
+
+[vars]
+SERVICE_NAME = "verotask-d1"
+APP_URL = "https://www.verotask.online"
+D1_AUTH_STAGING_ENABLED = "false"
+D1_AUTH_REAL_ENABLED = "true"
+D1_REAL_ONBOARDING_ENABLED = "true"
+D1_REAL_DECLINES_ENABLED = "true"
+D1_REAL_EVIDENCE_ENABLED = "true"
+D1_REAL_ARRIVALS_ENABLED = "true"
+D1_REAL_QUOTES_ENABLED = "true"
+D1_REAL_BOOKING_CREATE_ENABLED = "true"
+D1_REAL_QUOTE_REQUEST_ENABLED = "true"
+D1_REAL_PAYMENT_SETTLEMENT_ENABLED = "true"
+D1_REAL_DISPUTE_OPEN_ENABLED = "true"
+D1_REAL_FINANCIAL_WORKFLOWS_ENABLED = "true"
+# Secrets (wrangler secret put): DB_BRIDGE_SECRET, CRON_SECRET

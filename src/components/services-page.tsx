@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { and, eq, ilike, inArray, or, notInArray } from "drizzle-orm";
+import { and, eq, inArray, or, notInArray } from "drizzle-orm";
+import { ilike } from "@/lib/sql-portable";
 import { ArrowRight, BadgeCheck, BriefcaseBusiness, MapPin, Search, ShieldCheck } from "lucide-react";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";

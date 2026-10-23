@@ -11,7 +11,7 @@ export const providerAvailability = pgTable("provider_availability", {
   endTime: time("end_time").notNull(),
   timezone: varchar("timezone", { length: 80 }).notNull().default("America/New_York"),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [index("provider_availability_business_day_idx").on(t.businessId, t.dayOfWeek)]);
 
 export const bookingSecrets = pgTable("booking_secrets", {
@@ -19,7 +19,7 @@ export const bookingSecrets = pgTable("booking_secrets", {
   bookingId: uuid("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
   servicePinHash: varchar("service_pin_hash", { length: 64 }).notNull(),
   pinFailures: integer("pin_failures").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("booking_secrets_booking_unique").on(t.bookingId)]);
 
 export const bookingCheckoutSessions = pgTable("booking_checkout_sessions", {
@@ -28,8 +28,8 @@ export const bookingCheckoutSessions = pgTable("booking_checkout_sessions", {
   stripeSessionId: varchar("stripe_session_id", { length: 255 }).notNull(),
   status: varchar("status", { length: 32 }).notNull().default("open"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("booking_checkout_sessions_booking_unique").on(t.bookingId),
   uniqueIndex("booking_checkout_sessions_stripe_unique").on(t.stripeSessionId),
@@ -43,8 +43,8 @@ export const providerCheckoutSessions = pgTable("provider_checkout_sessions", {
   plan: varchar("plan", { length: 16 }).notNull(),
   status: varchar("status", { length: 32 }).notNull().default("open"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("provider_checkout_business_unique").on(t.businessId), uniqueIndex("provider_checkout_stripe_unique").on(t.stripeSessionId)]);
 
 export const transactionalEmailOutbox = pgTable("transactional_email_outbox", {
@@ -57,13 +57,13 @@ export const transactionalEmailOutbox = pgTable("transactional_email_outbox", {
   status: varchar("status", { length: 32 }).notNull().default("queued"),
   attemptCount: integer("attempt_count").notNull().default(0),
   maxAttempts: integer("max_attempts").notNull().default(8),
-  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   providerEmailId: varchar("provider_email_id", { length: 255 }),
   lastError: varchar("last_error", { length: 500 }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("transactional_email_outbox_idempotency_unique").on(t.idempotencyKey),
   index("transactional_email_outbox_due_idx").on(t.status, t.nextAttemptAt),

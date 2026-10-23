@@ -1,0 +1,34 @@
+{
+  "name": "verotask",
+  "main": ".cloudflare/output/v0/workers/default/bundle/index.js",
+  "compatibility_date": "2026-10-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "assets": {
+    "directory": ".cloudflare/output/v0/workers/default/assets",
+    "binding": "ASSETS",
+    "html_handling": "none",
+    "not_found_handling": "none",
+    "run_worker_first": true
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "verotask-production", "database_id": "__VEROTASK_PRODUCTION_D1_ID__" }
+  ],
+  "r2_buckets": [
+    { "binding": "R2", "bucket_name": "verotask-booking-evidence" }
+  ],
+  "observability": { "enabled": true },
+  "vars": {
+    "NODE_ENV": "production",
+    "DATABASE_BACKEND": "d1",
+    "AUTH_STORE": "d1",
+    "NEXT_PUBLIC_APP_URL": "https://www.verotask.online",
+    "NEXT_PUBLIC_APP_NAME": "VeroTask",
+    "NEXT_PUBLIC_SUPPORT_EMAIL": "verotask@proton.me",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "__STRIPE_PUBLISHABLE_KEY__",
+    "EMAIL_FROM": "VeroTask <notifications@mail.verotask.online>",
+    "MARKETING_POSTAL_ADDRESS": "VeroTask · Central Florida, USA",
+    "GOOGLE_SITE_VERIFICATION": "g7DcEyI2I4ao2UQTEm5pvalz7vB3sIWIyJ8urKACCf0",
+    "D1_STAGING_HTTP_URL": "https://verotask-d1.andrealmeidashop.workers.dev"
+  }
+}

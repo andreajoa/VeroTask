@@ -23,7 +23,7 @@ export async function settleTestBooking(db: SettlementDB, request: unknown): Pro
   // in the same DB transaction. Competing calls cannot both move the state.
   const changed = await db.prepare(`
     UPDATE bookings
-    SET status='scheduled', stripe_payment_intent_id=?, stripe_charge_id=?, updated_at=CURRENT_TIMESTAMP
+    SET status='scheduled', stripe_payment_intent_id=?, stripe_charge_id=?, updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id=? AND status IN ('accepted','payment_authorized')
       AND marketplace_fee_cents=? AND currency='usd'
       AND (stripe_payment_intent_id IS NULL OR stripe_payment_intent_id=?)

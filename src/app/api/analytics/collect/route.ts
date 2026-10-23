@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
+import { databaseConfigured } from "@/lib/database-configured";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db";
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, recorded: false });
   }
 
-  if (!process.env.DATABASE_URL) return NextResponse.json({ ok: true, recorded: false });
+  if (!databaseConfigured()) return NextResponse.json({ ok: true, recorded: false });
   const db = getDb();
   const user = await getCurrentUser();
   const geo = requestGeo(request.headers);

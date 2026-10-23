@@ -19,7 +19,7 @@ type Scalar = string | number | boolean | null;
 interface ReadQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' }
 interface D1Statement { bind(...values: Scalar[]): D1Statement; raw<T>(): Promise<T[][]> }
 interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ results: unknown[]; meta?: { changes?: number } }>> }
-interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string; D1_REAL_EVIDENCE_ENABLED?: string; D1_REAL_ARRIVALS_ENABLED?: string; D1_REAL_QUOTES_ENABLED?: string; D1_REAL_BOOKING_CREATE_ENABLED?: string; D1_REAL_QUOTE_REQUEST_ENABLED?: string; D1_REAL_PAYMENT_SETTLEMENT_ENABLED?: string; D1_REAL_DISPUTE_OPEN_ENABLED?: string; D1_REAL_FINANCIAL_WORKFLOWS_ENABLED?: string }
+interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string; D1_REAL_EVIDENCE_ENABLED?: string; D1_REAL_ARRIVALS_ENABLED?: string; D1_REAL_QUOTES_ENABLED?: string; D1_REAL_BOOKING_CREATE_ENABLED?: string; D1_REAL_QUOTE_REQUEST_ENABLED?: string; D1_REAL_PAYMENT_SETTLEMENT_ENABLED?: string; D1_REAL_DISPUTE_OPEN_ENABLED?: string; D1_REAL_FINANCIAL_WORKFLOWS_ENABLED?: string; APP_URL?: string; CRON_SECRET?: string; SERVICE_NAME?: string }
 
 const corsFree = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 const json = (body: unknown, status: number) => Response.json(body, { status, headers: corsFree });
@@ -52,8 +52,8 @@ export default {
       try {
         const rows = await env.DB.prepare("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != '_cf_KV'").raw<number>();
         const count = Number(rows[0]?.[0] || 0);
-        return json({ ok: count === 43, service: 'verotask-d1-staging', tables: count, production: false }, count === 43 ? 200 : 503);
-      } catch { return json({ ok: false, service: 'verotask-d1-staging', production: false }, 503); }
+        return json({ ok: count === 43, service: env.SERVICE_NAME || 'verotask-d1-staging', tables: count, production: env.SERVICE_NAME === 'verotask-d1' }, count === 43 ? 200 : 503);
+      } catch { return json({ ok: false, service: env.SERVICE_NAME || 'verotask-d1-staging', production: env.SERVICE_NAME === 'verotask-d1' }, 503); }
     }
     if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking', '/internal/evidence', '/internal/arrival-request', '/internal/accept-quote', '/internal/create-booking', '/internal/create-quote-request', '/internal/payment-settle', '/internal/payment-refund-confirm', '/internal/open-dispute', '/internal/refund-prepare', '/internal/refund-record', '/internal/dispute-context', '/internal/dispute-resolve', '/internal/dispute-refund-finalize', '/internal/cancellation-plan', '/internal/cancel-booking', '/internal/checkout-expired', '/internal/auth/issue', '/internal/auth/consume', '/internal/auth/session', '/internal/auth/signout', '/internal/auth/revoke'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
     const contentLength = Number(request.headers.get('content-length') || 0);
@@ -154,5 +154,12 @@ export default {
       // Avoid leaking schema, SQL, user data or parameters from errors.
       return json({ error: 'query_failed' }, 422);
     }
+  },
+  // Daily settlement, protection reminders and CRM jobs live in the app's cron route;
+  // the Worker cron trigger only calls it with the shared bearer secret.
+  async scheduled(_controller: unknown, env: Env): Promise<void> {
+    if (!env.APP_URL || !env.CRON_SECRET) throw new Error('cron_not_configured');
+    const response = await fetch(env.APP_URL.replace(/\/$/, '') + '/api/cron/settle-bookings', { headers: { authorization: 'Bearer ' + env.CRON_SECRET } });
+    if (!response.ok) throw new Error('cron_failed_' + response.status);
   }
 };

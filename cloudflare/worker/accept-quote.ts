@@ -19,7 +19,7 @@ export async function acceptQuoteD1(db:Db,input:unknown):Promise<{status:number;
  if(current[0][0]!=='requested')return fail(409,'booking_state_changed');
  if(Date.parse(String(current[0][1]))<=Date.now())return fail(409,'booking_time_expired');
  const update=db.prepare(`UPDATE bookings SET status='accepted',subtotal_cents=?,marketplace_fee_cents=?,
-   provider_amount_cents=?,commission_bps_snapshot=?,updated_at=CURRENT_TIMESTAMP
+   provider_amount_cents=?,commission_bps_snapshot=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
    WHERE id=? AND status='requested' AND julianday(scheduled_start)>julianday('now')
    AND business_id IN (SELECT id FROM businesses WHERE owner_user_id=?)
    AND EXISTS (SELECT 1 FROM provider_profile_photos WHERE business_id=bookings.business_id AND active=1)`)

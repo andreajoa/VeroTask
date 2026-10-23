@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS "booking_events" (
 	"previous_status" TEXT,
 	"next_status" TEXT,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("actor_user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS "booking_evidence" (
 	"longitude" REAL,
 	"distance_from_service_meters" integer,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
-	"captured_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"captured_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("submitted_by_user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION
@@ -63,8 +63,8 @@ CREATE TABLE IF NOT EXISTS "bookings" (
 	"customer_confirmed_at" TEXT,
 	"auto_completed_at" TEXT,
 	"payout_eligible_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("customer_id") REFERENCES "users"("id") ON DELETE restrict ON UPDATE NO ACTION,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE restrict ON UPDATE NO ACTION,
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS "business_claims" (
 	"status" TEXT DEFAULT 'pending' NOT NULL,
 	"verification_method" TEXT,
 	"verification_metadata" TEXT DEFAULT '{}' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"resolved_at" TEXT
 ,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -130,8 +130,8 @@ CREATE TABLE IF NOT EXISTS "businesses" (
 	"no_show_rate" numeric(5, 2) DEFAULT '0' NOT NULL,
 	"evidence_reliability" numeric(5, 2) DEFAULT '0' NOT NULL,
 	"active" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION
 );
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS "categories" (
 	"requires_after_photos" INTEGER DEFAULT 0 NOT NULL,
 	"requires_checklist" INTEGER DEFAULT 1 NOT NULL,
 	"active" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 
 );
 
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS "conversations" (
 
 	"id" TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2,3) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2,3) || '-' || lower(hex(randomblob(6)))) NOT NULL,
 	"booking_id" TEXT NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -175,9 +175,9 @@ CREATE TABLE IF NOT EXISTS "disputes" (
 	"resolution_refund_cents" integer,
 	"resolution_provider_cents" integer,
 	"resolution_note" text,
-	"opened_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"opened_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"resolved_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE restrict ON UPDATE NO ACTION,
   FOREIGN KEY ("opened_by_user_id") REFERENCES "users"("id") ON DELETE restrict ON UPDATE NO ACTION
@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS "messages" (
 	"conversation_id" TEXT NOT NULL,
 	"sender_user_id" TEXT NOT NULL,
 	"body" text NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("sender_user_id") REFERENCES "users"("id") ON DELETE restrict ON UPDATE NO ACTION
@@ -207,8 +207,8 @@ CREATE TABLE IF NOT EXISTS "provider_subscriptions" (
 	"current_period_end" TEXT,
 	"cancel_at_period_end" INTEGER DEFAULT 0 NOT NULL,
 	"active" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS "provider_transfers" (
 	"eligible_at" TEXT,
 	"transferred_at" TEXT,
 	"reversed_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE restrict ON UPDATE NO ACTION,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE restrict ON UPDATE NO ACTION
@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS "refunds" (
 	"amount_cents" integer NOT NULL,
 	"reason" text NOT NULL,
 	"stripe_refund_id" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"processed_at" TEXT
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE restrict ON UPDATE NO ACTION,
@@ -255,7 +255,7 @@ CREATE TABLE IF NOT EXISTS "reviews" (
 	"rating" integer NOT NULL,
 	"comment" text,
 	"published" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE restrict ON UPDATE NO ACTION,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -274,7 +274,7 @@ CREATE TABLE IF NOT EXISTS "services" (
 	"base_price_cents" integer,
 	"duration_minutes" integer,
 	"active" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE restrict ON UPDATE NO ACTION
@@ -289,8 +289,8 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"role" TEXT DEFAULT 'customer' NOT NULL,
 	"locale" TEXT DEFAULT 'en-US' NOT NULL,
 	"stripe_customer_id" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 
 );
 
@@ -302,7 +302,7 @@ CREATE TABLE IF NOT EXISTS "auth_tokens" (
 	"redirect_path" TEXT DEFAULT '/dashboard' NOT NULL,
 	"expires_at" TEXT NOT NULL,
 	"used_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 
 );
 
@@ -312,7 +312,7 @@ CREATE TABLE IF NOT EXISTS "sessions" (
 	"user_id" TEXT NOT NULL,
 	"token_hash" TEXT NOT NULL,
 	"expires_at" TEXT NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -324,8 +324,8 @@ CREATE TABLE IF NOT EXISTS "booking_checkout_sessions" (
 	"stripe_session_id" TEXT NOT NULL,
 	"status" TEXT DEFAULT 'open' NOT NULL,
 	"expires_at" TEXT NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -336,7 +336,7 @@ CREATE TABLE IF NOT EXISTS "booking_secrets" (
 	"booking_id" TEXT NOT NULL,
 	"service_pin_hash" TEXT NOT NULL,
 	"pin_failures" integer DEFAULT 0 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -350,7 +350,7 @@ CREATE TABLE IF NOT EXISTS "provider_availability" (
 	"end_time" time NOT NULL,
 	"timezone" TEXT DEFAULT 'America/New_York' NOT NULL,
 	"active" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -365,7 +365,7 @@ CREATE TABLE IF NOT EXISTS "admin_audit_events" (
 	"ip_hash" TEXT,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
 	"event_hash" TEXT NOT NULL,
-	"occurred_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"occurred_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 
 );
 
@@ -384,7 +384,7 @@ CREATE TABLE IF NOT EXISTS "analytics_events" (
 	"target_path" text,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
 	"client_occurred_at" TEXT,
-	"occurred_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"occurred_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"request_id" TEXT
 ,
   FOREIGN KEY ("session_id") REFERENCES "visitor_sessions"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -400,7 +400,7 @@ CREATE TABLE IF NOT EXISTS "audit_exports" (
 	"manifest_hash" TEXT NOT NULL,
 	"storage_object_ref" text,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
-	"generated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"generated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("case_id") REFERENCES "legal_cases"("id") ON DELETE set null ON UPDATE NO ACTION
 );
@@ -419,8 +419,8 @@ CREATE TABLE IF NOT EXISTS "crm_abandonments" (
 	"last_sent_at" TEXT,
 	"recovered_at" TEXT,
 	"expires_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("contact_id") REFERENCES "crm_contacts"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE set null ON UPDATE NO ACTION,
@@ -440,8 +440,8 @@ CREATE TABLE IF NOT EXISTS "crm_campaigns" (
 	"scheduled_at" TEXT,
 	"sent_at" TEXT,
 	"created_by" TEXT DEFAULT 'admin' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 
 );
 
@@ -469,8 +469,8 @@ CREATE TABLE IF NOT EXISTS "crm_contacts" (
 	"last_seen_at" TEXT,
 	"last_email_at" TEXT,
 	"tags" TEXT DEFAULT '[]' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION
 );
@@ -485,7 +485,7 @@ CREATE TABLE IF NOT EXISTS "crm_email_events" (
 	"recipient" TEXT,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
 	"occurred_at" TEXT NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("send_id") REFERENCES "crm_email_sends"("id") ON DELETE set null ON UPDATE NO ACTION
 );
@@ -505,8 +505,8 @@ CREATE TABLE IF NOT EXISTS "crm_email_sends" (
 	"idempotency_key" TEXT NOT NULL,
 	"scheduled_at" TEXT,
 	"sent_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("contact_id") REFERENCES "crm_contacts"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("campaign_id") REFERENCES "crm_campaigns"("id") ON DELETE set null ON UPDATE NO ACTION,
@@ -525,10 +525,10 @@ CREATE TABLE IF NOT EXISTS "legal_cases" (
 	"scope" TEXT DEFAULT '{}' NOT NULL,
 	"notes" text,
 	"created_by" TEXT DEFAULT 'admin' NOT NULL,
-	"opened_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"opened_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"closed_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 
 );
 
@@ -541,7 +541,7 @@ CREATE TABLE IF NOT EXISTS "legal_holds" (
 	"session_id" TEXT,
 	"reason" text NOT NULL,
 	"active" INTEGER DEFAULT 1 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"released_at" TEXT
 ,
   FOREIGN KEY ("case_id") REFERENCES "legal_cases"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -555,8 +555,8 @@ CREATE TABLE IF NOT EXISTS "visitor_sessions" (
 	"id" TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2,3) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2,3) || '-' || lower(hex(randomblob(6)))) NOT NULL,
 	"session_key_hash" TEXT NOT NULL,
 	"user_id" TEXT,
-	"started_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"last_seen_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"started_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"last_seen_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"ended_at" TEXT,
 	"active_seconds" integer DEFAULT 0 NOT NULL,
 	"entry_path" text,
@@ -579,8 +579,8 @@ CREATE TABLE IF NOT EXISTS "visitor_sessions" (
 	"analytics_consent" INTEGER DEFAULT 0 NOT NULL,
 	"marketing_consent" INTEGER DEFAULT 0 NOT NULL,
 	"do_not_track" INTEGER DEFAULT 0 NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION
 );
@@ -604,8 +604,8 @@ CREATE TABLE IF NOT EXISTS "customer_provider_relationships" (
 	"last_rating" integer,
 	"affinity_score" numeric(8, 3) DEFAULT '0' NOT NULL,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("customer_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE NO ACTION,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -627,7 +627,7 @@ CREATE TABLE IF NOT EXISTS "marketplace_searches" (
 	"result_count" integer,
 	"converted_booking_id" TEXT,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION,
   FOREIGN KEY ("converted_booking_id") REFERENCES "bookings"("id") ON DELETE set null ON UPDATE NO ACTION
@@ -642,7 +642,7 @@ CREATE TABLE IF NOT EXISTS "provider_interaction_events" (
 	"booking_id" TEXT,
 	"event_type" TEXT NOT NULL,
 	"metadata" TEXT DEFAULT '{}' NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE NO ACTION,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -658,7 +658,7 @@ CREATE TABLE IF NOT EXISTS "bilateral_ratings" (
 	"customer_id" TEXT NOT NULL,
 	"business_id" TEXT NOT NULL,
 	"rating" integer NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE restrict ON UPDATE NO ACTION,
   FOREIGN KEY ("rater_user_id") REFERENCES "users"("id") ON DELETE restrict ON UPDATE NO ACTION,
@@ -672,7 +672,7 @@ CREATE TABLE IF NOT EXISTS "customer_reputation" (
 	"average_rating" numeric(3, 2) DEFAULT '5.00' NOT NULL,
 	"rating_count" integer DEFAULT 0 NOT NULL,
 	"completed_jobs" integer DEFAULT 0 NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("customer_id") REFERENCES "users"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -685,8 +685,8 @@ CREATE TABLE IF NOT EXISTS "provider_checkout_sessions" (
 	"plan" TEXT NOT NULL,
 	"status" TEXT DEFAULT 'open' NOT NULL,
 	"expires_at" TEXT NOT NULL,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION
 );
@@ -702,7 +702,7 @@ CREATE TABLE IF NOT EXISTS "provider_profile_photos" (
   "image_base64" text NOT NULL,
   "attested_recent" INTEGER DEFAULT 0 NOT NULL,
   "active" INTEGER DEFAULT 1 NOT NULL,
-  "created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  "created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
   "deactivated_at" TEXT
 ,
   FOREIGN KEY ("business_id") REFERENCES "businesses"("id") ON DELETE cascade ON UPDATE NO ACTION,
@@ -713,8 +713,8 @@ CREATE TABLE IF NOT EXISTS "admin_credentials" (
 
   "id" TEXT PRIMARY KEY,
   "password_hash" text NOT NULL,
-  "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  "created_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  "updated_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 
 );
 
@@ -722,8 +722,8 @@ CREATE TABLE IF NOT EXISTS "platform_secrets" (
 
   "id" TEXT PRIMARY KEY,
   "secret_value" text NOT NULL,
-  "created_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  "created_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  "updated_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 
 );
 
@@ -731,9 +731,9 @@ CREATE TABLE IF NOT EXISTS "admin_login_attempts" (
 
   "key_hash" TEXT PRIMARY KEY,
   "failure_count" integer NOT NULL DEFAULT 0,
-  "window_started_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "window_started_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   "blocked_until" TEXT,
-  "updated_at" TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  "updated_at" TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 
 );
 
@@ -748,13 +748,13 @@ CREATE TABLE IF NOT EXISTS "transactional_email_outbox" (
 	"status" TEXT DEFAULT 'queued' NOT NULL,
 	"attempt_count" integer DEFAULT 0 NOT NULL,
 	"max_attempts" integer DEFAULT 8 NOT NULL,
-	"next_attempt_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	"next_attempt_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
 	"expires_at" TEXT,
 	"provider_email_id" TEXT,
 	"last_error" TEXT,
 	"sent_at" TEXT,
-	"created_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	"updated_at" TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
+	"created_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL,
+	"updated_at" TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')) NOT NULL
 ,
   FOREIGN KEY ("booking_id") REFERENCES "bookings"("id") ON DELETE cascade ON UPDATE NO ACTION
 );

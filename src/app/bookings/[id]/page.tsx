@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { eq, isNull, and, desc, sql } from "drizzle-orm";
+import { eq, isNull, and, desc, gte, sql } from "drizzle-orm";
 import { BadgeCheck, Clock3, MailCheck, ShieldCheck } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { AcceptedBookingPayment } from "@/components/accepted-booking-payment";
@@ -102,7 +102,7 @@ export default async function BookingPage({
     db.select({ id: bookingEvents.id, createdAt: bookingEvents.createdAt }).from(bookingEvents).where(and(
       eq(bookingEvents.bookingId, id),
       eq(bookingEvents.eventType, "provider_arrival_confirmation_requested"),
-      sql`${bookingEvents.createdAt} >= now() - interval '30 minutes'`
+      gte(bookingEvents.createdAt, new Date(Date.now() - 30 * 60 * 1000))
     )).orderBy(desc(bookingEvents.createdAt)).limit(1).then((rows) => rows[0] ?? null),
     db.select({ id: bookingEvents.id, createdAt: bookingEvents.createdAt }).from(bookingEvents).where(and(
       eq(bookingEvents.bookingId, id),

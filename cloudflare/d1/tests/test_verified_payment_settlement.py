@@ -25,12 +25,12 @@ class D1VerifiedPayment(unittest.TestCase):
  def tearDown(self):self.db.close()
  def receive(self,amount=1500,pi=PI):
   with self.db:
-   return self.db.execute('''UPDATE bookings SET status='scheduled',stripe_payment_intent_id=?,stripe_charge_id=?,updated_at=CURRENT_TIMESTAMP
+   return self.db.execute('''UPDATE bookings SET status='scheduled',stripe_payment_intent_id=?,stripe_charge_id=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
       WHERE id=? AND business_id=? AND status IN ('accepted','payment_authorized')
       AND currency='usd' AND marketplace_fee_cents=? AND stripe_payment_intent_id IS NULL RETURNING id''',(pi,CH,BOOKING,BUSINESS,amount)).fetchall()
  def terminal_payment(self):
   with self.db:
-   updated=self.db.execute('''UPDATE bookings SET stripe_payment_intent_id=?,stripe_charge_id=?,updated_at=CURRENT_TIMESTAMP
+   updated=self.db.execute('''UPDATE bookings SET stripe_payment_intent_id=?,stripe_charge_id=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
     WHERE id=? AND business_id=? AND stripe_payment_intent_id IS NULL
     AND status NOT IN ('accepted','payment_authorized','scheduled')
     AND currency='usd' AND marketplace_fee_cents=?''',(PI,CH,BOOKING,BUSINESS,1500)).rowcount
@@ -39,7 +39,7 @@ class D1VerifiedPayment(unittest.TestCase):
   return updated
  def finalize(self):
   with self.db:
-   affected=self.db.execute('''UPDATE bookings SET status='refunded',updated_at=CURRENT_TIMESTAMP WHERE id=?
+   affected=self.db.execute('''UPDATE bookings SET status='refunded',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?
       AND stripe_payment_intent_id=? AND marketplace_fee_cents=?
       AND status NOT IN ('refunded','scheduled')
       AND EXISTS(SELECT 1 FROM booking_events WHERE booking_id=bookings.id AND event_type='payment_requires_refund')

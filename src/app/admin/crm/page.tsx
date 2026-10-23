@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
+import { ilike } from "@/lib/sql-portable";
 import { Mail, Search, ShoppingCart, UserCheck, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
@@ -27,9 +28,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const db = getDb();
   const [rows, [totals], [abandonments], [emails]] = await Promise.all([
     db.select().from(crmContacts).where(conditions.length ? and(...conditions) : undefined).orderBy(desc(crmContacts.lastSeenAt), desc(crmContacts.createdAt)).limit(300),
-    db.select({ total: sql<number>`count(*)::int`, customers: sql<number>`count(*) filter (where ${crmContacts.lifecycle} = 'customer')::int`, providers: sql<number>`count(*) filter (where ${crmContacts.lifecycle} in ('provider','subscriber'))::int`, marketable: sql<number>`count(*) filter (where ${crmContacts.marketingConsent} = true and ${crmContacts.unsubscribedAt} is null and ${crmContacts.suppressionReason} is null)::int` }).from(crmContacts),
-    db.select({ active: sql<number>`count(*) filter (where ${crmAbandonments.status} = 'active')::int`, recovered: sql<number>`count(*) filter (where ${crmAbandonments.status} = 'recovered')::int` }).from(crmAbandonments),
-    db.select({ sent: sql<number>`count(*) filter (where ${crmEmailSends.status} not in ('queued','failed','development_skipped'))::int` }).from(crmEmailSends)
+    db.select({ total: sql<number>`cast(count(*) as integer)`, customers: sql<number>`cast(count(*) filter (where ${crmContacts.lifecycle} = 'customer') as integer)`, providers: sql<number>`cast(count(*) filter (where ${crmContacts.lifecycle} in ('provider','subscriber')) as integer)`, marketable: sql<number>`cast(count(*) filter (where ${crmContacts.marketingConsent} = true and ${crmContacts.unsubscribedAt} is null and ${crmContacts.suppressionReason} is null) as integer)` }).from(crmContacts),
+    db.select({ active: sql<number>`cast(count(*) filter (where ${crmAbandonments.status} = 'active') as integer)`, recovered: sql<number>`cast(count(*) filter (where ${crmAbandonments.status} = 'recovered') as integer)` }).from(crmAbandonments),
+    db.select({ sent: sql<number>`cast(count(*) filter (where ${crmEmailSends.status} not in ('queued','failed','development_skipped')) as integer)` }).from(crmEmailSends)
   ]);
 
   return (

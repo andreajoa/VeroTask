@@ -16,7 +16,7 @@ export const bilateralRatings = pgTable("bilateral_ratings", {
   customerId: uuid("customer_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   businessId: uuid("business_id").notNull().references(() => businesses.id, { onDelete: "restrict" }),
   rating: integer("rating").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("bilateral_ratings_booking_direction_unique").on(t.bookingId, t.direction),
   index("bilateral_ratings_customer_idx").on(t.customerId, t.createdAt),
@@ -28,5 +28,5 @@ export const customerReputation = pgTable("customer_reputation", {
   averageRating: numeric("average_rating", { precision: 3, scale: 2 }).notNull().default("5.00"),
   ratingCount: integer("rating_count").notNull().default(0),
   completedJobs: integer("completed_jobs").notNull().default(0),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 });

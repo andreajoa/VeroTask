@@ -28,7 +28,7 @@ export const marketplaceSearches = pgTable("marketplace_searches", {
   resultCount: integer("result_count"),
   convertedBookingId: uuid("converted_booking_id").references(() => bookings.id, { onDelete: "set null" }),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   index("marketplace_searches_user_idx").on(t.userId, t.createdAt),
   index("marketplace_searches_anon_idx").on(t.anonymousId, t.createdAt),
@@ -53,8 +53,8 @@ export const customerProviderRelationships = pgTable("customer_provider_relation
   lastRating: integer("last_rating"),
   affinityScore: numeric("affinity_score", { precision: 8, scale: 3 }).notNull().default("0"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("customer_provider_relationship_unique").on(t.customerId, t.businessId),
   index("customer_provider_last_completed_idx").on(t.customerId, t.lastCompletedAt),
@@ -69,7 +69,7 @@ export const providerInteractionEvents = pgTable("provider_interaction_events", 
   bookingId: uuid("booking_id").references(() => bookings.id, { onDelete: "set null" }),
   eventType: varchar("event_type", { length: 48 }).notNull(),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   index("provider_interactions_user_idx").on(t.userId, t.createdAt),
   index("provider_interactions_business_idx").on(t.businessId, t.createdAt),

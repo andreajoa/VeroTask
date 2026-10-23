@@ -38,7 +38,7 @@ export async function recordVerifiedStripePaymentD1(db:Db,input:unknown){
    // The pre-existing D1 payment guard + receipt triggers atomically record
    // payment_succeeded and close checkout within this same UPDATE.
    const scheduled=await db.prepare(`UPDATE bookings SET status='scheduled',stripe_payment_intent_id=?,
-       stripe_charge_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=?
+       stripe_charge_id=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?
        AND business_id=? AND status IN ('accepted','payment_authorized')
        AND currency='usd' AND marketplace_fee_cents=? AND stripe_payment_intent_id IS NULL
        RETURNING id`)
@@ -51,7 +51,7 @@ export async function recordVerifiedStripePaymentD1(db:Db,input:unknown){
  // requirement so retries do not silently discard money already captured.
  try{
    const receipts=await db.batch([
-     db.prepare(`UPDATE bookings SET stripe_payment_intent_id=?,stripe_charge_id=?,updated_at=CURRENT_TIMESTAMP
+     db.prepare(`UPDATE bookings SET stripe_payment_intent_id=?,stripe_charge_id=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
        WHERE id=? AND business_id=? AND stripe_payment_intent_id IS NULL
        AND status NOT IN ('accepted','payment_authorized','scheduled')
        AND currency='usd' AND marketplace_fee_cents=?`)
@@ -79,7 +79,7 @@ export async function recordRefundedPaymentD1(db:Db,input:unknown){
  if(current[0][1]!==p.paymentIntentId||current[0][2]!==p.amountCents)return response(409,'refund_booking_mismatch');
  try{
    const results=await db.batch([
-     db.prepare(`UPDATE bookings SET status='refunded',updated_at=CURRENT_TIMESTAMP WHERE id=?
+     db.prepare(`UPDATE bookings SET status='refunded',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?
        AND stripe_payment_intent_id=? AND marketplace_fee_cents=?
        AND status NOT IN ('refunded','scheduled')
        AND EXISTS(SELECT 1 FROM booking_events WHERE booking_id=bookings.id AND event_type='payment_requires_refund')

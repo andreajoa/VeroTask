@@ -39,6 +39,6 @@ BEGIN
                 'chargeId', NEW.stripe_charge_id)
   );
   UPDATE booking_checkout_sessions
-  SET status = 'complete', updated_at = CURRENT_TIMESTAMP
+  SET status = 'complete', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
   WHERE booking_id = NEW.id;
 END;

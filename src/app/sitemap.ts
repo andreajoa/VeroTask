@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { and, eq, isNotNull, notInArray } from "drizzle-orm";
+import { databaseConfigured } from "@/lib/database-configured";
 import { getDb } from "@/db";
 import { businessCategories, businesses, categories, providerProfilePhotos } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
@@ -38,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/es/providers`, changeFrequency: "weekly", priority: 0.68 }
   ];
 
-  if (!process.env.DATABASE_URL) return entries;
+  if (!databaseConfigured()) return entries;
 
   try {
     const db = getDb();

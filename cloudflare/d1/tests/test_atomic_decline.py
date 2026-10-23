@@ -27,7 +27,7 @@ class AtomicD1Decline(unittest.TestCase):
         booking_id=BOOKING
         key=f'booking:{booking_id}:customer-request-declined'
         with self.db:
-            changed=self.db.execute("UPDATE bookings SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?",(booking_id,'requested')).rowcount
+            changed=self.db.execute("UPDATE bookings SET status='cancelled',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status=?",(booking_id,'requested')).rowcount
             self.db.execute('INSERT INTO booking_events(booking_id,actor_user_id,event_type,previous_status,next_status,metadata) SELECT ?,?,?,?,?,? WHERE changes()=1',(booking_id,USER,'provider_declined','requested','cancelled','{"reason":null,"paymentCaptured":false}'))
             self.db.execute('INSERT INTO transactional_email_outbox(kind,booking_id,idempotency_key,payload) SELECT ?,?,?,? WHERE changes()=1',('customer_request_declined',booking_id,key,'{}'))
         return changed

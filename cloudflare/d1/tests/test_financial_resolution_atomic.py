@@ -25,11 +25,11 @@ class FinancialResolution(unittest.TestCase):
   status='resolved_'+outcome
   next_status='refunded' if amount==1500 else 'customer_confirmed'
   with self.db:
-   updated=self.db.execute('''UPDATE disputes SET status=?,resolution_refund_cents=?,resolution_provider_cents=0,resolution_note=?,resolved_at=CURRENT_TIMESTAMP
+   updated=self.db.execute('''UPDATE disputes SET status=?,resolution_refund_cents=?,resolution_provider_cents=0,resolution_note=?,resolved_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')
        WHERE id=? AND resolved_at IS NULL AND status IN ('open','awaiting_customer','awaiting_provider','under_review')
        AND EXISTS(SELECT 1 FROM bookings WHERE id=disputes.booking_id AND status='disputed') RETURNING id''',
        (status,amount,'Synthetic review findings',DISPUTE)).fetchall()
-   self.db.execute("UPDATE bookings SET status=?,payout_eligible_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='disputed' AND changes()=1",
+   self.db.execute("UPDATE bookings SET status=?,payout_eligible_at=NULL,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='disputed' AND changes()=1",
        (next_status,BOOKING))
    self.db.execute('''INSERT INTO booking_events(booking_id,actor_user_id,event_type,previous_status,next_status,metadata)
      SELECT ?,NULL,'dispute_resolved','disputed',?,? WHERE changes()=1''',

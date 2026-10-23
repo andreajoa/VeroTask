@@ -42,7 +42,7 @@ export async function openDisputeD1(db:Db,input:unknown):Promise<{status:number;
       AND (SELECT COUNT(*) FROM disputes d WHERE d.booking_id=b.id AND d.resolved_at IS NULL)=0`)
     .bind(disputeId,p.actorUserId as string,p.reason as string,p.summary as string,isCustomer?requested:null,
       p.bookingId as string,String(status),p.actorUserId as string,p.actorUserId as string),
-  db.prepare("UPDATE bookings SET status='disputed',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=? AND changes()=1")
+  db.prepare("UPDATE bookings SET status='disputed',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status=? AND changes()=1")
     .bind(p.bookingId as string,String(status)),
   db.prepare(`INSERT INTO booking_events(booking_id,actor_user_id,event_type,previous_status,next_status,metadata)
     SELECT ?,?,'dispute_opened',?,'disputed',? WHERE changes()=1`)

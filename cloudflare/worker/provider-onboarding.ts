@@ -33,7 +33,7 @@ export async function createSyntheticProvider(db: DB, input: unknown): Promise<R
       .bind(businessId as string,ownerId as string,'D1 Synthetic Test Provider',slug,'Orlando','FL','US','active','free',1),
     db.prepare('INSERT INTO business_categories (business_id,category_id,featured) VALUES (?,?,1)')
       .bind(businessId as string,categoryId as string),
-    db.prepare("UPDATE users SET role='provider',updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    db.prepare("UPDATE users SET role='provider',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?")
       .bind(ownerId as string)
   ];
   try {
@@ -81,7 +81,7 @@ export async function createProviderAtomic(db:DB, request:unknown):Promise<Resul
       .bind(p.businessId as string,ownerId,p.name as string,p.slug as string,p.description as string,p.phone as string,p.email as string,p.addressLine1 as string,p.city as string,'FL',p.postalCode as string,'US',p.latitude as number,p.longitude as number,p.serviceRadiusMiles as number,'active','free',0,1),
     db.prepare('INSERT INTO business_categories (business_id,category_id,featured) VALUES (?,?,1)')
       .bind(p.businessId as string,p.categoryId as string),
-    db.prepare("UPDATE users SET role='provider',phone=?,updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    db.prepare("UPDATE users SET role='provider',phone=?,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?")
       .bind(p.phone as string,ownerId)
   ];
   try {

@@ -1,4 +1,5 @@
-import { desc, eq, ilike, or, sql } from "drizzle-orm";
+import { desc, eq, or, sql } from "drizzle-orm";
+import { ilike } from "@/lib/sql-portable";
 import { Camera, FileSearch, KeyRound, MapPin, Search } from "lucide-react";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin-shell";
@@ -16,7 +17,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
   const db = getDb();
 
   const conditions = [];
-  if (q) conditions.push(or(sql`${bookings.id}::text ilike ${`%${q}%`}`, ilike(businesses.name, `%${q}%`), ilike(users.email, `%${q}%`)));
+  if (q) conditions.push(or(ilike(sql`cast(${bookings.id} as text)`, `%${q}%`), ilike(businesses.name, `%${q}%`), ilike(users.email, `%${q}%`)));
   const evidenceTypes = ["geo_check_in", "geo_check_out", "customer_pin", "before_photo", "after_photo", "checklist", "message", "provider_note", "customer_note"] as const;
   if (evidenceTypes.includes(type as typeof evidenceTypes[number])) conditions.push(eq(bookingEvidence.type, type as typeof evidenceTypes[number]));
 
@@ -29,10 +30,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
       .where(conditions.length ? sql.join(conditions, sql` and `) : undefined)
       .orderBy(desc(bookingEvidence.capturedAt)).limit(300),
     db.select({
-      total: sql<number>`count(*)::int`,
-      photos: sql<number>`count(*) filter (where ${bookingEvidence.type} in ('before_photo','after_photo'))::int`,
-      gps: sql<number>`count(*) filter (where ${bookingEvidence.type} in ('geo_check_in','geo_check_out'))::int`,
-      pins: sql<number>`count(*) filter (where ${bookingEvidence.type} = 'customer_pin')::int`
+      total: sql<number>`cast(count(*) as integer)`,
+      photos: sql<number>`cast(count(*) filter (where ${bookingEvidence.type} in ('before_photo','after_photo')) as integer)`,
+      gps: sql<number>`cast(count(*) filter (where ${bookingEvidence.type} in ('geo_check_in','geo_check_out')) as integer)`,
+      pins: sql<number>`cast(count(*) filter (where ${bookingEvidence.type} = 'customer_pin') as integer)`
     }).from(bookingEvidence)
   ]);
 

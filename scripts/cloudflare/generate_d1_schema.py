@@ -26,7 +26,7 @@ def fix_sql(sql: str) -> str:
     sql = re.sub(r'\bvarchar\s*\(\s*\d+\s*\)', 'TEXT', sql, flags=re.I)
     sql = re.sub(r'\b(?:jsonb|uuid)\b', 'TEXT', sql, flags=re.I)
     sql = re.sub(r'\bboolean\b', 'INTEGER', sql, flags=re.I)
-    sql = re.sub(r'\bDEFAULT\s+now\(\)', 'DEFAULT CURRENT_TIMESTAMP', sql, flags=re.I)
+    sql = re.sub(r'\bDEFAULT\s+now\(\)', "DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))", sql, flags=re.I)
     sql = re.sub(r"::(?:TEXT|text|jsonb|json|varchar|uuid)", '', sql, flags=re.I)
     sql = re.sub(r'\bDEFAULT\s+true\b', 'DEFAULT 1', sql, flags=re.I)
     sql = re.sub(r'\bDEFAULT\s+false\b', 'DEFAULT 0', sql, flags=re.I)

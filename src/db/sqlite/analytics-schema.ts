@@ -34,8 +34,8 @@ export const visitorSessions = pgTable("visitor_sessions", {
   id: uuid("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   sessionKeyHash: varchar("session_key_hash", { length: 64 }).notNull(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-  startedAt: timestamp("started_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   endedAt: timestamp("ended_at", { withTimezone: true }),
   activeSeconds: integer("active_seconds").notNull().default(0),
   entryPath: text("entry_path"),
@@ -58,8 +58,8 @@ export const visitorSessions = pgTable("visitor_sessions", {
   analyticsConsent: boolean("analytics_consent").notNull().default(false),
   marketingConsent: boolean("marketing_consent").notNull().default(false),
   doNotTrack: boolean("do_not_track").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("visitor_sessions_key_unique").on(t.sessionKeyHash),
   index("visitor_sessions_user_idx").on(t.userId, t.startedAt),
@@ -81,7 +81,7 @@ export const analyticsEvents = pgTable("analytics_events", {
   targetPath: text("target_path"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   clientOccurredAt: timestamp("client_occurred_at", { withTimezone: true }),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   requestId: varchar("request_id", { length: 160 })
 }, (t) => [
   index("analytics_events_session_idx").on(t.sessionId, t.occurredAt),
@@ -112,8 +112,8 @@ export const crmContacts = pgTable("crm_contacts", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   lastEmailAt: timestamp("last_email_at", { withTimezone: true }),
   tags: jsonb("tags").$type<string[]>().notNull().default([]),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("crm_contacts_email_unique").on(t.email),
   uniqueIndex("crm_contacts_user_unique").on(t.userId),
@@ -133,8 +133,8 @@ export const crmCampaigns = pgTable("crm_campaigns", {
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   createdBy: varchar("created_by", { length: 160 }).notNull().default("admin"),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("crm_campaigns_key_unique").on(t.key),
   index("crm_campaigns_schedule_idx").on(t.status, t.scheduledAt)
@@ -154,8 +154,8 @@ export const crmEmailSends = pgTable("crm_email_sends", {
   idempotencyKey: varchar("idempotency_key", { length: 255 }).notNull(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("crm_email_sends_idempotency_unique").on(t.idempotencyKey),
   index("crm_email_sends_contact_idx").on(t.contactId, t.createdAt),
@@ -171,7 +171,7 @@ export const crmEmailEvents = pgTable("crm_email_events", {
   recipient: varchar("recipient", { length: 320 }),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   uniqueIndex("crm_email_events_webhook_unique").on(t.webhookEventId),
   index("crm_email_events_resend_idx").on(t.resendEmailId, t.occurredAt)
@@ -191,8 +191,8 @@ export const crmAbandonments = pgTable("crm_abandonments", {
   lastSentAt: timestamp("last_sent_at", { withTimezone: true }),
   recoveredAt: timestamp("recovered_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   index("crm_abandonments_due_idx").on(t.status, t.nextRunAt),
   uniqueIndex("crm_abandonments_booking_unique").on(t.bookingId, t.kind),
@@ -212,10 +212,10 @@ export const legalCases = pgTable("legal_cases", {
   scope: jsonb("scope").$type<Record<string, unknown>>().notNull().default({}),
   notes: text("notes"),
   createdBy: varchar("created_by", { length: 160 }).notNull().default("admin"),
-  openedAt: timestamp("opened_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  openedAt: timestamp("opened_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   closedAt: timestamp("closed_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [uniqueIndex("legal_cases_reference_unique").on(t.caseReference)]);
 
 export const legalHolds = pgTable("legal_holds", {
@@ -226,7 +226,7 @@ export const legalHolds = pgTable("legal_holds", {
   sessionId: uuid("session_id").references(() => visitorSessions.id, { onDelete: "set null" }),
   reason: text("reason").notNull(),
   active: boolean("active").notNull().default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   releasedAt: timestamp("released_at", { withTimezone: true })
 }, (t) => [index("legal_holds_case_idx").on(t.caseId, t.active)]);
 
@@ -238,7 +238,7 @@ export const auditExports = pgTable("audit_exports", {
   manifestHash: varchar("manifest_hash", { length: 64 }).notNull(),
   storageObjectRef: text("storage_object_ref"),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
-  generatedAt: timestamp("generated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  generatedAt: timestamp("generated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 });
 
 export const adminAuditEvents = pgTable("admin_audit_events", {
@@ -250,7 +250,7 @@ export const adminAuditEvents = pgTable("admin_audit_events", {
   ipHash: varchar("ip_hash", { length: 64 }),
   metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
   eventHash: varchar("event_hash", { length: 64 }).notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [
   index("admin_audit_events_resource_idx").on(t.resourceType, t.resourceId, t.occurredAt),
   index("admin_audit_events_time_idx").on(t.occurredAt)
@@ -260,21 +260,21 @@ export const adminAuditEvents = pgTable("admin_audit_events", {
 export const adminCredentials = pgTable("admin_credentials", {
   id: varchar("id", { length: 80 }).primaryKey(),
   passwordHash: text("password_hash").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 });
 
 export const adminLoginAttempts = pgTable("admin_login_attempts", {
   keyHash: varchar("key_hash", { length: 64 }).primaryKey(),
   failureCount: integer("failure_count").notNull().default(0),
-  windowStartedAt: timestamp("window_started_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
+  windowStartedAt: timestamp("window_started_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
   blockedUntil: timestamp("blocked_until", { withTimezone: true }),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 }, (t) => [index("admin_login_attempts_blocked_idx").on(t.blockedUntil)]);
 
 export const platformSecrets = pgTable("platform_secrets", {
   id: varchar("id", { length: 120 }).primaryKey(),
   secretValue: text("secret_value").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`CURRENT_TIMESTAMP`).notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).default(sqliteSql`(strftime('%Y-%m-%dT%H:%M:%fZ','now'))`).notNull()
 });

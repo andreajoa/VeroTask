@@ -35,7 +35,7 @@ export async function authD1(db:AuthDB,mode:string,input:unknown,allowReal=false
        typeof p.sessionHash!=='string'||!hash.test(p.sessionHash)||!isIso(p.sessionExpiresAt)||
        Date.parse(p.sessionExpiresAt)<=Date.now()+60_000||Date.parse(p.sessionExpiresAt)>Date.now()+32*24*3600_000) return reply(400,'invalid_consume');
     const updated=await db.prepare(`UPDATE auth_tokens
-      SET used_at=CURRENT_TIMESTAMP,consumed_session_hash=?,consumed_session_expires_at=?
+      SET used_at=strftime('%Y-%m-%dT%H:%M:%fZ','now'),consumed_session_hash=?,consumed_session_expires_at=?
       WHERE token_hash=? AND used_at IS NULL AND julianday(expires_at)>julianday('now')
       RETURNING email,redirect_path`).bind(p.sessionHash,p.sessionExpiresAt,p.tokenHash).raw<string>();
     // The AFTER UPDATE SQLite trigger creates the user and session atomically.

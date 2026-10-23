@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { eq, sql } from "drizzle-orm";
+import { databaseConfigured } from "@/lib/database-configured";
 import { getDb } from "@/db";
 import { adminCredentials, adminLoginAttempts } from "@/db/analytics-schema";
 
@@ -61,8 +62,8 @@ export async function consumeAdminLoginAttempt(keyHash: string) {
     .onConflictDoUpdate({
       target: adminLoginAttempts.keyHash,
       set: {
-        failureCount: sql`case when ${adminLoginAttempts.windowStartedAt} < ${windowStart} then 1 else least(${adminLoginAttempts.failureCount} + 1, ${MAX_ATTEMPTS + 1}) end`,
-        windowStartedAt: sql`case when ${adminLoginAttempts.windowStartedAt} < ${windowStart} then ${now} else ${adminLoginAttempts.windowStartedAt} end`,
+        failureCount: sql`case when ${adminLoginAttempts.windowStartedAt} < ${windowStart.toISOString()} then 1 else case when ${adminLoginAttempts.failureCount} + 1 > ${MAX_ATTEMPTS + 1} then ${MAX_ATTEMPTS + 1} else ${adminLoginAttempts.failureCount} + 1 end end`,
+        windowStartedAt: sql`case when ${adminLoginAttempts.windowStartedAt} < ${windowStart.toISOString()} then ${now.toISOString()} else ${adminLoginAttempts.windowStartedAt} end`,
         updatedAt: now
       }
     }).returning();
@@ -75,7 +76,7 @@ export async function clearAdminLoginFailures(keyHash: string) {
 
 export async function verifyAdminPassword(input: string) {
   let encoded: string | undefined;
-  if (process.env.DATABASE_URL) {
+  if (databaseConfigured()) {
     const [credential] = await getDb().select().from(adminCredentials).where(eq(adminCredentials.id, "primary")).limit(1);
     encoded = credential?.passwordHash || undefined;
   }

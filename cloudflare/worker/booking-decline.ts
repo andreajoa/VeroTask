@@ -22,7 +22,7 @@ export async function declineBookingD1(db:DB,input:unknown):Promise<DeclineResul
   if(current[0][0]!==p.previousStatus)return {status:409,body:{ok:false,outcome:'booking_state_changed'}};
   const key=`booking:${p.bookingId}:customer-request-declined`;
   const statements=[
-    db.prepare("UPDATE bookings SET status='cancelled',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?")
+    db.prepare("UPDATE bookings SET status='cancelled',updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status=?")
       .bind(p.bookingId,p.previousStatus),
     db.prepare('INSERT INTO booking_events(booking_id,actor_user_id,event_type,previous_status,next_status,metadata) SELECT ?,?,?,?,?,? WHERE changes()=1')
       .bind(p.bookingId,p.actorUserId,'provider_declined',p.previousStatus,'cancelled',JSON.stringify({reason:p.reason,paymentCaptured:false})),

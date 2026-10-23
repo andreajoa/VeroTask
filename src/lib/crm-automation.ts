@@ -1,5 +1,5 @@
 import { addDays, addHours, addMinutes } from "date-fns";
-import { and, asc, desc, eq, gt, isNotNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, isNotNull, lt, lte, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { analyticsEvents, crmAbandonments, crmCampaigns, crmContacts, crmEmailEvents, crmEmailSends, visitorSessions } from "@/db/analytics-schema";
@@ -49,8 +49,8 @@ export async function syncCustomerStats(userId: string) {
   let contact = await ensureCrmContactForUser(userId, "customer");
   if (!contact) return null;
   const [stats] = await db.select({
-    totalBookings: sql<number>`count(*)::int`,
-    totalSpendCents: sql<number>`coalesce(sum(case when ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded' then ${bookings.marketplaceFeeCents} else 0 end), 0)::int`,
+    totalBookings: sql<number>`cast(count(*) as integer)`,
+    totalSpendCents: sql<number>`cast(coalesce(sum(case when ${bookings.stripePaymentIntentId} is not null and ${bookings.status} <> 'refunded' then ${bookings.marketplaceFeeCents} else 0 end), 0) as integer)`,
     lastBookingAt: sql<Date | null>`max(${bookings.createdAt})`
   }).from(bookings).where(eq(bookings.customerId, userId));
   [contact] = await db.update(crmContacts).set({
@@ -58,7 +58,7 @@ export async function syncCustomerStats(userId: string) {
     totalBookings: stats?.totalBookings ?? 0,
     totalSpendCents: stats?.totalSpendCents ?? 0,
     lastBookingAt: stats?.lastBookingAt ?? null,
-    leadScore: sql`greatest(${crmContacts.leadScore}, 30)`,
+    leadScore: sql`case when ${crmContacts.leadScore} > 30 then ${crmContacts.leadScore} else 30 end`,
     updatedAt: new Date()
   }).where(eq(crmContacts.id, contact.id)).returning();
   return contact;
@@ -108,7 +108,7 @@ async function discoverAbandonedCheckouts(limit: number) {
     .where(and(
       sql`${bookings.status} in ('payment_authorized', 'accepted')`,
       sql`${bookingCheckoutSessions.status} in ('open', 'expired')`,
-      sql`${bookings.scheduledStart} > now()`,
+      gt(bookings.scheduledStart, new Date()),
       lt(bookingCheckoutSessions.createdAt, threshold)
     ))
     .orderBy(desc(bookingCheckoutSessions.createdAt)).limit(limit);
@@ -150,7 +150,7 @@ async function discoverAbandonedCarts(limit: number) {
       isNotNull(analyticsEvents.userId),
       sql`${analyticsEvents.path} like '/book/%'`,
       lt(analyticsEvents.occurredAt, threshold),
-      sql`${analyticsEvents.occurredAt} >= ${since}`
+      gte(analyticsEvents.occurredAt, since)
     )).orderBy(desc(analyticsEvents.occurredAt)).limit(limit);
 
   let created = 0;
@@ -160,8 +160,8 @@ async function discoverAbandonedCarts(limit: number) {
     if (existing) continue;
     const [laterBooking] = await db.select({ id: bookings.id }).from(bookings).where(and(
       eq(bookings.customerId, event.userId),
-      sql`${bookings.createdAt} >= ${event.occurredAt}`,
-      sql`${bookings.createdAt} <= ${addHours(event.occurredAt, 2)}`
+      gte(bookings.createdAt, event.occurredAt),
+      lte(bookings.createdAt, addHours(event.occurredAt, 2))
     )).limit(1);
     if (laterBooking) continue;
     const contact = await ensureCrmContactForUser(event.userId, "lead");
@@ -231,7 +231,7 @@ async function recoverConvertedAbandonments(limit: number) {
     if (item.kind === "cart") {
       const [contact] = await db.select().from(crmContacts).where(eq(crmContacts.id, item.contactId)).limit(1);
       if (!contact?.userId) continue;
-      const [booking] = await db.select({ id: bookings.id }).from(bookings).where(and(eq(bookings.customerId, contact.userId), sql`${bookings.createdAt} > ${item.createdAt}`)).limit(1);
+      const [booking] = await db.select({ id: bookings.id }).from(bookings).where(and(eq(bookings.customerId, contact.userId), gt(bookings.createdAt, item.createdAt))).limit(1);
       if (booking) {
         await db.update(crmAbandonments).set({ status: "recovered", recoveredAt: new Date(), nextRunAt: null, updatedAt: new Date() }).where(eq(crmAbandonments.id, item.id));
         recovered += 1;
