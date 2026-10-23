@@ -18,5 +18,9 @@
       "database_name": "verotask-migration-staging",
       "database_id": "e989dd70-1805-48b4-88f3-1214985802ab"
     }
-  ]
+  ],
+  "vars": {
+    "NEXT_PUBLIC_APP_URL": "https://verotask-vinext-preview.andrealmeidashop.workers.dev",
+    "NEXT_PUBLIC_SUPPORT_EMAIL": "verotask@proton.me"
+  }
 }
