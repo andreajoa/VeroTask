@@ -1,0 +1,45 @@
+name: Import Neon history into Cloudflare D1
+
+# Neon's free compute quota was exhausted on 2026-10-22 (HTTP 402), which keeps the old
+# users, bookings and payments unreadable. Every 6 hours this tries once; when Neon answers,
+# it copies everything into D1 (scripts/cloudflare/import-neon-to-d1.mjs) and disables itself.
+on:
+  schedule:
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: import-neon-to-d1
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-save --ignore-scripts @neondatabase/serverless@1
+      - name: Import
+        id: import
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          D1_BRIDGE_SECRET: ${{ secrets.D1_BRIDGE_SECRET }}
+        run: |
+          set +e
+          node scripts/cloudflare/import-neon-to-d1.mjs
+          code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" = "3" ]; then echo "Neon still over quota; will retry in 6 hours."; exit 0; fi
+          exit $code
+      - name: Disable this workflow after a successful import
+        if: steps.import.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable "${{ github.workflow }}" --repo "${{ github.repository }}"
