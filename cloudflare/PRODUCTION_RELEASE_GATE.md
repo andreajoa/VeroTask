@@ -95,3 +95,7 @@ A staged server-signed D1 payment settlement adapter preserves the old PostgreSQ
 ## D1 dispute opening (October 22, 2026)
 
 Dispute opening is now staged using a signed, disabled-by-default D1 Worker endpoint and an atomic SQLite transaction for status, dispute and audit record. The original PostgreSQL transaction is preserved. 41 SQLite tests pass. Dispute resolution, refund creation and cancellation remain PostgreSQL-only; typecheck still reports 9 D1 compatibility diagnostics. Full production settlement is therefore BLOCKED.
+
+## D1 Finance adapters, static compatibility pass (2026-10-22)
+
+The complete Next.js application now passes strict D1 TypeScript compilation with **0 diagnostics** after refactoring all PostgreSQL-only interactive transactions into distinct backend modules. `0007_refund_intent_guards.sql` creates live-refund uniqueness, fee ceilings and immutable Stripe-refund IDs. D1's financial Worker and Next adapters preserve refund intent before Stripe call, idempotency key by stored refund identity and 20-hour reconciliation cutoff for unknown external outcomes. The original PostgreSQL implementation remains unchanged. **51 D1 SQLite tests and 76 Node tests pass.** Worker live refund/cancellation/dispute endpoints remain explicitly OFF. DO NOT RELEASE until historical Neon data are safely exported, whole-site runtime and financial E2E tests pass, and the actual Stripe VeroTask webhook/account is verified.
