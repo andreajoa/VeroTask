@@ -19,7 +19,7 @@ type Scalar = string | number | boolean | null;
 interface ReadQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' }
 interface D1Statement { bind(...values: Scalar[]): D1Statement; raw<T>(): Promise<T[][]> }
 interface D1Database { prepare(sql: string): D1Statement; batch(statements: D1Statement[]): Promise<Array<{ results: unknown[]; meta?: { changes?: number } }>> }
-interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string; D1_REAL_EVIDENCE_ENABLED?: string; D1_REAL_ARRIVALS_ENABLED?: string; D1_REAL_QUOTES_ENABLED?: string; D1_REAL_BOOKING_CREATE_ENABLED?: string; D1_REAL_QUOTE_REQUEST_ENABLED?: string; D1_REAL_PAYMENT_SETTLEMENT_ENABLED?: string; D1_REAL_DISPUTE_OPEN_ENABLED?: string; D1_REAL_FINANCIAL_WORKFLOWS_ENABLED?: string; APP_URL?: string; CRON_SECRET?: string; SERVICE_NAME?: string }
+interface Env { DB: D1Database; DB_BRIDGE_SECRET?: string; D1_REAL_ONBOARDING_ENABLED?: string; D1_REAL_DECLINES_ENABLED?: string; D1_AUTH_STAGING_ENABLED?: string; D1_AUTH_REAL_ENABLED?: string; D1_REAL_EVIDENCE_ENABLED?: string; D1_REAL_ARRIVALS_ENABLED?: string; D1_REAL_QUOTES_ENABLED?: string; D1_REAL_BOOKING_CREATE_ENABLED?: string; D1_REAL_QUOTE_REQUEST_ENABLED?: string; D1_REAL_PAYMENT_SETTLEMENT_ENABLED?: string; D1_REAL_DISPUTE_OPEN_ENABLED?: string; D1_REAL_FINANCIAL_WORKFLOWS_ENABLED?: string; D1_APP_WRITES_ENABLED?: string; APP_URL?: string; CRON_SECRET?: string; SERVICE_NAME?: string }
 
 const corsFree = { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
 const json = (body: unknown, status: number) => Response.json(body, { status, headers: corsFree });
@@ -33,6 +33,19 @@ function validateQuery(input: unknown): input is ReadQuery {
   if (!Array.isArray(value.params) || value.params.length > 100) return false;
   if (!value.params.every(p => p === null || typeof p === 'string' && p.length <= 8192 || typeof p === 'number' && Number.isFinite(p) || typeof p === 'boolean')) return false;
   return value.method === 'all' || value.method === 'get' || value.method === 'values';
+}
+
+// Signed application queries from the Next.js server (Vercel): one parameterized
+// statement each, data statements only. No DDL, PRAGMA, ATTACH or multi-statements.
+interface ExecQuery { sql: string; params: Scalar[]; method: 'all' | 'get' | 'values' | 'run' }
+function validateExec(input: unknown): input is ExecQuery {
+  if (!input || typeof input !== 'object') return false;
+  const value = input as Partial<ExecQuery>;
+  if (typeof value.sql !== 'string' || value.sql.length > 16_384 || !/^\s*(?:select|insert|update|delete|with)\b/i.test(value.sql)) return false;
+  if (/;|--|\/\*|\*\/|\b(?:pragma|attach|detach|drop|alter|create|vacuum|load_extension|reindex|analyze)\b/i.test(value.sql)) return false;
+  if (!Array.isArray(value.params) || value.params.length > 200) return false;
+  if (!value.params.every(p => p === null || typeof p === 'string' && p.length <= 65_536 || typeof p === 'number' && Number.isFinite(p) || typeof p === 'boolean')) return false;
+  return value.method === 'all' || value.method === 'get' || value.method === 'values' || value.method === 'run';
 }
 
 async function authenticate(request: Request, secret: string, body: string): Promise<boolean> {
@@ -55,7 +68,7 @@ export default {
         return json({ ok: count === 43, service: env.SERVICE_NAME || 'verotask-d1-staging', tables: count, production: env.SERVICE_NAME === 'verotask-d1' }, count === 43 ? 200 : 503);
       } catch { return json({ ok: false, service: env.SERVICE_NAME || 'verotask-d1-staging', production: env.SERVICE_NAME === 'verotask-d1' }, 503); }
     }
-    if (!['/internal/sqlite-read', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking', '/internal/evidence', '/internal/arrival-request', '/internal/accept-quote', '/internal/create-booking', '/internal/create-quote-request', '/internal/payment-settle', '/internal/payment-refund-confirm', '/internal/open-dispute', '/internal/refund-prepare', '/internal/refund-record', '/internal/dispute-context', '/internal/dispute-resolve', '/internal/dispute-refund-finalize', '/internal/cancellation-plan', '/internal/cancel-booking', '/internal/checkout-expired', '/internal/auth/issue', '/internal/auth/consume', '/internal/auth/session', '/internal/auth/signout', '/internal/auth/revoke'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
+    if (!['/internal/sqlite-read', '/internal/sqlite-exec', '/internal/test-settle-booking', '/internal/test-create-provider', '/internal/create-provider', '/internal/decline-booking', '/internal/evidence', '/internal/arrival-request', '/internal/accept-quote', '/internal/create-booking', '/internal/create-quote-request', '/internal/payment-settle', '/internal/payment-refund-confirm', '/internal/open-dispute', '/internal/refund-prepare', '/internal/refund-record', '/internal/dispute-context', '/internal/dispute-resolve', '/internal/dispute-refund-finalize', '/internal/cancellation-plan', '/internal/cancel-booking', '/internal/checkout-expired', '/internal/auth/issue', '/internal/auth/consume', '/internal/auth/session', '/internal/auth/signout', '/internal/auth/revoke'].includes(url.pathname) || request.method !== 'POST') return new Response('Not found', { status: 404, headers: corsFree });
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > 32_768) return json({ error: 'invalid_payload' }, 413);
     const raw = await request.text();
@@ -141,6 +154,19 @@ export default {
         }
       }
       if (!payload || typeof payload !== 'object') return json({ error: 'invalid_payload' }, 400);
+      if (url.pathname === '/internal/sqlite-exec') {
+        if (env.D1_APP_WRITES_ENABLED !== 'true') return json({ error: 'migration_not_ready' }, 503);
+        const exec = payload as { queries?: ExecQuery[]; query?: ExecQuery };
+        if (exec.queries) {
+          if (!Array.isArray(exec.queries) || exec.queries.length < 1 || exec.queries.length > 20 || !exec.queries.every(validateExec)) return json({ error: 'invalid_query' }, 400);
+          // D1 batch = one implicit transaction: all statements commit or none do.
+          const batches = await env.DB.batch(exec.queries.map(q => env.DB.prepare(q.sql).bind(...q.params)));
+          return json({ results: batches.map(x => ({ rows: (x.results as Record<string, unknown>[]).map(row => Object.values(row)) })) }, 200);
+        }
+        if (!validateExec(exec.query)) return json({ error: 'invalid_query' }, 400);
+        const rows = await env.DB.prepare(exec.query.sql).bind(...exec.query.params).raw();
+        return json({ rows: exec.query.method === 'get' ? rows.slice(0, 1) : exec.query.method === 'run' ? [] : rows }, 200);
+      }
       const packet = payload as { queries?: ReadQuery[]; query?: ReadQuery };
       if (packet.queries) {
         if (!Array.isArray(packet.queries) || packet.queries.length < 1 || packet.queries.length > 20 || !packet.queries.every(validateQuery)) return json({ error: 'invalid_query' }, 400);

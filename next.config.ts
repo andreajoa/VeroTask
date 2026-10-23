@@ -60,6 +60,9 @@ const noIndexHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // DATABASE_BACKEND=d1 resolves @/db and @/db/* to the Cloudflare D1 (SQLite) models and
+  // atomic Worker operations instead of Neon/PostgreSQL.
+  typescript: { tsconfigPath: process.env.DATABASE_BACKEND === "d1" ? "tsconfig.d1-app-port.json" : "tsconfig.json" },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

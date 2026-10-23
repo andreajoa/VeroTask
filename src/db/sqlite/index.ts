@@ -1,6 +1,6 @@
-/** Typecheck-only D1 application substitution. Never use for production.
- * Deliberately does not export getTransactionalDb: every PG interactive
- * transaction must be ported to an atomic D1 batch/conditional SQL design.
+/** Cloudflare D1 database for the Next.js server on Vercel (DATABASE_BACKEND=d1).
+ * Deliberately does not export getTransactionalDb: multi-statement invariants use the
+ * Worker's atomic D1 operations in src/db/sqlite/transactional-*.
  */
-import { d1StagingDb } from './proxy';
-export function getDb() { return d1StagingDb; }
+import { d1HttpDb } from './proxy';
+export function getDb() { return d1HttpDb; }

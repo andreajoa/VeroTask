@@ -5,14 +5,17 @@ const COMMON_ENVIRONMENT = [
   "AUDIT_ENCRYPTION_KEY", "AUDIT_HASH_SECRET", "UNSUBSCRIBE_SECRET"
 ] as const;
 
-// On Cloudflare the database and evidence bucket are Worker bindings (DB, R2), not
-// connection strings, so their URL/key variables do not exist there.
-const POSTGRES_S3_ENVIRONMENT = ["DATABASE_URL", "STORAGE_ENDPOINT", "STORAGE_BUCKET", "STORAGE_ACCESS_KEY_ID", "STORAGE_SECRET_ACCESS_KEY"] as const;
-const D1_ENVIRONMENT = ["D1_STAGING_HTTP_URL", "D1_STAGING_BRIDGE_SECRET", "UPLOAD_SIGNING_SECRET"] as const;
+// D1 is reached through the signed verotask-d1 Worker (DATABASE_BACKEND=d1) instead of a
+// connection string. Evidence storage is either S3-compatible keys or, inside a Cloudflare
+// Worker, the native R2 binding plus an upload-signing secret (STORAGE_BACKEND=r2-binding).
+const DATABASE_ENVIRONMENT = process.env.DATABASE_BACKEND === "d1"
+  ? ["D1_STAGING_HTTP_URL", "D1_STAGING_BRIDGE_SECRET"]
+  : ["DATABASE_URL"];
+const STORAGE_ENVIRONMENT = process.env.STORAGE_BACKEND === "r2-binding"
+  ? ["UPLOAD_SIGNING_SECRET"]
+  : ["STORAGE_ENDPOINT", "STORAGE_BUCKET", "STORAGE_ACCESS_KEY_ID", "STORAGE_SECRET_ACCESS_KEY"];
 
-export const REQUIRED_ENVIRONMENT: readonly string[] = process.env.DATABASE_BACKEND === "d1"
-  ? [...COMMON_ENVIRONMENT, ...D1_ENVIRONMENT]
-  : [...COMMON_ENVIRONMENT, ...POSTGRES_S3_ENVIRONMENT];
+export const REQUIRED_ENVIRONMENT: readonly string[] = [...COMMON_ENVIRONMENT, ...DATABASE_ENVIRONMENT, ...STORAGE_ENVIRONMENT];
 
 export type ReadinessChecks = {
   database: boolean;

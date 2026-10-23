@@ -11,8 +11,9 @@ binding = "DB"
 database_name = "verotask-production"
 database_id = "__VEROTASK_PRODUCTION_D1_ID__"
 
+# The daily cron runs on Vercel (vercel.json); a Worker trigger here would run the jobs twice.
 [triggers]
-crons = ["17 6 * * *"]
+crons = []
 
 [vars]
 SERVICE_NAME = "verotask-d1"
@@ -29,4 +30,5 @@ D1_REAL_QUOTE_REQUEST_ENABLED = "true"
 D1_REAL_PAYMENT_SETTLEMENT_ENABLED = "true"
 D1_REAL_DISPUTE_OPEN_ENABLED = "true"
 D1_REAL_FINANCIAL_WORKFLOWS_ENABLED = "true"
+D1_APP_WRITES_ENABLED = "true"
 # Secrets (wrangler secret put): DB_BRIDGE_SECRET, CRON_SECRET

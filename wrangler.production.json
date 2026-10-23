@@ -21,6 +21,7 @@
   "vars": {
     "NODE_ENV": "production",
     "DATABASE_BACKEND": "d1",
+    "STORAGE_BACKEND": "r2-binding",
     "AUTH_STORE": "d1",
     "NEXT_PUBLIC_APP_URL": "https://www.verotask.online",
     "NEXT_PUBLIC_APP_NAME": "VeroTask",
