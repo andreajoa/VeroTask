@@ -2,10 +2,12 @@
 
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { getDb, getTransactionalDb } from "@/db";
-import { businessCategories, businesses, categories, users } from "@/db/schema";
+import { getDb } from "@/db";
+import { createProviderAtomic } from "@/db/transactional-provider";
+import { businesses, categories } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { geocodeUsAddress } from "@/lib/geocoding";
 import { LAUNCH_LOCATIONS } from "@/lib/locations";
@@ -54,35 +56,21 @@ export async function createProviderProfile(formData: FormData) {
   if (!geocodedBase) redirect("/providers/join?error=location-not-found");
 
   const slug = `${slugify(parsed.data.name)}-${randomBytes(3).toString("hex")}`;
-  const business = await getTransactionalDb().transaction(async (tx) => {
-  // Serialize submissions from the same account, including concurrent tabs.
-  await tx.select({ id: users.id }).from(users).where(eq(users.id, user.id)).for("update");
-  const [existing] = await tx.select().from(businesses).where(eq(businesses.ownerUserId, user.id)).limit(1);
-  if (existing) return existing;
-  const [business] = await tx.insert(businesses).values({
+  const business = await createProviderAtomic({
     ownerUserId: user.id,
+    categoryId: category.id,
+    businessId: randomUUID(),
     name: parsed.data.name,
     slug,
     description: parsed.data.description,
-    publicPhone: parsed.data.phone,
-    publicEmail: user.email,
+    phone: parsed.data.phone,
+    email: user.email,
     addressLine1: parsed.data.addressLine1,
     city: parsed.data.city,
-    state: "FL",
     postalCode: parsed.data.postalCode,
-    country: "US",
     latitude: geocodedBase.latitude,
     longitude: geocodedBase.longitude,
-    serviceRadiusMiles: parsed.data.serviceRadiusMiles,
-    status: "active",
-    plan: "free",
-    importedFromPublicSource: false,
-    active: true
-  }).returning();
-
-  await tx.insert(businessCategories).values({ businessId: business.id, categoryId: category.id, featured: true }).onConflictDoNothing();
-  await tx.update(users).set({ role: "provider", phone: parsed.data.phone, updatedAt: new Date() }).where(eq(users.id, user.id));
-  return business;
+    serviceRadiusMiles: parsed.data.serviceRadiusMiles
   });
 
   const planQuery = parsed.data.plan === "free" ? "" : `?plan=${parsed.data.plan}`;

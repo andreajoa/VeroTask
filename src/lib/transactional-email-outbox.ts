@@ -1,5 +1,5 @@
 import { and, eq, inArray, lte, or } from "drizzle-orm";
-import { getDb, getTransactionalDb } from "@/db";
+import { getDb } from "@/db";
 import { transactionalEmailOutbox } from "@/db/operations-schema";
 import { bookings } from "@/db/schema";
 import { canonicalAppUrl } from "@/lib/app-url";
@@ -21,7 +21,7 @@ export type TransactionalEmailKind =
   | "customer_request_declined"
   | "customer_arrival_confirmation_request";
 
-type OutboxWriter = Pick<ReturnType<typeof getTransactionalDb>, "insert">;
+type OutboxWriter = Pick<ReturnType<typeof getDb>, "insert">;
 
 export type QueueBookingEmailInput = {
   kind: TransactionalEmailKind;
@@ -44,7 +44,7 @@ export async function queueBookingEmail(writer: OutboxWriter, input: QueueBookin
 }
 
 export async function enqueueBookingEmail(input: QueueBookingEmailInput) {
-  return queueBookingEmail(getTransactionalDb(), input);
+  return queueBookingEmail(getDb(), input);
 }
 
 export function transactionalEmailRetryDelayMs(attemptCount: number) {

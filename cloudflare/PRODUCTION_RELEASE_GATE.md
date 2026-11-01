@@ -51,3 +51,21 @@ An HTTP 200 from the homepage is **not** enough to approve production. No creden
 - To enable live plan upgrades/downgrades, create verified USD recurring prices ($39/$99) in Stripe and securely configure both USD price IDs in Vercel. **Do not** modify existing subscriptions until their billing currency and proration are reviewed. The old BRL prices can remain for historical reconciliation.
 
 No live charges, refunds, transfers, or subscription changes were executed during this Stripe audit. Live purchase processing is **NO-GO** while the Neon production database is suspended.
+
+## D1 full-application compatibility audit (2026-10-22)
+
+An isolated complete application SQLite typecheck runs via `tsconfig.d1-app-port.json`, without changing production TypeScript aliases. It initially found 29 errors in 11 modules, mostly PostgreSQL transactions. Portable readiness probes and safe single-operation email enqueue reduced this to **27 errors in 9 transactional modules**. Strict D1 application portability is **not passing**. See `cloudflare/D1_APP_PORTABILITY.md` and `scripts/cloudflare/check_d1_app_port.mjs --strict`. This debt is tracked on an experimental branch rather than on production.
+
+## Provider signups D1 staging test (2026-10-22)
+
+The dedicated D1 provider-onboarding signed Worker operation was tested against synthetic records under concurrent requests; one business/category/user role transaction committed, the duplicate request returned the same business, unauthorized calls were rejected, and fake fixtures were removed. Real provider onboarding is explicitly DISABLED in D1 until authentication and all other database flows are ready. After factoring PostgreSQL and D1 provider creation into distinct implementations, the full D1 compatibility audit improved to **25 errors in 8 modules**.
+
+## D1 provider decline staging test (2026-10-22)
+
+The provider decline flow now has separate original PostgreSQL transaction and D1 Worker-backed atomic batch implementations. Two new SQLite tests prove idempotent cancellation and full rollback of booking status and event when notification enqueue fails. Worker real declining is intentionally disabled by default until data reconciliation. Remaining SQLite full-application compile debt: **23 diagnostics in 7 transaction modules**.
+
+## Recovery checkpoint (2026-11-01)
+
+Neon compute access has recovered with the November quota period: a direct read-only SQL query returned 43 source tables, and the live `/api/ready` returned HTTP 200 with database, schema and storage checks passing. A manual Neon snapshot was created and verified (`snap-muddy-tree-auhem3sd`). The earlier October 22 HTTP 402 / readiness 503 findings above are historical and no longer describe current availability.
+
+**D1 migration remains NO-GO:** Neon has 2,376 rows versus 80 D1 staging rows across 43 tables, with 24 mismatched table counts. All 26 category IDs and all 17 existing D1 business IDs differ from their matching Neon slugs, so naive inserts or upserts are unsafe. Seven transactional modules still fail the strict D1 portability audit with 23 diagnostics. A complete encrypted off-platform Neon export, identity-safe import and payment E2E verification remain outstanding. See [the dated reconciliation report](./D1_RECONCILIATION_2026-11-01.md). No production routing or live payment settings were changed.

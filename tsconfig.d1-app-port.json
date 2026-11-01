@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false,
+    "paths": {
+      "@/db": [
+        "./src/db/sqlite/index.ts"
+      ],
+      "@/db/*": [
+        "./src/db/sqlite/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/cloudflare/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/db/transactional-provider.ts",
+    "src/db/transactional-decline.ts"
+  ]
+}

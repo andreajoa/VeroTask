@@ -1,6 +1,9 @@
-import { sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
+import { users, bookings, providerProfilePhotos } from "@/db/schema";
+import { sessions } from "@/db/auth-schema";
+import { adminCredentials, platformSecrets, adminLoginAttempts } from "@/db/analytics-schema";
+import { providerCheckoutSessions, transactionalEmailOutbox } from "@/db/operations-schema";
 import { canonicalAppUrl } from "@/lib/app-url";
 import { verifyEvidenceStorageAccess } from "@/lib/storage";
 import { REQUIRED_ENVIRONMENT, readinessPassed } from "@/lib/readiness";
@@ -15,25 +18,30 @@ function dependencies() {
   // Coalesce probes so public health polling cannot flood storage with writes.
   if (probe && probe.expiresAt > Date.now()) return probe.result;
   const result = (async () => {
+    // A portable schema probe: all queries compile with both Drizzle PostgreSQL
+    // and SQLite, and LIMIT 0 verifies table/column presence without reading PII.
+    // A database connection alone is not enough: missing tables must fail readiness.
     const [database, storage] = await Promise.allSettled([
-      (async () => getDb().execute(sql`
-        select to_regclass('public.users') is not null
-          and to_regclass('public.sessions') is not null
-          and to_regclass('public.bookings') is not null
-          and to_regclass('public.provider_profile_photos') is not null
-          and to_regclass('public.admin_credentials') is not null
-          and to_regclass('public.platform_secrets') is not null
-          and to_regclass('public.provider_checkout_sessions') is not null
-          and to_regclass('public.transactional_email_outbox') is not null
-          and to_regclass('public.admin_login_attempts') is not null as schema_ready
-      `))(),
+      (async () => {
+        const db = getDb();
+        const checks = await Promise.allSettled([
+          db.select({ id: users.id }).from(users).limit(0),
+          db.select({ id: sessions.id }).from(sessions).limit(0),
+          db.select({ id: bookings.id }).from(bookings).limit(0),
+          db.select({ id: providerProfilePhotos.id }).from(providerProfilePhotos).limit(0),
+          db.select({ id: adminCredentials.id }).from(adminCredentials).limit(0),
+          db.select({ id: platformSecrets.id }).from(platformSecrets).limit(0),
+          db.select({ id: providerCheckoutSessions.id }).from(providerCheckoutSessions).limit(0),
+          db.select({ id: transactionalEmailOutbox.id }).from(transactionalEmailOutbox).limit(0),
+          db.select({ id: adminLoginAttempts.keyHash }).from(adminLoginAttempts).limit(0)
+        ]);
+        return { database: checks[0].status === "fulfilled", schema: checks.every((c) => c.status === "fulfilled") };
+      })(),
       verifyEvidenceStorageAccess()
     ]);
-    const data = database.status === "fulfilled" ? database.value : null;
-    const rows = Array.isArray(data) ? data : data?.rows;
     return {
-      database: database.status === "fulfilled",
-      schema: rows?.[0]?.schema_ready === true,
+      database: database.status === "fulfilled" && database.value.database,
+      schema: database.status === "fulfilled" && database.value.schema,
       storageOperational: storage.status === "fulfilled" && storage.value.ok
     };
   })();

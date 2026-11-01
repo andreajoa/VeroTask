@@ -1,0 +1,22 @@
+name: D1 Application Portability (Regression Audit)
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'scripts/cloudflare/check_d1_app_port.mjs'
+      - 'scripts/cloudflare/d1-app-port-baseline.json'
+      - 'tsconfig.d1-app-port.json'
+      - '.github/workflows/verotask-d1-portability.yml'
+  workflow_dispatch:
+jobs:
+  no-new-d1-incompatibilities:
+    name: No new D1 compatibility errors (migration still incomplete)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/cloudflare/check_d1_app_port.mjs
