@@ -63,3 +63,9 @@ The dedicated D1 provider-onboarding signed Worker operation was tested against 
 ## D1 provider decline staging test (2026-10-22)
 
 The provider decline flow now has separate original PostgreSQL transaction and D1 Worker-backed atomic batch implementations. Two new SQLite tests prove idempotent cancellation and full rollback of booking status and event when notification enqueue fails. Worker real declining is intentionally disabled by default until data reconciliation. Remaining SQLite full-application compile debt: **23 diagnostics in 7 transaction modules**.
+
+## Recovery checkpoint (2026-11-01)
+
+Neon compute access has recovered with the November quota period: a direct read-only SQL query returned 43 source tables, and the live `/api/ready` returned HTTP 200 with database, schema and storage checks passing. A manual Neon snapshot was created and verified (`snap-muddy-tree-auhem3sd`). The earlier October 22 HTTP 402 / readiness 503 findings above are historical and no longer describe current availability.
+
+**D1 migration remains NO-GO:** Neon has 2,376 rows versus 80 D1 staging rows across 43 tables, with 24 mismatched table counts. All 26 category IDs and all 17 existing D1 business IDs differ from their matching Neon slugs, so naive inserts or upserts are unsafe. Seven transactional modules still fail the strict D1 portability audit with 23 diagnostics. A complete encrypted off-platform Neon export, identity-safe import and payment E2E verification remain outstanding. See [the dated reconciliation report](./D1_RECONCILIATION_2026-11-01.md). No production routing or live payment settings were changed.
