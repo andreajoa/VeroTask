@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { businesses, providerProfilePhotos } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
+import { deleteProviderPhoto, isProviderPhotoObjectRef, putProviderPhoto, readProviderPhoto } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,8 +23,16 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   if (!photo) return NextResponse.json({ error: "profile_photo_not_found" }, { status: 404 });
 
-  const bytes = Buffer.from(photo.imageBase64, "base64");
-  return new NextResponse(bytes, {
+  // `imageBase64` holds an R2 reference for photos uploaded since D1, inline base64 for older ones.
+  let bytes: Buffer;
+  try {
+    bytes = isProviderPhotoObjectRef(photo.imageBase64)
+      ? await readProviderPhoto(photo.imageBase64)
+      : Buffer.from(photo.imageBase64, "base64");
+  } catch {
+    return NextResponse.json({ error: "profile_photo_unavailable" }, { status: 503 });
+  }
+  return new NextResponse(new Uint8Array(bytes), {
     status: 200,
     headers: {
       "content-type": photo.contentType,
@@ -68,6 +77,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ ok: true, photoId: sameActive.id, unchanged: true });
   }
 
+  // Bytes go to R2 before anything changes in the database: if storage fails, the current photo
+  // stays active. Inline base64 cannot be used here — it exceeds the D1 Worker's 32 KB request cap.
+  let objectRef: string;
+  try {
+    objectRef = await putProviderPhoto(businessId, bytes, file.type);
+  } catch {
+    return NextResponse.json({ error: "photo_storage_unavailable" }, { status: 503 });
+  }
+
+  // One active photo per business is a unique index, so the old one must be retired first; there is
+  // no transaction across the Worker, so a failed insert restores it instead.
+  const previous = sameActive ? sameActive.id : null;
   await db.update(providerProfilePhotos).set({
     active: false,
     deactivatedAt: now
@@ -76,16 +97,26 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     eq(providerProfilePhotos.active, true)
   ));
 
-  const [photo] = await db.insert(providerProfilePhotos).values({
-    businessId,
-    uploadedByUserId: user.id,
-    contentType: file.type,
-    byteSize: bytes.byteLength,
-    sha256,
-    imageBase64: bytes.toString("base64"),
-    attestedRecent: true,
-    active: true
-  }).returning();
+  let photo: typeof providerProfilePhotos.$inferSelect;
+  try {
+    [photo] = await db.insert(providerProfilePhotos).values({
+      businessId,
+      uploadedByUserId: user.id,
+      contentType: file.type,
+      byteSize: bytes.byteLength,
+      sha256,
+      imageBase64: objectRef,
+      attestedRecent: true,
+      active: true
+    }).returning();
+  } catch (error) {
+    if (previous) {
+      await db.update(providerProfilePhotos).set({ active: true, deactivatedAt: null })
+        .where(eq(providerProfilePhotos.id, previous));
+    }
+    await deleteProviderPhoto(objectRef).catch(() => undefined);
+    throw error;
+  }
 
   return NextResponse.json({
     ok: true,

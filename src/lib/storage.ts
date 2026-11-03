@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, ListObjectsV2Command, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { readFile, stat, unlink } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { localStorageEnabled, localObjectPath, signedLocalStorageUrl } from "@/lib/local-storage";
 import { contentTypeForEvidenceObjectRef, hasEvidenceImageMagic, MAX_EVIDENCE_IMAGE_BYTES, type EvidenceImageContentType } from "@/lib/evidence-policy";
 
@@ -176,6 +177,64 @@ export async function inspectEvidenceObject(objectRef: string): Promise<
   } catch {
     return { ok: false, reason: "photo_upload_not_found" };
   }
+}
+
+// Provider profile photos live in R2, not in D1: a photo (up to 900 KB) cannot cross the signed
+// D1 Worker, which caps every request at 32 KB. The database keeps only this reference.
+export function isProviderPhotoObjectRef(value: string) {
+  return /^r2:\/\/provider-photos\/[0-9a-z-]{1,64}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp)$/i.test(value);
+}
+
+function providerPhotoKey(objectRef: string) {
+  if (!isProviderPhotoObjectRef(objectRef)) throw new Error("invalid_provider_photo_ref");
+  return objectRef.slice("r2://".length);
+}
+
+export async function putProviderPhoto(businessId: string, bytes: Buffer, contentType: string) {
+  const extension = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+  const objectRef = `r2://provider-photos/${businessId}/${randomUUID()}.${extension}`;
+  const key = providerPhotoKey(objectRef);
+  if (localStorageEnabled()) {
+    const filePath = localObjectPath(key);
+    await mkdir(dirname(filePath), { recursive: true });
+    await writeFile(filePath, bytes);
+    return objectRef;
+  }
+  const config = storageConfig();
+  if (!config) throw new Error("storage_not_configured");
+  await clientFor(config).send(new PutObjectCommand({
+    Bucket: config.bucket,
+    Key: key,
+    Body: bytes,
+    ContentType: contentType,
+    ContentLength: bytes.byteLength,
+    IfNoneMatch: "*",
+    Metadata: { businessId }
+  }));
+  return objectRef;
+}
+
+export async function readProviderPhoto(objectRef: string) {
+  const key = providerPhotoKey(objectRef);
+  if (localStorageEnabled()) return readFile(localObjectPath(key));
+  const config = storageConfig();
+  if (!config) throw new Error("storage_not_configured");
+  const object = await clientFor(config).send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+  if (!object.Body) throw new Error("provider_photo_missing");
+  return Buffer.from(await object.Body.transformToByteArray());
+}
+
+export async function deleteProviderPhoto(objectRef: string) {
+  const key = providerPhotoKey(objectRef);
+  if (localStorageEnabled()) {
+    try { await unlink(localObjectPath(key)); } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    return;
+  }
+  const config = storageConfig();
+  if (!config) throw new Error("storage_not_configured");
+  await clientFor(config).send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
 }
 
 export async function deleteEvidenceObject(objectRef: string) {

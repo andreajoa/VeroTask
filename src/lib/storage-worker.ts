@@ -110,3 +110,20 @@ export async function inspectEvidenceObject(objectRef:string):Promise<
 }
 export async function deleteEvidenceObject(objectRef:string){await bucket().delete(keyFrom(objectRef))}
 export async function diagnoseEvidenceStorageEndpoints(){return [{kind:'cloudflare-native-r2',...await verifyEvidenceStorageAccess()}]}
+// Provider profile photos: same contract as src/lib/storage.ts (reference kept in D1, bytes in R2).
+export function isProviderPhotoObjectRef(value:string){
+ return /^r2:\/\/provider-photos\/[0-9a-z-]{1,64}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp)$/i.test(value);
+}
+const photoKey=(objectRef:string)=>{if(!isProviderPhotoObjectRef(objectRef))throw Error('invalid_provider_photo_ref');return objectRef.slice(5)};
+export async function putProviderPhoto(businessId:string,bytes:Buffer,contentType:string){
+ const extension=contentType==='image/png'?'png':contentType==='image/webp'?'webp':'jpg';
+ const objectRef=`r2://provider-photos/${businessId}/${randomUUID()}.${extension}`;
+ await bucket().put(photoKey(objectRef),new Uint8Array(bytes),{httpMetadata:{contentType},customMetadata:{businessId}});
+ return objectRef;
+}
+export async function readProviderPhoto(objectRef:string){
+ const object=await bucket().get(photoKey(objectRef));
+ if(!object)throw Error('provider_photo_missing');
+ return Buffer.from(await new Response(object.body).arrayBuffer());
+}
+export async function deleteProviderPhoto(objectRef:string){await bucket().delete(photoKey(objectRef))}
