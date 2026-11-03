@@ -1,5 +1,16 @@
 import { Resend } from "resend";
 
+// Provider messages can contain recipient addresses and request content. Only
+// documented codes and HTTP status belong in logs, including for outbox callers.
+const providerErrorCodes = new Set([
+  "invalid_idempotency_key", "validation_error", "missing_api_key", "restricted_api_key",
+  "invalid_api_key", "not_found", "method_not_allowed", "invalid_idempotent_request",
+  "concurrent_idempotent_requests", "invalid_attachment", "invalid_from_address",
+  "invalid_access", "invalid_parameter", "invalid_region", "missing_required_field",
+  "monthly_quota_exceeded", "daily_quota_exceeded", "rate_limit_exceeded",
+  "security_error", "application_error", "internal_server_error"
+]);
+
 export type EmailMessage = {
   to: string;
   subject: string;
@@ -17,7 +28,10 @@ export function localEmailEnabled() {
 function configuredFromAddress() {
   const configured = process.env.EMAIL_FROM?.trim();
   if (configured) return configured;
-  if (process.env.NODE_ENV === "production") throw new Error("EMAIL_FROM is required in production");
+  if (process.env.NODE_ENV === "production") {
+    console.error("[VeroTask email] configuration failed", { code: "missing_from_address" });
+    throw new Error("EMAIL_FROM is required in production");
+  }
   return "VeroTask <notifications@verotask.invalid>";
 }
 
@@ -34,11 +48,20 @@ export async function deliverEmail(message: EmailMessage) {
     const result = await response.json() as { ID: string };
     return { id: result.ID, local: true };
   }
-  if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not configured");
+  if (!process.env.RESEND_API_KEY) {
+    console.error("[VeroTask email] configuration failed", { code: "missing_api_key" });
+    throw new Error("RESEND_API_KEY is not configured");
+  }
   const { data, error } = await new Resend(process.env.RESEND_API_KEY).emails.send({
     from, to: message.to, subject: message.subject, html: message.html,
     headers: message.headers, tags: message.tags
   }, message.idempotencyKey ? { idempotencyKey: message.idempotencyKey } : undefined);
-  if (error || !data) throw new Error(error?.message || "email_delivery_failed");
+  if (error || !data) {
+    const code = error && providerErrorCodes.has(error.name) ? error.name : "unknown_provider_error";
+    const status = error?.statusCode;
+    const statusCode = typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599 ? status : null;
+    console.error("[VeroTask email] delivery failed", { provider: "resend", code, statusCode });
+    throw new Error(`email_delivery_failed:${code}`);
+  }
   return { id: data.id, local: false };
 }
