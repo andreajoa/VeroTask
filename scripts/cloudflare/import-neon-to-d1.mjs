@@ -17,7 +17,7 @@
 //   so a re-run repairs a partial earlier copy without overwriting anything written in D1 since.
 // - Outbound queues are not copied: the email recovery cron would send October's mail today.
 import { readFileSync } from "node:fs";
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
@@ -59,6 +59,24 @@ function toD1(value) {
   if (typeof value === "bigint") return Number(value);
   if (typeof value === "object") return JSON.stringify(value);
   return value;
+}
+
+// ---------- oversized photos ----------
+// The D1 Worker refuses any request over 32 KB, and Neon kept profile photos inline (up to 900 KB).
+// The site shows them at 128 px, so a 256 px JPEG keeps them sharp on retina and fits the request.
+const PHOTO_BASE64_LIMIT = 20_000;
+async function shrinkPhoto(row) {
+  if (typeof row.image_base64 !== "string" || row.image_base64.length <= PHOTO_BASE64_LIMIT) return;
+  const { default: sharp } = await import("sharp");
+  const source = Buffer.from(row.image_base64, "base64");
+  for (const [size, quality] of [[256, 82], [224, 74], [192, 66], [160, 60]]) {
+    const out = await sharp(source).rotate().resize(size, size, { fit: "cover" }).jpeg({ quality, mozjpeg: true }).toBuffer();
+    const encoded = out.toString("base64");
+    if (encoded.length > PHOTO_BASE64_LIMIT) continue;
+    Object.assign(row, { image_base64: encoded, byte_size: out.byteLength, content_type: "image/jpeg", sha256: createHash("sha256").update(out).digest("hex") });
+    return;
+  }
+  throw new Error("photo_still_too_large");
 }
 
 // ---------- source ----------
@@ -143,6 +161,7 @@ for (const table of order) {
     }
     if (DRY) continue;
     try {
+      if (table === "provider_profile_photos") await shrinkPhoto(row);
       let existingId = null;
       for (const key of uniques) {
         if (!columns.has("id") || key.some((c) => row[c] === null || row[c] === undefined)) continue;
