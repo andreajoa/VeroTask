@@ -11,20 +11,25 @@
 // - A source row whose natural key (e-mail, slug, Stripe id, ...) already exists in D1 under a
 //   different id is merged into that D1 row: source values win, the D1 id stays, and every
 //   later foreign key that pointed at the old id is rewritten to the D1 id.
-// - Everything else is INSERT OR IGNORE, so re-running is safe.
+// - Everything else is inserted with ON CONFLICT DO NOTHING, so re-running is safe. Not INSERT OR
+//   IGNORE: that also swallows NOT NULL violations, which silently dropped every booking once.
+// - A row that already exists under the same id only has its NULL columns filled from the source,
+//   so a re-run repairs a partial earlier copy without overwriting anything written in D1 since.
+// - Outbound queues are not copied: the email recovery cron would send October's mail today.
 import { readFileSync } from "node:fs";
 import { createHmac } from "node:crypto";
 
 const args = process.argv.slice(2);
 const flag = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const DRY = args.includes("--dry-run");
+const SKIP_TABLES = new Set(["transactional_email_outbox", "crm_abandonments"]);
 const schemaSql = readFileSync(new URL("../../cloudflare/d1/0001_schema.sql", import.meta.url), "utf8");
 
 // ---------- schema ----------
 const tables = new Map(); // name -> { columns:Set, fks:Map(col->table), uniques:string[][] }
 for (const m of schemaSql.matchAll(/CREATE TABLE IF NOT EXISTS "([a-z_]+)" \(([\s\S]*?)\n\);/g)) {
   const [, name, body] = m;
-  const columns = new Set([...body.matchAll(/^\s*"([a-z_0-9]+)"\s+[A-Z]/gm)].map((c) => c[1]));
+  const columns = new Set([...body.matchAll(/^\s*"([a-z_0-9]+)"\s+[A-Za-z]/gm)].map((c) => c[1]));
   const fks = new Map();
   for (const f of body.matchAll(/FOREIGN KEY \("([a-z_0-9]+)"\) REFERENCES "([a-z_]+)"/g)) fks.set(f[1], f[2]);
   for (const f of body.matchAll(/^\s*"([a-z_0-9]+)"[^\n]*REFERENCES "([a-z_]+)"/gm)) fks.set(f[1], f[2]);
@@ -123,10 +128,10 @@ const idMap = new Map(); // table -> Map(sourceId -> d1Id)
 const report = [];
 
 for (const table of order) {
-  if (!sourceTables.has(table)) continue;
+  if (!sourceTables.has(table) || SKIP_TABLES.has(table)) continue;
   const { columns, fks, uniques } = tables.get(table);
   const rows = await source.rows(table);
-  const stats = { table, source: rows.length, inserted: 0, merged: 0, skipped: 0, failed: 0 };
+  const stats = { table, source: rows.length, inserted: 0, merged: 0, filled: 0, skipped: 0, failed: 0 };
   const map = new Map();
   idMap.set(table, map);
   for (const raw of rows) {
@@ -151,8 +156,22 @@ for (const table of order) {
         map.set(raw.id, existingId);
         stats.merged++;
       } else {
-        const done = await target.exec(`insert or ignore into "${table}" (${names.map((n) => `"${n}"`).join(", ")}) values (${names.map(() => "?").join(", ")}) returning 1`, names.map((n) => row[n]));
-        done.length ? stats.inserted++ : stats.skipped++;
+        // Look the id up first: BEFORE INSERT triggers (booking overlap) fire ahead of the conflict
+        // check, so re-inserting an existing booking would be rejected as overlapping itself.
+        const others = names.filter((n) => n !== "id");
+        const current = columns.has("id") && row.id != null && others.length
+          ? await target.exec(`select ${others.map((n) => `"${n}"`).join(", ")} from "${table}" where id = ? limit 1`, [row.id])
+          : [];
+        if (current.length) {
+          const missing = others.filter((n, i) => current[0][i] === null && row[n] !== null);
+          if (missing.length) {
+            await target.exec(`update "${table}" set ${missing.map((n) => `"${n}" = ?`).join(", ")} where id = ? and ${missing.map((n) => `"${n}" is null`).join(" and ")}`, [...missing.map((n) => row[n]), row.id], "run");
+            stats.filled++;
+          } else stats.skipped++;
+        } else {
+          const done = await target.exec(`insert into "${table}" (${names.map((n) => `"${n}"`).join(", ")}) values (${names.map(() => "?").join(", ")}) on conflict do nothing returning 1`, names.map((n) => row[n]));
+          if (done.length) stats.inserted++; else stats.skipped++;
+        }
       }
     } catch (error) {
       stats.failed++;
@@ -160,7 +179,7 @@ for (const table of order) {
     }
   }
   report.push(stats);
-  console.log(`${table.padEnd(34)} source=${stats.source} inserted=${stats.inserted} merged=${stats.merged} skipped=${stats.skipped} failed=${stats.failed}`);
+  console.log(`${table.padEnd(34)} source=${stats.source} inserted=${stats.inserted} merged=${stats.merged} filled=${stats.filled} skipped=${stats.skipped} failed=${stats.failed}`);
 }
 const ignored = [...sourceTables].filter((t) => !tables.has(t) && !t.startsWith("__drizzle"));
 if (ignored.length) console.log("source tables with no D1 table:", ignored.join(", "));
