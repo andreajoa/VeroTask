@@ -60,7 +60,14 @@ export async function deliverEmail(message: EmailMessage) {
     const code = error && providerErrorCodes.has(error.name) ? error.name : "unknown_provider_error";
     const status = error?.statusCode;
     const statusCode = typeof status === "number" && Number.isInteger(status) && status >= 400 && status <= 599 ? status : null;
-    console.error("[VeroTask email] delivery failed", { provider: "resend", code, statusCode });
+    // Resend reuses validation_error/403 for several different restrictions.
+    // Classify its message without ever emitting the raw message or addresses.
+    const message = error?.message || "";
+    const reason = /domain is not verified/i.test(message) ? "domain_not_verified"
+      : /only send testing emails/i.test(message) ? "testing_restriction"
+      : /API key is invalid/i.test(message) ? "invalid_api_key"
+      : "unspecified";
+    console.error("[VeroTask email] delivery failed", { provider: "resend", code, statusCode, reason });
     throw new Error(`email_delivery_failed:${code}`);
   }
   return { id: data.id, local: false };
